@@ -19,10 +19,12 @@ export default function IssueCard({ issue, hideLabels }: Props) {
   const { closeIssue, deleteIssue } = useAppStore();
   const [showEdit, setShowEdit] = useState(false);
   const [busy, setBusy] = useState(false);
+  const [hovered, setHovered] = useState(false);
   const [showBadgeTip, setShowBadgeTip] = useState(false);
   const [calloutStyle, setCalloutStyle] = useState<React.CSSProperties | null>(null);
   const cardRef = useRef<HTMLDivElement>(null);
-  const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const calloutTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const leaveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const statusLabel = issue.labels.find(l => l.name.startsWith('s_'));
   const statusName = statusLabel ? statusLabel.name.slice(2) : null;
@@ -31,8 +33,10 @@ export default function IssueCard({ issue, hideLabels }: Props) {
     ? { backgroundColor: '#eff6ff', color: '#2563eb', border: '1px solid #bfdbfe' }
     : { backgroundColor: '#f0fdf4', color: '#16a34a', border: '1px solid #bbf7d0' };
 
-  function handleCardEnter() {
-    timerRef.current = setTimeout(() => {
+  function onCardEnter() {
+    if (leaveTimerRef.current) clearTimeout(leaveTimerRef.current);
+    setHovered(true);
+    calloutTimerRef.current = setTimeout(() => {
       if (!cardRef.current) return;
       const r = cardRef.current.getBoundingClientRect();
       const W = 280, H = 180;
@@ -43,9 +47,18 @@ export default function IssueCard({ issue, hideLabels }: Props) {
     }, 400);
   }
 
-  function handleCardLeave() {
-    if (timerRef.current) clearTimeout(timerRef.current);
+  function onCardLeave() {
+    if (calloutTimerRef.current) clearTimeout(calloutTimerRef.current);
     setCalloutStyle(null);
+    leaveTimerRef.current = setTimeout(() => setHovered(false), 120);
+  }
+
+  function onTrayEnter() {
+    if (leaveTimerRef.current) clearTimeout(leaveTimerRef.current);
+  }
+
+  function onTrayLeave() {
+    leaveTimerRef.current = setTimeout(() => setHovered(false), 120);
   }
 
   async function handleClose(e: React.MouseEvent) {
@@ -71,19 +84,19 @@ export default function IssueCard({ issue, hideLabels }: Props) {
     <>
       <div
         ref={cardRef}
-        onMouseEnter={handleCardEnter}
-        onMouseLeave={handleCardLeave}
-        className={`relative group select-none cursor-pointer hover:z-20 text-sm ${
+        className={`relative select-none cursor-pointer text-sm ${hovered ? 'z-20' : ''} ${
           busy ? 'opacity-40 pointer-events-none' :
           issue.state === 'closed' ? 'opacity-60' : ''
         }`}
       >
         {/* Card surface — z-10 so it sits visually in front of the tray */}
-        <div className={`relative z-10 bg-white rounded-lg border px-2 py-1.5 shadow-sm transition-all ${
-          issue.state === 'closed'
-            ? 'border-gray-200 hover:border-gray-300 hover:shadow-md'
-            : 'border-gray-200 hover:border-gray-300 hover:shadow-md'
-        }`}>
+        <div
+          onMouseEnter={onCardEnter}
+          onMouseLeave={onCardLeave}
+          className={`relative z-10 bg-white rounded-lg border px-2 py-1.5 shadow-sm transition-all ${
+            hovered ? 'border-gray-300 shadow-md' : 'border-gray-200'
+          }`}
+        >
 
         {/* Single-line title row */}
         <div className="flex items-center gap-1.5 min-w-0">
@@ -138,13 +151,16 @@ export default function IssueCard({ issue, hideLabels }: Props) {
 
         </div>{/* end card surface */}
 
-        {/* Clip wrapper — z-0 so it stays behind the card surface (z-10) */}
-        <div className="absolute left-0 right-0 top-full z-0 overflow-hidden rounded-b-lg">
-          <div className="
-            -translate-y-full group-hover:translate-y-0 transition-transform duration-200 ease-out
+        {/* Clip wrapper — pointer-events-none while hidden so cursor approaching from below is ignored */}
+        <div
+          onMouseEnter={onTrayEnter}
+          onMouseLeave={onTrayLeave}
+          className={`absolute left-0 right-0 top-full z-0 overflow-hidden rounded-b-lg ${hovered ? 'pointer-events-auto' : 'pointer-events-none'}`}
+        >
+          <div className={`transition-transform duration-200 ease-out ${hovered ? 'translate-y-0' : '-translate-y-full'}
             bg-gray-100 border-x border-b border-gray-200 rounded-b-lg
             flex items-center justify-end gap-1 px-2 py-1.5
-          ">
+          `}>
             <button
               onClick={e => { e.stopPropagation(); setShowEdit(true); }}
               title="Edit issue"
