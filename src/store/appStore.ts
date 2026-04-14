@@ -100,10 +100,16 @@ export const useAppStore = create<AppState>((set, get) => ({
         page++;
       }
 
-      // Load or build layout
-      let layout = await loadLayout(owner, repo);
+      // Load or build layout — Firestore is optional; app works without it
+      let savedLayout: StoryMapLayout | null = null;
+      try {
+        savedLayout = await loadLayout(owner, repo);
+      } catch (firestoreErr) {
+        console.warn('Firestore unavailable, building layout from issues', firestoreErr);
+      }
 
-      if (!layout) {
+      let layout: StoryMapLayout;
+      if (!savedLayout) {
         const epics = allItems.filter(isEpic);
         const stories = allItems.filter((i) => !isEpic(i));
         layout = {
@@ -113,8 +119,9 @@ export const useAppStore = create<AppState>((set, get) => ({
             ...Object.fromEntries(epics.map((e) => [String(e.number), []])),
           },
         };
-        await saveLayout(owner, repo, layout);
+        try { await saveLayout(owner, repo, layout); } catch { /* offline */ }
       } else {
+        layout = savedLayout;
         // Add any new issues not yet in the layout
         const allInLayout = new Set([
           ...layout.epicOrder,
@@ -135,7 +142,7 @@ export const useAppStore = create<AppState>((set, get) => ({
               ...Object.fromEntries(newEpics.map((e) => [String(e.number), []])),
             },
           };
-          await saveLayout(owner, repo, layout);
+          try { await saveLayout(owner, repo, layout); } catch { /* offline */ }
         }
       }
 
@@ -157,7 +164,7 @@ export const useAppStore = create<AppState>((set, get) => ({
 
     const newLayout = { ...layout, storyOrder: order };
     set({ layout: newLayout });
-    saveLayout(owner, repo, newLayout);
+    saveLayout(owner, repo, newLayout).catch(() => { /* offline */ });
   },
 
   reorderEpics: (fromIndex, toIndex) => {
@@ -167,6 +174,6 @@ export const useAppStore = create<AppState>((set, get) => ({
     epicOrder.splice(toIndex, 0, moved);
     const newLayout = { ...layout, epicOrder };
     set({ layout: newLayout });
-    saveLayout(owner, repo, newLayout);
+    saveLayout(owner, repo, newLayout).catch(() => { /* offline */ });
   },
 }));
