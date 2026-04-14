@@ -122,13 +122,13 @@ export default function IssueCard({ issue }: Props) {
             </div>
 
             {/* Title — single line, middle-truncated */}
-            <span className={`flex-1 min-w-0 overflow-hidden whitespace-nowrap text-gray-900 font-medium leading-none transition-opacity ${hovered ? 'opacity-30' : ''}`}>
+            <span className="flex-1 min-w-0 overflow-hidden whitespace-nowrap text-gray-900 font-medium leading-none">
               {truncateMiddle(issue.title, 45)}
             </span>
 
             {/* Assignees — inline so they never add height */}
             {issue.assignees.length > 0 && (
-              <div className={`flex shrink-0 -space-x-1 transition-opacity ${hovered ? 'opacity-0' : ''}`}>
+              <div className="flex shrink-0 -space-x-1">
                 {issue.assignees.map((user) => (
                   <img key={user.login} src={user.avatar_url} alt={user.login} title={user.login} className="w-4 h-4 rounded-full ring-1 ring-white" />
                 ))}
