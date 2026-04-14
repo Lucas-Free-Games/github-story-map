@@ -79,9 +79,18 @@ Open [http://localhost:5173](http://localhost:5173), enter your GitHub token and
 - **Persistence:** Firebase Firestore (optional)
 - **Build:** Vite
 
-## Contributing
+## Troubleshooting
 
-Pull requests are welcome. For major changes, open an issue first to discuss what you'd like to change.
+### NPM Permission Denied (EACCES)
+If you encounter `EACCES` errors when installing packages globally (e.g., `firebase-tools`), it is likely because some files in your NVM directory are owned by `root`. To fix this, run:
+
+```bash
+sudo chown -R $(whoami) ~/.nvm
+```
+Then try the installation again.
+
+### GitHub Token Config
+For advanced features like the **[Describe]** skill, ensure you have a valid GitHub Personal Access Token in your `.env` file. You can find the required variables in `.env.example`.
 
 ## License
 
