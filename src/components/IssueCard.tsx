@@ -122,38 +122,19 @@ export default function IssueCard({ issue, hideLabels }: Props) {
           </div>
 
           {/* Title — single line, middle-truncated */}
-          <span className="flex-1 min-w-0 overflow-hidden text-gray-900 font-medium leading-none">
+          <span className="flex-1 min-w-0 overflow-hidden whitespace-nowrap text-gray-900 font-medium leading-none">
             {truncateMiddle(issue.title, 45)}
           </span>
+
+          {/* Assignees — inline so they never add height */}
+          {issue.assignees.length > 0 && (
+            <div className="flex shrink-0 -space-x-1">
+              {issue.assignees.map((user) => (
+                <img key={user.login} src={user.avatar_url} alt={user.login} title={user.login} className="w-4 h-4 rounded-full ring-1 ring-white" />
+              ))}
+            </div>
+          )}
         </div>
-
-        {/* Labels (only when not hidden) */}
-        {!hideLabels && issue.labels.length > 0 && (
-          <div className="flex flex-wrap gap-1 mt-1.5">
-            {issue.labels.map((label) => (
-              <span
-                key={label.id || label.name}
-                className="px-1.5 py-0.5 rounded text-xs font-medium"
-                style={{
-                  backgroundColor: `#${label.color}28`,
-                  color: `#${label.color}`,
-                  border: `1px solid #${label.color}50`,
-                }}
-              >
-                {label.name}
-              </span>
-            ))}
-          </div>
-        )}
-
-        {/* Assignees */}
-        {issue.assignees.length > 0 && (
-          <div className="flex gap-1 mt-1">
-            {issue.assignees.map((user) => (
-              <img key={user.login} src={user.avatar_url} alt={user.login} title={user.login} className="w-5 h-5 rounded-full" />
-            ))}
-          </div>
-        )}
 
         </div>{/* end card surface */}
 
