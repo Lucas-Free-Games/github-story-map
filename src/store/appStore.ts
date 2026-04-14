@@ -50,6 +50,7 @@ interface AppState {
   updateProject: (id: string, title: string, description: string) => Promise<void>;
   deleteProject: (id: string) => Promise<void>;
   addIssueToProject: (issueNodeId: string, projectId: string) => Promise<void>;
+  removeIssueFromProject: (issueNodeId: string, projectId: string) => Promise<void>;
   reorderProjects: (fromIndex: number, toIndex: number) => void;
   reorderMilestones: (fromIndex: number, toIndex: number) => void;
 }
@@ -478,6 +479,49 @@ export const useAppStore = create<AppState>((set, get) => ({
         projectIssues: {
           ...projectIssues,
           [projectId]: [issue.number, ...(projectIssues[projectId] ?? [])],
+        },
+      });
+    }
+  },
+
+  removeIssueFromProject: async (issueNodeId, projectId) => {
+    const { token, projectIssues, issues } = get();
+
+    // Find the ProjectV2Item ID for this issue within the project
+    const data = await gql<{
+      node: { items: { nodes: Array<{ id: string; content: { id: string } | null }> } } | null;
+    }>(token, `
+      query($projectId: ID!) {
+        node(id: $projectId) {
+          ... on ProjectV2 {
+            items(first: 100) {
+              nodes {
+                id
+                content { ... on Issue { id } }
+              }
+            }
+          }
+        }
+      }
+    `, { projectId });
+
+    const item = data.node?.items.nodes.find((n) => n.content?.id === issueNodeId);
+    if (!item) return;
+
+    await gql(token, `
+      mutation($projectId: ID!, $itemId: ID!) {
+        deleteProjectV2Item(input: { projectId: $projectId, itemId: $itemId }) {
+          deletedItemId
+        }
+      }
+    `, { projectId, itemId: item.id });
+
+    const issue = issues.find((i) => i.node_id === issueNodeId);
+    if (issue) {
+      set({
+        projectIssues: {
+          ...projectIssues,
+          [projectId]: (projectIssues[projectId] ?? []).filter((n) => n !== issue.number),
         },
       });
     }

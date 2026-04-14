@@ -8,11 +8,20 @@ interface Props {
 }
 
 export default function EditIssueModal({ issue, onClose }: Props) {
-  const { updateIssue } = useAppStore();
+  const { projects, projectIssues, updateIssue, addIssueToProject, removeIssueFromProject } = useAppStore();
+
   const [title, setTitle] = useState(issue.title);
   const [body, setBody] = useState(issue.body ?? '');
+
+  const initialProjectId = Object.entries(projectIssues).find(([, nums]) =>
+    nums.includes(issue.number)
+  )?.[0] ?? '';
+  const [projectId, setProjectId] = useState(initialProjectId);
+
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
+
+  const openProjects = projects.filter((p) => !p.closed);
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -20,6 +29,10 @@ export default function EditIssueModal({ issue, onClose }: Props) {
     setSaving(true);
     setError('');
     try {
+      if (projectId !== initialProjectId) {
+        if (initialProjectId) await removeIssueFromProject(issue.node_id, initialProjectId);
+        if (projectId) await addIssueToProject(issue.node_id, projectId);
+      }
       await updateIssue(issue.number, title.trim(), body.trim());
       onClose();
     } catch (err) {
@@ -33,7 +46,7 @@ export default function EditIssueModal({ issue, onClose }: Props) {
       className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4"
       onClick={(e) => e.target === e.currentTarget && onClose()}
     >
-      <div className="bg-white rounded-2xl shadow-xl w-full max-w-lg">
+      <div className="bg-white rounded-2xl shadow-xl w-full max-w-2xl">
         <div className="flex items-center justify-between px-6 pt-5 pb-4 border-b border-gray-100">
           <div>
             <h2 className="font-semibold text-gray-900">Edit Issue</h2>
@@ -64,9 +77,23 @@ export default function EditIssueModal({ issue, onClose }: Props) {
             <textarea
               value={body}
               onChange={(e) => setBody(e.target.value)}
-              rows={5}
+              rows={8}
               className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none"
             />
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">Epic</label>
+            <select
+              value={projectId}
+              onChange={(e) => setProjectId(e.target.value)}
+              className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white"
+            >
+              <option value="">— none —</option>
+              {openProjects.map((p) => (
+                <option key={p.id} value={p.id}>{p.title}</option>
+              ))}
+            </select>
           </div>
 
           {error && <p className="text-red-500 text-sm">{error}</p>}
