@@ -46,7 +46,7 @@ export default function CreateIssueModal({ defaultProjectId, defaultMilestoneNum
       className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4"
       onClick={(e) => e.target === e.currentTarget && onClose()}
     >
-      <div className="bg-white rounded-2xl shadow-xl w-full max-w-lg">
+      <div className="bg-white rounded-2xl shadow-xl w-full max-w-2xl">
         <div className="flex items-center justify-between px-6 pt-5 pb-4 border-b border-gray-100">
           <h2 className="font-semibold text-gray-900">New Issue</h2>
           <button
@@ -79,7 +79,7 @@ export default function CreateIssueModal({ defaultProjectId, defaultMilestoneNum
               value={body}
               onChange={(e) => setBody(e.target.value)}
               placeholder="Add details…"
-              rows={3}
+              rows={6}
               className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none"
             />
           </div>
