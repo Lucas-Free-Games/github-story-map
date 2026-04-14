@@ -32,7 +32,7 @@ export interface GitHubIssue {
 export interface StoryMapLayout {
   epicOrder: number[];
   milestoneOrder: number[];
-  // key is epic issue number as string, or "backlog" for unassigned
+  // key is project number as string, or "backlog" for unassigned
   storyOrder: Record<string, number[]>;
 }
 

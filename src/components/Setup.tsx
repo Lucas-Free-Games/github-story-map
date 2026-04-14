@@ -77,7 +77,7 @@ export default function Setup() {
         </form>
 
         <p className="text-xs text-gray-400 mt-4">
-          Issues with the <code>epic</code> label become columns. All others are stories you can drag between epics.
+          GitHub Projects become Epic columns. Milestones become rows. Drag issues between cells to organise your story map.
         </p>
       </div>
     </div>
