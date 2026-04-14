@@ -6,9 +6,10 @@ import EditIssueModal from './EditIssueModal';
 interface Props {
   issue: GitHubIssue;
   hideLabels?: boolean;
+  showStatus?: boolean;
 }
 
-export default function IssueCard({ issue, hideLabels }: Props) {
+export default function IssueCard({ issue, hideLabels, showStatus }: Props) {
   const { closeIssue, deleteIssue } = useAppStore();
   const [showEdit, setShowEdit] = useState(false);
   const [busy, setBusy] = useState(false);
@@ -99,6 +100,22 @@ export default function IssueCard({ issue, hideLabels }: Props) {
             #{issue.number}
           </a>
         </div>
+
+        {showStatus && (
+          <div className="mb-1.5">
+            {issue.state === 'open' ? (
+              <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full text-xs font-medium bg-green-50 text-green-700 border border-green-200">
+                <span className="w-1.5 h-1.5 rounded-full bg-green-500 shrink-0" />
+                Open
+              </span>
+            ) : (
+              <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full text-xs font-medium bg-purple-50 text-purple-700 border border-purple-200">
+                <span className="w-1.5 h-1.5 rounded-full bg-purple-500 shrink-0" />
+                Closed
+              </span>
+            )}
+          </div>
+        )}
 
         {!hideLabels && issue.labels.length > 0 && (
           <div className="flex flex-wrap gap-1 mb-1.5">

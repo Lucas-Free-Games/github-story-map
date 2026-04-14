@@ -87,7 +87,7 @@ export default function StoryMap() {
                     >
                       <div className="flex flex-col gap-2 min-h-16">
                         {items.map((issue) => (
-                          <IssueCard key={issue.number} issue={issue} hideLabels />
+                          <IssueCard key={issue.number} issue={issue} hideLabels showStatus />
                         ))}
                         <button
                           onClick={() => setCreateCell({ epicLabel: epic, waveLabel: wave })}
