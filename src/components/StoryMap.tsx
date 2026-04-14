@@ -75,8 +75,8 @@ export default function StoryMap() {
   if (cols.length === 0) {
     return (
       <div className="flex items-center justify-center h-full text-gray-400 text-sm">
-        No projects found. Use{' '}
-        <span className="font-mono mx-1 bg-gray-100 px-1 rounded">Projects</span>
+        No epics found. Use{' '}
+        <span className="font-mono mx-1 bg-gray-100 px-1 rounded">Epics</span>
         {' '}to create one.
       </div>
     );
@@ -112,7 +112,7 @@ export default function StoryMap() {
                     ))}
                     {provided.placeholder}
                     <th className="sticky top-0 z-20 bg-gray-50 border border-gray-200 px-4 py-3 text-sm font-semibold text-gray-500 text-center w-72 min-w-72 whitespace-nowrap">
-                      No Project
+                      No Epic
                     </th>
                   </tr>
                 )}

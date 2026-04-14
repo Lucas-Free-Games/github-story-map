@@ -86,7 +86,7 @@ export default function CreateIssueModal({ defaultProjectId, defaultMilestoneNum
 
           <div className="grid grid-cols-2 gap-3">
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Project</label>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Epic</label>
               <select
                 value={projectId}
                 onChange={(e) => setProjectId(e.target.value)}
