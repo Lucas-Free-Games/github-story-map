@@ -1,6 +1,6 @@
 import { create } from 'zustand';
 import { Octokit } from '@octokit/rest';
-import type { GitHubIssue, GitHubProject, StoryMapLayout } from '../types';
+import type { GitHubIssue, GitHubMilestone, GitHubProject, StoryMapLayout } from '../types';
 import { loadLayout, saveLayout } from '../lib/firebase';
 
 interface AppState {
@@ -11,7 +11,7 @@ interface AppState {
   layout: StoryMapLayout;
   loading: boolean;
   error: string | null;
-  waveLabels: string[];   // values without prefix, e.g. ["Q1", "Q2"]
+  milestones: GitHubMilestone[];
   statusLabels: string[]; // values without prefix, e.g. ["Todo", "In Progress", "Done"]
   view: 'grid' | 'kanban';
   projects: GitHubProject[];
@@ -20,7 +20,10 @@ interface AppState {
   setCredentials: (token: string, owner: string, repo: string) => void;
   fetchIssues: () => Promise<void>;
   fetchLabels: () => Promise<void>;
-  addWaveLabel: (name: string) => Promise<void>;
+  fetchMilestones: () => Promise<void>;
+  createMilestone: (title: string, description: string) => Promise<void>;
+  updateMilestone: (number: number, title: string, description: string) => Promise<void>;
+  deleteMilestone: (number: number) => Promise<void>;
   addStatusLabel: (name: string) => Promise<void>;
   setView: (view: 'grid' | 'kanban') => void;
   moveStory: (
@@ -34,7 +37,7 @@ interface AppState {
     title: string,
     body: string,
     projectId?: string,
-    waveLabel?: string,
+    milestoneNumber?: number,
     statusLabel?: string,
   ) => Promise<void>;
   updateIssue: (number: number, title: string, body: string) => Promise<void>;
@@ -91,7 +94,7 @@ export const useAppStore = create<AppState>((set, get) => ({
   layout: emptyLayout,
   loading: false,
   error: null,
-  waveLabels: [],
+  milestones: [],
   statusLabels: [],
   view: 'grid',
   projects: [],
@@ -101,14 +104,14 @@ export const useAppStore = create<AppState>((set, get) => ({
     localStorage.setItem('gh_token', token);
     localStorage.setItem('gh_owner', owner);
     localStorage.setItem('gh_repo', repo);
-    set({ token, owner, repo, issues: [], layout: emptyLayout, error: null, waveLabels: [], statusLabels: [], projects: [], projectIssues: {} });
+    set({ token, owner, repo, issues: [], layout: emptyLayout, error: null, milestones: [], statusLabels: [], projects: [], projectIssues: {} });
   },
 
   reset: () => {
     localStorage.removeItem('gh_token');
     localStorage.removeItem('gh_owner');
     localStorage.removeItem('gh_repo');
-    set({ token: '', owner: '', repo: '', issues: [], layout: emptyLayout, error: null, waveLabels: [], statusLabels: [], projects: [], projectIssues: {} });
+    set({ token: '', owner: '', repo: '', issues: [], layout: emptyLayout, error: null, milestones: [], statusLabels: [], projects: [], projectIssues: {} });
   },
 
   setView: (view) => set({ view }),
@@ -126,17 +129,52 @@ export const useAppStore = create<AppState>((set, get) => ({
       if (data.length < 100) break;
       page++;
     }
+    set({ statusLabels: allLabels.filter((n) => n.startsWith('s_')).map((n) => n.slice(2)) });
+  },
+
+  fetchMilestones: async () => {
+    const { token, owner, repo } = get();
+    if (!token || !owner || !repo) return;
+    const octokit = new Octokit({ auth: token });
+    const { data } = await octokit.rest.issues.listMilestones({ owner, repo, state: 'open', per_page: 100 });
     set({
-      waveLabels: allLabels.filter((n) => n.startsWith('w_')).map((n) => n.slice(2)),
-      statusLabels: allLabels.filter((n) => n.startsWith('s_')).map((n) => n.slice(2)),
+      milestones: data.map((m) => ({
+        number: m.number,
+        title: m.title,
+        description: m.description ?? null,
+        state: m.state as 'open' | 'closed',
+        due_on: m.due_on ?? null,
+      })),
     });
   },
 
-  addWaveLabel: async (name) => {
-    const { token, owner, repo, waveLabels } = get();
+  createMilestone: async (title, description) => {
+    const { token, owner, repo, milestones } = get();
     const octokit = new Octokit({ auth: token });
-    await ensureLabel(octokit, owner, repo, `w_${name}`, '7057ff');
-    set({ waveLabels: [...waveLabels, name] });
+    const { data } = await octokit.rest.issues.createMilestone({ owner, repo, title, description: description || undefined });
+    set({
+      milestones: [...milestones, {
+        number: data.number,
+        title: data.title,
+        description: data.description ?? null,
+        state: 'open',
+        due_on: data.due_on ?? null,
+      }],
+    });
+  },
+
+  updateMilestone: async (number, title, description) => {
+    const { token, owner, repo, milestones } = get();
+    const octokit = new Octokit({ auth: token });
+    await octokit.rest.issues.updateMilestone({ owner, repo, milestone_number: number, title, description: description || undefined });
+    set({ milestones: milestones.map((m) => m.number === number ? { ...m, title, description: description || null } : m) });
+  },
+
+  deleteMilestone: async (number) => {
+    const { token, owner, repo, milestones } = get();
+    const octokit = new Octokit({ auth: token });
+    await octokit.rest.issues.deleteMilestone({ owner, repo, milestone_number: number });
+    set({ milestones: milestones.filter((m) => m.number !== number) });
   },
 
   addStatusLabel: async (name) => {
@@ -183,7 +221,7 @@ export const useAppStore = create<AppState>((set, get) => ({
               avatar_url: u.avatar_url,
             })),
             milestone: item.milestone
-              ? { number: item.milestone.number, title: item.milestone.title }
+              ? { number: item.milestone.number, title: item.milestone.title, description: item.milestone.description ?? null, state: item.milestone.state as 'open' | 'closed', due_on: item.milestone.due_on ?? null }
               : null,
             state: item.state as 'open' | 'closed',
             html_url: item.html_url,
@@ -246,16 +284,11 @@ export const useAppStore = create<AppState>((set, get) => ({
     saveLayout(owner, repo, newLayout).catch(() => { /* offline */ });
   },
 
-  createIssue: async (title, body, projectId, waveLabel, statusLabel) => {
+  createIssue: async (title, body, projectId, milestoneNumber, statusLabel) => {
     const { token, owner, repo, issues } = get();
     const octokit = new Octokit({ auth: token });
 
     const labelNames: string[] = [];
-    if (waveLabel?.trim()) {
-      const name = `w_${waveLabel.trim()}`;
-      await ensureLabel(octokit, owner, repo, name, '7057ff');
-      labelNames.push(name);
-    }
     if (statusLabel?.trim()) {
       const name = `s_${statusLabel.trim()}`;
       await ensureLabel(octokit, owner, repo, name, '0e8a16');
@@ -268,6 +301,7 @@ export const useAppStore = create<AppState>((set, get) => ({
       title,
       body,
       labels: labelNames,
+      milestone: milestoneNumber,
     });
 
     const newIssue: GitHubIssue = {
@@ -281,7 +315,7 @@ export const useAppStore = create<AppState>((set, get) => ({
           : { id: l.id ?? 0, name: l.name ?? '', color: l.color ?? 'cccccc' },
       ),
       assignees: (data.assignees ?? []).map((u) => ({ login: u.login, avatar_url: u.avatar_url })),
-      milestone: data.milestone ? { number: data.milestone.number, title: data.milestone.title } : null,
+      milestone: data.milestone ? { number: data.milestone.number, title: data.milestone.title, description: null, state: 'open', due_on: null } : null,
       state: 'open',
       html_url: data.html_url,
     };

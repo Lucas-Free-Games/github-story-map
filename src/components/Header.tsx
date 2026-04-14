@@ -3,12 +3,14 @@ import { useAppStore } from '../store/appStore';
 import CreateIssueModal from './CreateIssueModal';
 import LabelsManagerModal from './LabelsManagerModal';
 import ProjectsManagerModal from './ProjectsManagerModal';
+import MilestonesManagerModal from './MilestonesManagerModal';
 
 export default function Header() {
-  const { owner, repo, issues, fetchIssues, fetchProjects, reset, loading, view, setView } = useAppStore();
+  const { owner, repo, issues, fetchIssues, fetchProjects, fetchMilestones, reset, loading, view, setView } = useAppStore();
   const [showCreate, setShowCreate] = useState(false);
   const [showLabels, setShowLabels] = useState(false);
   const [showProjects, setShowProjects] = useState(false);
+  const [showMilestones, setShowMilestones] = useState(false);
 
   return (
     <>
@@ -53,10 +55,16 @@ export default function Header() {
             + New Issue
           </button>
           <button
+            onClick={() => setShowMilestones(true)}
+            className="text-sm text-gray-600 hover:text-gray-900 px-3 py-1.5 rounded-lg hover:bg-gray-100 transition-colors"
+          >
+            Milestones
+          </button>
+          <button
             onClick={() => setShowLabels(true)}
             className="text-sm text-gray-600 hover:text-gray-900 px-3 py-1.5 rounded-lg hover:bg-gray-100 transition-colors"
           >
-            Waves & Status
+            Status
           </button>
           <button
             onClick={() => setShowProjects(true)}
@@ -65,7 +73,7 @@ export default function Header() {
             Projects
           </button>
           <button
-            onClick={() => { fetchIssues(); fetchProjects(); }}
+            onClick={() => { fetchIssues(); fetchProjects(); fetchMilestones(); }}
             disabled={loading}
             className="text-sm text-gray-600 hover:text-gray-900 px-3 py-1.5 rounded-lg hover:bg-gray-100 disabled:opacity-40 transition-colors"
           >
@@ -83,6 +91,7 @@ export default function Header() {
       {showCreate && <CreateIssueModal onClose={() => setShowCreate(false)} />}
       {showLabels && <LabelsManagerModal onClose={() => setShowLabels(false)} />}
       {showProjects && <ProjectsManagerModal onClose={() => setShowProjects(false)} />}
+      {showMilestones && <MilestonesManagerModal onClose={() => setShowMilestones(false)} />}
     </>
   );
 }

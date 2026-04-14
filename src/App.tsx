@@ -6,7 +6,7 @@ import StoryMap from './components/StoryMap';
 import KanbanView from './components/KanbanView';
 
 export default function App() {
-  const { token, owner, repo, issues, loading, error, fetchIssues, fetchLabels, fetchProjects, view } = useAppStore();
+  const { token, owner, repo, issues, loading, error, fetchIssues, fetchLabels, fetchProjects, fetchMilestones, view } = useAppStore();
 
   const isConfigured = Boolean(token && owner && repo);
 
@@ -15,6 +15,7 @@ export default function App() {
       fetchIssues();
       fetchLabels();
       fetchProjects();
+      fetchMilestones();
     }
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 

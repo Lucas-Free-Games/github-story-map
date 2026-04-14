@@ -3,18 +3,18 @@ import { useAppStore } from '../store/appStore';
 
 interface Props {
   defaultProjectId?: string;
-  defaultWaveLabel?: string;
+  defaultMilestoneNumber?: number;
   defaultStatusLabel?: string;
   onClose: () => void;
 }
 
-export default function CreateIssueModal({ defaultProjectId, defaultWaveLabel, defaultStatusLabel, onClose }: Props) {
-  const { projects, waveLabels, statusLabels, createIssue } = useAppStore();
+export default function CreateIssueModal({ defaultProjectId, defaultMilestoneNumber, defaultStatusLabel, onClose }: Props) {
+  const { projects, milestones, statusLabels, createIssue } = useAppStore();
 
   const [title, setTitle] = useState('');
   const [body, setBody] = useState('');
   const [projectId, setProjectId] = useState(defaultProjectId ?? '');
-  const [waveLabel, setWaveLabel] = useState(defaultWaveLabel ?? '');
+  const [milestoneNumber, setMilestoneNumber] = useState<string>(defaultMilestoneNumber?.toString() ?? '');
   const [statusLabel, setStatusLabel] = useState(defaultStatusLabel ?? '');
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState('');
@@ -29,7 +29,7 @@ export default function CreateIssueModal({ defaultProjectId, defaultWaveLabel, d
         title.trim(),
         body.trim(),
         projectId || undefined,
-        waveLabel || undefined,
+        milestoneNumber ? Number(milestoneNumber) : undefined,
         statusLabel || undefined,
       );
       onClose();
@@ -100,15 +100,15 @@ export default function CreateIssueModal({ defaultProjectId, defaultWaveLabel, d
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Wave</label>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Milestone</label>
               <select
-                value={waveLabel}
-                onChange={(e) => setWaveLabel(e.target.value)}
+                value={milestoneNumber}
+                onChange={(e) => setMilestoneNumber(e.target.value)}
                 className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-purple-500 bg-white"
               >
                 <option value="">— none —</option>
-                {waveLabels.map((l) => (
-                  <option key={l} value={l}>{l}</option>
+                {milestones.map((m) => (
+                  <option key={m.number} value={m.number}>{m.title}</option>
                 ))}
               </select>
             </div>

@@ -12,6 +12,9 @@ export interface GitHubUser {
 export interface GitHubMilestone {
   number: number;
   title: string;
+  description: string | null;
+  state: 'open' | 'closed';
+  due_on: string | null;
 }
 
 export interface GitHubIssue {

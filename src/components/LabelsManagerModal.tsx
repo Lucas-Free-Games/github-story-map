@@ -95,7 +95,7 @@ function LabelSection({
 }
 
 export default function LabelsManagerModal({ onClose }: Props) {
-  const { waveLabels, statusLabels, addWaveLabel, addStatusLabel } = useAppStore();
+  const { statusLabels, addStatusLabel } = useAppStore();
 
   return (
     <div
@@ -104,7 +104,7 @@ export default function LabelsManagerModal({ onClose }: Props) {
     >
       <div className="bg-white rounded-2xl shadow-xl w-full max-w-md">
         <div className="flex items-center justify-between px-6 pt-5 pb-4 border-b border-gray-100">
-          <h2 className="font-semibold text-gray-900">Manage Labels</h2>
+          <h2 className="font-semibold text-gray-900">Manage Statuses</h2>
           <button
             onClick={onClose}
             className="text-gray-400 hover:text-gray-600 text-xl leading-none"
@@ -113,17 +113,7 @@ export default function LabelsManagerModal({ onClose }: Props) {
           </button>
         </div>
 
-        <div className="px-6 py-5 space-y-6">
-          <LabelSection
-            title="Waves"
-            prefix="w_"
-            color="#7057ff"
-            items={waveLabels}
-            onAdd={addWaveLabel}
-          />
-
-          <div className="border-t border-gray-100" />
-
+        <div className="px-6 py-5">
           <LabelSection
             title="Statuses"
             prefix="s_"

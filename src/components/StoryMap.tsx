@@ -1,14 +1,9 @@
 import { useState } from 'react';
 import { DragDropContext, Droppable, Draggable, type DropResult } from '@hello-pangea/dnd';
 import { useAppStore } from '../store/appStore';
-import type { GitHubIssue, GitHubProject } from '../types';
+import type { GitHubIssue, GitHubMilestone, GitHubProject } from '../types';
 import IssueCard from './IssueCard';
 import CreateIssueModal from './CreateIssueModal';
-
-function getWaveLabel(issue: GitHubIssue): string | null {
-  const label = issue.labels.find((l) => l.name.startsWith('w_'));
-  return label ? label.name.slice(2) : null;
-}
 
 function sortedProjects(projects: GitHubProject[], epicOrder: number[]): GitHubProject[] {
   const open = projects.filter((p) => !p.closed);
@@ -24,22 +19,24 @@ function sortedProjects(projects: GitHubProject[], epicOrder: number[]): GitHubP
 
 interface CellKey {
   projectId: string;
-  waveLabel: string;
+  milestoneNumber: number | null;
 }
 
 export default function StoryMap() {
-  const { issues, projects, projectIssues, waveLabels, layout, reorderProjects } = useAppStore();
+  const { issues, projects, projectIssues, milestones, layout, reorderProjects } = useAppStore();
   const [createCell, setCreateCell] = useState<CellKey | null>(null);
 
   const cols = sortedProjects(projects, layout.epicOrder);
-  const rows = [...waveLabels, ''];
+  // null sentinel = "No Milestone" row
+  const rows: (GitHubMilestone | null)[] = [...milestones, null];
 
-  function cellIssues(projectId: string, wave: string): GitHubIssue[] {
+  function cellIssues(projectId: string, milestoneNumber: number | null): GitHubIssue[] {
     const inProject = new Set(projectIssues[projectId] ?? []);
     return issues.filter((issue) => {
-      const iw = getWaveLabel(issue);
-      const waveMatch = wave === '' ? iw === null : iw === wave;
-      return inProject.has(issue.number) && waveMatch;
+      const mMatch = milestoneNumber === null
+        ? issue.milestone === null
+        : issue.milestone?.number === milestoneNumber;
+      return inProject.has(issue.number) && mMatch;
     });
   }
 
@@ -91,13 +88,16 @@ export default function StoryMap() {
               </Droppable>
             </thead>
             <tbody>
-              {rows.map((wave) => (
-                <tr key={wave || 'no-wave'}>
+              {rows.map((milestone) => (
+                <tr key={milestone?.number ?? 'no-milestone'}>
                   <th className="sticky left-0 z-10 bg-purple-50 border border-gray-200 px-3 py-2 text-xs font-semibold text-purple-900 text-right whitespace-nowrap align-top pt-3">
-                    {wave || <span className="text-purple-400 font-normal italic">No Wave</span>}
+                    {milestone
+                      ? milestone.title
+                      : <span className="text-purple-400 font-normal italic">No Milestone</span>}
                   </th>
                   {cols.map((project) => {
-                    const items = cellIssues(project.id, wave);
+                    const milestoneNumber = milestone?.number ?? null;
+                    const items = cellIssues(project.id, milestoneNumber);
                     return (
                       <td
                         key={project.id}
@@ -108,7 +108,7 @@ export default function StoryMap() {
                             <IssueCard key={issue.number} issue={issue} hideLabels showStatus />
                           ))}
                           <button
-                            onClick={() => setCreateCell({ projectId: project.id, waveLabel: wave })}
+                            onClick={() => setCreateCell({ projectId: project.id, milestoneNumber })}
                             className="mt-auto w-full text-xs text-gray-400 hover:text-blue-500 hover:bg-blue-50 rounded-lg py-1.5 border border-dashed border-gray-200 hover:border-blue-300 transition-colors flex items-center justify-center gap-1"
                           >
                             <span className="text-sm font-medium leading-none">+</span>
@@ -128,7 +128,7 @@ export default function StoryMap() {
       {createCell && (
         <CreateIssueModal
           defaultProjectId={createCell.projectId}
-          defaultWaveLabel={createCell.waveLabel}
+          defaultMilestoneNumber={createCell.milestoneNumber ?? undefined}
           onClose={() => setCreateCell(null)}
         />
       )}
