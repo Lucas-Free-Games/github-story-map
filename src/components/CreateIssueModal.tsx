@@ -4,16 +4,18 @@ import { useAppStore } from '../store/appStore';
 interface Props {
   defaultEpicLabel?: string;
   defaultWaveLabel?: string;
+  defaultStatusLabel?: string;
   onClose: () => void;
 }
 
-export default function CreateIssueModal({ defaultEpicLabel, defaultWaveLabel, onClose }: Props) {
-  const { epicLabels, waveLabels, createIssue } = useAppStore();
+export default function CreateIssueModal({ defaultEpicLabel, defaultWaveLabel, defaultStatusLabel, onClose }: Props) {
+  const { epicLabels, waveLabels, statusLabels, createIssue } = useAppStore();
 
   const [title, setTitle] = useState('');
   const [body, setBody] = useState('');
   const [epicLabel, setEpicLabel] = useState(defaultEpicLabel ?? '');
   const [waveLabel, setWaveLabel] = useState(defaultWaveLabel ?? '');
+  const [statusLabel, setStatusLabel] = useState(defaultStatusLabel ?? '');
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState('');
 
@@ -29,6 +31,7 @@ export default function CreateIssueModal({ defaultEpicLabel, defaultWaveLabel, o
         undefined,
         epicLabel || undefined,
         waveLabel || undefined,
+        statusLabel || undefined,
       );
       onClose();
     } catch (err) {
@@ -80,7 +83,7 @@ export default function CreateIssueModal({ defaultEpicLabel, defaultWaveLabel, o
             />
           </div>
 
-          {/* Epic and Wave label dropdowns */}
+          {/* Epic, Wave, Status label dropdowns */}
           <div className="grid grid-cols-2 gap-3">
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">Epic</label>
@@ -110,6 +113,22 @@ export default function CreateIssueModal({ defaultEpicLabel, defaultWaveLabel, o
               </select>
             </div>
           </div>
+
+          {statusLabels.length > 0 && (
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Status</label>
+              <select
+                value={statusLabel}
+                onChange={(e) => setStatusLabel(e.target.value)}
+                className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-green-500 bg-white"
+              >
+                <option value="">— none —</option>
+                {statusLabels.map((l) => (
+                  <option key={l} value={l}>{l}</option>
+                ))}
+              </select>
+            </div>
+          )}
 
           {error && <p className="text-red-500 text-sm">{error}</p>}
 

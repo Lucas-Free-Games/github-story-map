@@ -4,7 +4,7 @@ import CreateIssueModal from './CreateIssueModal';
 import LabelsManagerModal from './LabelsManagerModal';
 
 export default function Header() {
-  const { owner, repo, issues, fetchIssues, reset, loading } = useAppStore();
+  const { owner, repo, issues, fetchIssues, reset, loading, view, setView } = useAppStore();
   const [showCreate, setShowCreate] = useState(false);
   const [showLabels, setShowLabels] = useState(false);
 
@@ -20,6 +20,30 @@ export default function Header() {
           </span>
         </div>
         <div className="flex items-center gap-1">
+          {/* View toggle */}
+          <div className="flex items-center rounded-lg border border-gray-200 overflow-hidden mr-2">
+            <button
+              onClick={() => setView('grid')}
+              className={`px-3 py-1.5 text-sm transition-colors ${
+                view === 'grid'
+                  ? 'bg-gray-900 text-white'
+                  : 'text-gray-600 hover:bg-gray-100'
+              }`}
+            >
+              Grid
+            </button>
+            <button
+              onClick={() => setView('kanban')}
+              className={`px-3 py-1.5 text-sm transition-colors ${
+                view === 'kanban'
+                  ? 'bg-gray-900 text-white'
+                  : 'text-gray-600 hover:bg-gray-100'
+              }`}
+            >
+              Kanban
+            </button>
+          </div>
+
           <button
             onClick={() => setShowCreate(true)}
             className="text-sm font-medium bg-blue-600 text-white px-3 py-1.5 rounded-lg hover:bg-blue-700 transition-colors"

@@ -11,14 +11,18 @@ interface AppState {
   layout: StoryMapLayout;
   loading: boolean;
   error: string | null;
-  epicLabels: string[];  // values without prefix, e.g. ["Auth", "Backend"]
-  waveLabels: string[];  // values without prefix, e.g. ["Q1", "Q2"]
+  epicLabels: string[];   // values without prefix, e.g. ["Auth", "Backend"]
+  waveLabels: string[];   // values without prefix, e.g. ["Q1", "Q2"]
+  statusLabels: string[]; // values without prefix, e.g. ["Todo", "In Progress", "Done"]
+  view: 'grid' | 'kanban';
 
   setCredentials: (token: string, owner: string, repo: string) => void;
   fetchIssues: () => Promise<void>;
   fetchLabels: () => Promise<void>;
   addEpicLabel: (name: string) => Promise<void>;
   addWaveLabel: (name: string) => Promise<void>;
+  addStatusLabel: (name: string) => Promise<void>;
+  setView: (view: 'grid' | 'kanban') => void;
   moveStory: (
     storyNumber: number,
     fromKey: string,
@@ -33,6 +37,7 @@ interface AppState {
     epicKey?: string,
     epicLabel?: string,
     waveLabel?: string,
+    statusLabel?: string,
   ) => Promise<void>;
   updateIssue: (number: number, title: string, body: string) => Promise<void>;
   closeIssue: (number: number) => Promise<void>;
@@ -69,20 +74,24 @@ export const useAppStore = create<AppState>((set, get) => ({
   error: null,
   epicLabels: [],
   waveLabels: [],
+  statusLabels: [],
+  view: 'grid',
 
   setCredentials: (token, owner, repo) => {
     localStorage.setItem('gh_token', token);
     localStorage.setItem('gh_owner', owner);
     localStorage.setItem('gh_repo', repo);
-    set({ token, owner, repo, issues: [], layout: emptyLayout, error: null, epicLabels: [], waveLabels: [] });
+    set({ token, owner, repo, issues: [], layout: emptyLayout, error: null, epicLabels: [], waveLabels: [], statusLabels: [] });
   },
 
   reset: () => {
     localStorage.removeItem('gh_token');
     localStorage.removeItem('gh_owner');
     localStorage.removeItem('gh_repo');
-    set({ token: '', owner: '', repo: '', issues: [], layout: emptyLayout, error: null, epicLabels: [], waveLabels: [] });
+    set({ token: '', owner: '', repo: '', issues: [], layout: emptyLayout, error: null, epicLabels: [], waveLabels: [], statusLabels: [] });
   },
+
+  setView: (view) => set({ view }),
 
   fetchLabels: async () => {
     const { token, owner, repo } = get();
@@ -100,6 +109,7 @@ export const useAppStore = create<AppState>((set, get) => ({
     set({
       epicLabels: allLabels.filter((n) => n.startsWith('e_')).map((n) => n.slice(2)),
       waveLabels: allLabels.filter((n) => n.startsWith('w_')).map((n) => n.slice(2)),
+      statusLabels: allLabels.filter((n) => n.startsWith('s_')).map((n) => n.slice(2)),
     });
   },
 
@@ -115,6 +125,13 @@ export const useAppStore = create<AppState>((set, get) => ({
     const octokit = new Octokit({ auth: token });
     await ensureLabel(octokit, owner, repo, `w_${name}`, '7057ff');
     set({ waveLabels: [...waveLabels, name] });
+  },
+
+  addStatusLabel: async (name) => {
+    const { token, owner, repo, statusLabels } = get();
+    const octokit = new Octokit({ auth: token });
+    await ensureLabel(octokit, owner, repo, `s_${name}`, '0e8a16');
+    set({ statusLabels: [...statusLabels, name] });
   },
 
   fetchIssues: async () => {
@@ -242,7 +259,7 @@ export const useAppStore = create<AppState>((set, get) => ({
     saveLayout(owner, repo, newLayout).catch(() => { /* offline */ });
   },
 
-  createIssue: async (title, body, epicKey, epicLabel, waveLabel) => {
+  createIssue: async (title, body, epicKey, epicLabel, waveLabel, statusLabel) => {
     const { token, owner, repo, issues, layout } = get();
     const octokit = new Octokit({ auth: token });
 
@@ -256,6 +273,11 @@ export const useAppStore = create<AppState>((set, get) => ({
     if (waveLabel?.trim()) {
       const name = `w_${waveLabel.trim()}`;
       await ensureLabel(octokit, owner, repo, name, '7057ff');
+      labelNames.push(name);
+    }
+    if (statusLabel?.trim()) {
+      const name = `s_${statusLabel.trim()}`;
+      await ensureLabel(octokit, owner, repo, name, '0e8a16');
       labelNames.push(name);
     }
 

@@ -3,9 +3,10 @@ import { useAppStore } from './store/appStore';
 import Setup from './components/Setup';
 import Header from './components/Header';
 import StoryMap from './components/StoryMap';
+import KanbanView from './components/KanbanView';
 
 export default function App() {
-  const { token, owner, repo, issues, loading, error, fetchIssues, fetchLabels } = useAppStore();
+  const { token, owner, repo, issues, loading, error, fetchIssues, fetchLabels, view } = useAppStore();
 
   const isConfigured = Boolean(token && owner && repo);
 
@@ -38,8 +39,8 @@ export default function App() {
       )}
 
       {!loading && !error && (
-        <div className="flex-1 overflow-hidden">
-          <StoryMap />
+        <div className="flex-1 overflow-hidden flex">
+          {view === 'grid' ? <StoryMap /> : <KanbanView />}
         </div>
       )}
     </div>
