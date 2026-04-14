@@ -40,8 +40,10 @@ export default function IssueCard({ issue, hideLabels, showStatus }: Props) {
   return (
     <>
       <div
-        className={`group bg-white rounded-lg border p-3 text-sm select-none transition-shadow border-gray-200 hover:border-gray-300 hover:shadow-sm ${
-          busy ? 'opacity-40 pointer-events-none' : ''
+        className={`group bg-white rounded-lg border p-3 text-sm select-none transition-shadow ${
+          busy ? 'opacity-40 pointer-events-none' :
+          issue.state === 'closed' ? 'opacity-60 border-gray-200 hover:border-gray-300 hover:shadow-sm' :
+          'border-gray-200 hover:border-gray-300 hover:shadow-sm'
         }`}
       >
         <div className="flex items-start justify-between gap-2 mb-1.5">
@@ -95,13 +97,13 @@ export default function IssueCard({ issue, hideLabels, showStatus }: Props) {
         {showStatus && (
           <div className="mb-1.5">
             {issue.state === 'open' ? (
-              <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full text-xs font-medium bg-green-50 text-green-700 border border-green-200">
-                <span className="w-1.5 h-1.5 rounded-full bg-green-500 shrink-0" />
+              <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full text-xs font-medium bg-blue-50 text-blue-700 border border-blue-200">
+                <span className="w-1.5 h-1.5 rounded-full bg-blue-500 shrink-0" />
                 Open
               </span>
             ) : (
-              <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full text-xs font-medium bg-purple-50 text-purple-700 border border-purple-200">
-                <span className="w-1.5 h-1.5 rounded-full bg-purple-500 shrink-0" />
+              <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full text-xs font-medium bg-green-50 text-green-700 border border-green-200">
+                <span className="w-1.5 h-1.5 rounded-full bg-green-500 shrink-0" />
                 Closed
               </span>
             )}
