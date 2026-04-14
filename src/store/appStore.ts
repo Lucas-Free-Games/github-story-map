@@ -49,9 +49,10 @@ interface AppState {
   deleteProject: (id: string) => Promise<void>;
   addIssueToProject: (issueNodeId: string, projectId: string) => Promise<void>;
   reorderProjects: (fromIndex: number, toIndex: number) => void;
+  reorderMilestones: (fromIndex: number, toIndex: number) => void;
 }
 
-const emptyLayout: StoryMapLayout = { epicOrder: [], storyOrder: { backlog: [] } };
+const emptyLayout: StoryMapLayout = { epicOrder: [], milestoneOrder: [], storyOrder: { backlog: [] } };
 
 async function gql<T>(
   token: string,
@@ -133,19 +134,32 @@ export const useAppStore = create<AppState>((set, get) => ({
   },
 
   fetchMilestones: async () => {
-    const { token, owner, repo } = get();
+    const { token, owner, repo, layout } = get();
     if (!token || !owner || !repo) return;
     const octokit = new Octokit({ auth: token });
     const { data } = await octokit.rest.issues.listMilestones({ owner, repo, state: 'open', per_page: 100 });
-    set({
-      milestones: data.map((m) => ({
-        number: m.number,
-        title: m.title,
-        description: m.description ?? null,
-        state: m.state as 'open' | 'closed',
-        due_on: m.due_on ?? null,
-      })),
-    });
+    const milestones: GitHubMilestone[] = data.map((m) => ({
+      number: m.number,
+      title: m.title,
+      description: m.description ?? null,
+      state: m.state as 'open' | 'closed',
+      due_on: m.due_on ?? null,
+    }));
+
+    const milestoneNumbers = milestones.map((m) => m.number);
+    const preserved = (layout.milestoneOrder ?? []).filter((n) => milestoneNumbers.includes(n));
+    const added = milestoneNumbers.filter((n) => !preserved.includes(n));
+    const newMilestoneOrder = [...preserved, ...added];
+    const orderChanged = newMilestoneOrder.length !== (layout.milestoneOrder ?? []).length ||
+      newMilestoneOrder.some((n, i) => n !== (layout.milestoneOrder ?? [])[i]);
+
+    if (orderChanged) {
+      const newLayout = { ...layout, milestoneOrder: newMilestoneOrder };
+      set({ milestones, layout: newLayout });
+      saveLayout(owner, repo, newLayout).catch(() => { /* offline */ });
+    } else {
+      set({ milestones });
+    }
   },
 
   createMilestone: async (title, description) => {
@@ -244,6 +258,7 @@ export const useAppStore = create<AppState>((set, get) => ({
       if (!savedLayout) {
         layout = {
           epicOrder: [],
+          milestoneOrder: [],
           storyOrder: { backlog: allItems.map((i) => i.number) },
         };
         try { await saveLayout(owner, repo, layout); } catch { /* offline */ }
@@ -348,6 +363,7 @@ export const useAppStore = create<AppState>((set, get) => ({
     );
     const newLayout: StoryMapLayout = {
       epicOrder: layout.epicOrder.filter((n) => n !== number),
+      milestoneOrder: layout.milestoneOrder ?? [],
       storyOrder: newStoryOrder,
     };
 
@@ -374,6 +390,7 @@ export const useAppStore = create<AppState>((set, get) => ({
     );
     const newLayout: StoryMapLayout = {
       epicOrder: layout.epicOrder.filter((n) => n !== number),
+      milestoneOrder: layout.milestoneOrder ?? [],
       storyOrder: newStoryOrder,
     };
 
@@ -546,6 +563,16 @@ export const useAppStore = create<AppState>((set, get) => ({
     const [moved] = epicOrder.splice(fromIndex, 1);
     epicOrder.splice(toIndex, 0, moved);
     const newLayout = { ...layout, epicOrder };
+    set({ layout: newLayout });
+    saveLayout(owner, repo, newLayout).catch(() => { /* offline */ });
+  },
+
+  reorderMilestones: (fromIndex, toIndex) => {
+    const { layout, owner, repo } = get();
+    const milestoneOrder = [...(layout.milestoneOrder ?? [])];
+    const [moved] = milestoneOrder.splice(fromIndex, 1);
+    milestoneOrder.splice(toIndex, 0, moved);
+    const newLayout = { ...layout, milestoneOrder };
     set({ layout: newLayout });
     saveLayout(owner, repo, newLayout).catch(() => { /* offline */ });
   },

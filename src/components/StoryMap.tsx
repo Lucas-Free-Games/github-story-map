@@ -17,18 +17,28 @@ function sortedProjects(projects: GitHubProject[], epicOrder: number[]): GitHubP
   });
 }
 
+function sortedMilestones(milestones: GitHubMilestone[], milestoneOrder: number[]): GitHubMilestone[] {
+  return [...milestones].sort((a, b) => {
+    const ai = (milestoneOrder ?? []).indexOf(a.number);
+    const bi = (milestoneOrder ?? []).indexOf(b.number);
+    if (ai === -1 && bi === -1) return 0;
+    if (ai === -1) return 1;
+    if (bi === -1) return -1;
+    return ai - bi;
+  });
+}
+
 interface CellKey {
   projectId: string;
   milestoneNumber: number | null;
 }
 
 export default function StoryMap() {
-  const { issues, projects, projectIssues, milestones, layout, reorderProjects } = useAppStore();
+  const { issues, projects, projectIssues, milestones, layout, reorderProjects, reorderMilestones } = useAppStore();
   const [createCell, setCreateCell] = useState<CellKey | null>(null);
 
   const cols = sortedProjects(projects, layout.epicOrder);
-  // null sentinel = "No Milestone" row
-  const rows: (GitHubMilestone | null)[] = [...milestones, null];
+  const orderedMilestones = sortedMilestones(milestones, layout.milestoneOrder);
 
   function cellIssues(projectId: string, milestoneNumber: number | null): GitHubIssue[] {
     const inProject = new Set(projectIssues[projectId] ?? []);
@@ -42,7 +52,11 @@ export default function StoryMap() {
 
   function handleDragEnd(result: DropResult) {
     if (!result.destination || result.source.index === result.destination.index) return;
-    reorderProjects(result.source.index, result.destination.index);
+    if (result.source.droppableId === 'columns') {
+      reorderProjects(result.source.index, result.destination.index);
+    } else if (result.source.droppableId === 'rows') {
+      reorderMilestones(result.source.index, result.destination.index);
+    }
   }
 
   if (cols.length === 0) {
@@ -60,6 +74,7 @@ export default function StoryMap() {
       <DragDropContext onDragEnd={handleDragEnd}>
         <div className="flex-1 overflow-auto h-full">
           <table className="border-collapse">
+            {/* Column headers — draggable horizontally */}
             <thead>
               <Droppable droppableId="columns" direction="horizontal">
                 {(provided) => (
@@ -87,40 +102,87 @@ export default function StoryMap() {
                 )}
               </Droppable>
             </thead>
-            <tbody>
-              {rows.map((milestone) => (
-                <tr key={milestone?.number ?? 'no-milestone'}>
-                  <th className="sticky left-0 z-10 bg-purple-50 border border-gray-200 px-3 py-2 text-xs font-semibold text-purple-900 text-right whitespace-nowrap align-top pt-3">
-                    {milestone
-                      ? milestone.title
-                      : <span className="text-purple-400 font-normal italic">No Milestone</span>}
-                  </th>
-                  {cols.map((project) => {
-                    const milestoneNumber = milestone?.number ?? null;
-                    const items = cellIssues(project.id, milestoneNumber);
-                    return (
-                      <td
-                        key={project.id}
-                        className="border border-gray-200 align-top p-2 bg-white w-72 min-w-72"
-                      >
-                        <div className="flex flex-col gap-2 min-h-16">
-                          {items.map((issue) => (
-                            <IssueCard key={issue.number} issue={issue} hideLabels showStatus />
-                          ))}
-                          <button
-                            onClick={() => setCreateCell({ projectId: project.id, milestoneNumber })}
-                            className="mt-auto w-full text-xs text-gray-400 hover:text-blue-500 hover:bg-blue-50 rounded-lg py-1.5 border border-dashed border-gray-200 hover:border-blue-300 transition-colors flex items-center justify-center gap-1"
+
+            {/* Milestone rows — draggable vertically */}
+            <Droppable droppableId="rows">
+              {(provided) => (
+                <tbody ref={provided.innerRef} {...provided.droppableProps}>
+                  {orderedMilestones.map((milestone, index) => (
+                    <Draggable key={milestone.number} draggableId={String(milestone.number)} index={index}>
+                      {(provided, snapshot) => (
+                        <tr
+                          ref={provided.innerRef}
+                          {...provided.draggableProps}
+                          style={provided.draggableProps.style}
+                        >
+                          <th
+                            {...provided.dragHandleProps}
+                            className={`sticky left-0 z-10 border border-gray-200 px-3 py-2 text-xs font-semibold text-purple-900 text-right whitespace-nowrap align-top pt-3 cursor-grab select-none transition-colors ${
+                              snapshot.isDragging ? 'bg-purple-100' : 'bg-purple-50'
+                            }`}
                           >
-                            <span className="text-sm font-medium leading-none">+</span>
-                            Add issue
-                          </button>
-                        </div>
-                      </td>
-                    );
-                  })}
-                </tr>
-              ))}
-            </tbody>
+                            <span className="text-purple-300 mr-1 text-xs">⠿</span>
+                            {milestone.title}
+                          </th>
+                          {cols.map((project) => {
+                            const items = cellIssues(project.id, milestone.number);
+                            return (
+                              <td
+                                key={project.id}
+                                className="border border-gray-200 align-top p-2 bg-white w-72 min-w-72"
+                              >
+                                <div className="flex flex-col gap-2 min-h-16">
+                                  {items.map((issue) => (
+                                    <IssueCard key={issue.number} issue={issue} hideLabels showStatus />
+                                  ))}
+                                  <button
+                                    onClick={() => setCreateCell({ projectId: project.id, milestoneNumber: milestone.number })}
+                                    className="mt-auto w-full text-xs text-gray-400 hover:text-blue-500 hover:bg-blue-50 rounded-lg py-1.5 border border-dashed border-gray-200 hover:border-blue-300 transition-colors flex items-center justify-center gap-1"
+                                  >
+                                    <span className="text-sm font-medium leading-none">+</span>
+                                    Add issue
+                                  </button>
+                                </div>
+                              </td>
+                            );
+                          })}
+                        </tr>
+                      )}
+                    </Draggable>
+                  ))}
+                  {provided.placeholder}
+
+                  {/* "No Milestone" row — always last, not draggable */}
+                  <tr key="no-milestone">
+                    <th className="sticky left-0 z-10 bg-purple-50 border border-gray-200 px-3 py-2 text-xs font-semibold text-purple-900 text-right whitespace-nowrap align-top pt-3">
+                      <span className="text-purple-400 font-normal italic">No Milestone</span>
+                    </th>
+                    {cols.map((project) => {
+                      const items = cellIssues(project.id, null);
+                      return (
+                        <td
+                          key={project.id}
+                          className="border border-gray-200 align-top p-2 bg-white w-72 min-w-72"
+                        >
+                          <div className="flex flex-col gap-2 min-h-16">
+                            {items.map((issue) => (
+                              <IssueCard key={issue.number} issue={issue} hideLabels showStatus />
+                            ))}
+                            <button
+                              onClick={() => setCreateCell({ projectId: project.id, milestoneNumber: null })}
+                              className="mt-auto w-full text-xs text-gray-400 hover:text-blue-500 hover:bg-blue-50 rounded-lg py-1.5 border border-dashed border-gray-200 hover:border-blue-300 transition-colors flex items-center justify-center gap-1"
+                            >
+                              <span className="text-sm font-medium leading-none">+</span>
+                              Add issue
+                            </button>
+                          </div>
+                        </td>
+                      );
+                    })}
+                  </tr>
+                </tbody>
+              )}
+            </Droppable>
           </table>
         </div>
       </DragDropContext>

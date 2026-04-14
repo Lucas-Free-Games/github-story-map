@@ -14,12 +14,23 @@ interface CellKey {
   statusLabel: string;
 }
 
+function sortedMilestones(milestones: GitHubMilestone[], milestoneOrder: number[]): GitHubMilestone[] {
+  return [...milestones].sort((a, b) => {
+    const ai = (milestoneOrder ?? []).indexOf(a.number);
+    const bi = (milestoneOrder ?? []).indexOf(b.number);
+    if (ai === -1 && bi === -1) return 0;
+    if (ai === -1) return 1;
+    if (bi === -1) return -1;
+    return ai - bi;
+  });
+}
+
 export default function KanbanView() {
-  const { issues, milestones, statusLabels } = useAppStore();
+  const { issues, milestones, statusLabels, layout } = useAppStore();
   const [createCell, setCreateCell] = useState<CellKey | null>(null);
 
-  // null sentinel = "No Milestone" swimlane
-  const groups: (GitHubMilestone | null)[] = [...milestones, null];
+  // null sentinel = "No Milestone" swimlane — always last
+  const groups: (GitHubMilestone | null)[] = [...sortedMilestones(milestones, layout.milestoneOrder), null];
   // '' sentinel = "No Status" column
   const cols = [...statusLabels, ''];
 
