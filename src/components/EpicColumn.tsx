@@ -32,8 +32,8 @@ function StoriesDroppable({
           }`}
         >
           <div className="flex flex-col gap-2">
-            {stories.map((story, i) => (
-              <IssueCard key={story.number} issue={story} index={i} />
+            {stories.map((story) => (
+              <IssueCard key={story.number} issue={story} />
             ))}
           </div>
           {provided.placeholder}
@@ -69,7 +69,7 @@ export default function EpicColumn({ epicIssue, columnKey, stories, index, isBac
         </div>
 
         {showCreate && (
-          <CreateIssueModal defaultEpicKey="backlog" onClose={() => setShowCreate(false)} />
+          <CreateIssueModal onClose={() => setShowCreate(false)} />
         )}
       </>
     );
@@ -132,7 +132,7 @@ export default function EpicColumn({ epicIssue, columnKey, stories, index, isBac
       </Draggable>
 
       {showCreate && (
-        <CreateIssueModal defaultEpicKey={columnKey} onClose={() => setShowCreate(false)} />
+        <CreateIssueModal onClose={() => setShowCreate(false)} />
       )}
     </>
   );

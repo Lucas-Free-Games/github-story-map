@@ -2,19 +2,18 @@ import { useState } from 'react';
 import { useAppStore } from '../store/appStore';
 
 interface Props {
-  defaultEpicKey?: string;
+  defaultEpicLabel?: string;
+  defaultWaveLabel?: string;
   onClose: () => void;
 }
 
-export default function CreateIssueModal({ defaultEpicKey, onClose }: Props) {
-  const { layout, issues, epicLabels, waveLabels, createIssue } = useAppStore();
-  const issueMap = new Map(issues.map((i) => [i.number, i]));
+export default function CreateIssueModal({ defaultEpicLabel, defaultWaveLabel, onClose }: Props) {
+  const { epicLabels, waveLabels, createIssue } = useAppStore();
 
   const [title, setTitle] = useState('');
   const [body, setBody] = useState('');
-  const [epicKey, setEpicKey] = useState(defaultEpicKey ?? 'backlog');
-  const [epicLabel, setEpicLabel] = useState('');
-  const [waveLabel, setWaveLabel] = useState('');
+  const [epicLabel, setEpicLabel] = useState(defaultEpicLabel ?? '');
+  const [waveLabel, setWaveLabel] = useState(defaultWaveLabel ?? '');
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState('');
 
@@ -27,7 +26,7 @@ export default function CreateIssueModal({ defaultEpicKey, onClose }: Props) {
       await createIssue(
         title.trim(),
         body.trim(),
-        epicKey === 'backlog' ? undefined : epicKey,
+        undefined,
         epicLabel || undefined,
         waveLabel || undefined,
       );
@@ -110,25 +109,6 @@ export default function CreateIssueModal({ defaultEpicKey, onClose }: Props) {
                 ))}
               </select>
             </div>
-          </div>
-
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Add to</label>
-            <select
-              value={epicKey}
-              onChange={(e) => setEpicKey(e.target.value)}
-              className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white"
-            >
-              <option value="backlog">Backlog</option>
-              {layout.epicOrder.map((num) => {
-                const epic = issueMap.get(num);
-                return (
-                  <option key={num} value={String(num)}>
-                    {epic ? epic.title : `Epic #${num}`}
-                  </option>
-                );
-              })}
-            </select>
           </div>
 
           {error && <p className="text-red-500 text-sm">{error}</p>}

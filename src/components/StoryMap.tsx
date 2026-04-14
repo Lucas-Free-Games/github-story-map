@@ -1,86 +1,118 @@
-import { DragDropContext, Droppable, type DropResult } from '@hello-pangea/dnd';
+import { useState } from 'react';
 import { useAppStore } from '../store/appStore';
 import type { GitHubIssue } from '../types';
-import EpicColumn from './EpicColumn';
+import IssueCard from './IssueCard';
+import CreateIssueModal from './CreateIssueModal';
+
+function isEpic(issue: GitHubIssue): boolean {
+  return issue.labels.some((l) => l.name.toLowerCase() === 'epic');
+}
+
+function getEpicLabel(issue: GitHubIssue): string | null {
+  const label = issue.labels.find((l) => l.name.startsWith('e_'));
+  return label ? label.name.slice(2) : null;
+}
+
+function getWaveLabel(issue: GitHubIssue): string | null {
+  const label = issue.labels.find((l) => l.name.startsWith('w_'));
+  return label ? label.name.slice(2) : null;
+}
+
+interface CellKey {
+  epicLabel: string;
+  waveLabel: string;
+}
 
 export default function StoryMap() {
-  const { issues, layout, moveStory, reorderEpics } = useAppStore();
+  const { issues, epicLabels, waveLabels } = useAppStore();
+  const [createCell, setCreateCell] = useState<CellKey | null>(null);
 
-  const issueMap = new Map<number, GitHubIssue>(issues.map((i) => [i.number, i]));
+  const stories = issues.filter((i) => !isEpic(i));
 
-  function onDragEnd(result: DropResult) {
-    const { source, destination, draggableId, type } = result;
-    if (!destination) return;
-    if (
-      source.droppableId === destination.droppableId &&
-      source.index === destination.index
-    ) return;
-
-    if (type === 'epic') {
-      reorderEpics(source.index, destination.index);
-      return;
-    }
-
-    const storyNumber = parseInt(draggableId, 10);
-    moveStory(storyNumber, source.droppableId, destination.droppableId, destination.index);
+  function cellIssues(epic: string, wave: string): GitHubIssue[] {
+    return stories.filter((issue) => {
+      const ie = getEpicLabel(issue);
+      const iw = getWaveLabel(issue);
+      const epicMatch = epic === '' ? ie === null : ie === epic;
+      const waveMatch = wave === '' ? iw === null : iw === wave;
+      return epicMatch && waveMatch;
+    });
   }
 
-  const epicColumns = layout.epicOrder.map((epicNum) => {
-    const epicIssue = issueMap.get(epicNum) ?? null;
-    const stories = (layout.storyOrder[String(epicNum)] ?? [])
-      .map((n) => issueMap.get(n))
-      .filter((i): i is GitHubIssue => i !== undefined);
-    return { epicNum, epicIssue, stories };
-  });
+  // '' sentinel = "No Wave" row / "No Epic" column
+  const cols = epicLabels;
+  const rows = [...waveLabels, ''];
 
-  const backlogStories = (layout.storyOrder['backlog'] ?? [])
-    .map((n) => issueMap.get(n))
-    .filter((i): i is GitHubIssue => i !== undefined);
+  if (cols.length === 0) {
+    return (
+      <div className="flex items-center justify-center h-full text-gray-400 text-sm">
+        No epic labels defined. Use{' '}
+        <span className="font-mono mx-1 bg-gray-100 px-1 rounded">Epics &amp; Waves</span>
+        {' '}to add labels.
+      </div>
+    );
+  }
 
   return (
-    <DragDropContext onDragEnd={onDragEnd}>
-      <div className="flex h-full overflow-hidden">
-        {/* Epics area — horizontally scrollable */}
-        <div className="flex-1 overflow-x-auto overflow-y-auto p-6">
-          <Droppable droppableId="epics-row" direction="horizontal" type="epic">
-            {(provided) => (
-              <div
-                ref={provided.innerRef}
-                {...provided.droppableProps}
-                className="flex gap-4 items-start min-w-max pb-4"
-              >
-                {epicColumns.map(({ epicNum, epicIssue, stories }, index) => (
-                  <EpicColumn
-                    key={epicNum}
-                    epicIssue={epicIssue}
-                    columnKey={String(epicNum)}
-                    stories={stories}
-                    index={index}
-                  />
-                ))}
-                {provided.placeholder}
-
-                {epicColumns.length === 0 && (
-                  <div className="flex items-center justify-center w-72 h-48 border-2 border-dashed border-gray-300 rounded-xl text-gray-400 text-sm">
-                    No epics found. Label issues with <span className="font-mono mx-1">epic</span> to create columns.
-                  </div>
-                )}
-              </div>
-            )}
-          </Droppable>
-        </div>
-
-        {/* Backlog sidebar */}
-        <div className="w-72 border-l border-gray-200 overflow-y-auto p-4 shrink-0 bg-gray-50">
-          <EpicColumn
-            epicIssue={null}
-            columnKey="backlog"
-            stories={backlogStories}
-            index={0}
-            isBacklog
-          />
-        </div>
+    <>
+      <div className="flex-1 overflow-auto h-full">
+        <table className="border-collapse">
+          <thead>
+            <tr>
+              {/* Corner */}
+              <th className="sticky left-0 top-0 z-30 bg-white border border-gray-200 w-36 min-w-36" />
+              {cols.map((epic) => (
+                <th
+                  key={epic}
+                  className="sticky top-0 z-20 bg-blue-50 border border-gray-200 px-4 py-3 text-sm font-semibold text-blue-900 text-center w-72 min-w-72 whitespace-nowrap"
+                >
+                  {epic}
+                </th>
+              ))}
+            </tr>
+          </thead>
+          <tbody>
+            {rows.map((wave) => (
+              <tr key={wave || 'no-wave'}>
+                {/* Wave row header */}
+                <th className="sticky left-0 z-10 bg-purple-50 border border-gray-200 px-3 py-2 text-xs font-semibold text-purple-900 text-right whitespace-nowrap align-top pt-3">
+                  {wave || <span className="text-purple-400 font-normal italic">No Wave</span>}
+                </th>
+                {cols.map((epic) => {
+                  const items = cellIssues(epic, wave);
+                  return (
+                    <td
+                      key={epic}
+                      className="border border-gray-200 align-top p-2 bg-white w-72 min-w-72"
+                    >
+                      <div className="flex flex-col gap-2 min-h-16">
+                        {items.map((issue) => (
+                          <IssueCard key={issue.number} issue={issue} />
+                        ))}
+                        <button
+                          onClick={() => setCreateCell({ epicLabel: epic, waveLabel: wave })}
+                          className="mt-auto w-full text-xs text-gray-400 hover:text-blue-500 hover:bg-blue-50 rounded-lg py-1.5 border border-dashed border-gray-200 hover:border-blue-300 transition-colors flex items-center justify-center gap-1"
+                        >
+                          <span className="text-sm font-medium leading-none">+</span>
+                          Add issue
+                        </button>
+                      </div>
+                    </td>
+                  );
+                })}
+              </tr>
+            ))}
+          </tbody>
+        </table>
       </div>
-    </DragDropContext>
+
+      {createCell && (
+        <CreateIssueModal
+          defaultEpicLabel={createCell.epicLabel}
+          defaultWaveLabel={createCell.waveLabel}
+          onClose={() => setCreateCell(null)}
+        />
+      )}
+    </>
   );
 }
