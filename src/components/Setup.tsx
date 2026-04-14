@@ -45,7 +45,7 @@ export default function Setup() {
               required
             />
             <p className="text-xs text-gray-400 mt-1">
-              Needs <code>repo</code> scope. Stored in localStorage only.
+              Classic PAT with <code>repo</code> and <code>project</code> scopes. Stored in localStorage only.
             </p>
           </div>
 

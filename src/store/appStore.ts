@@ -1,6 +1,6 @@
 import { create } from 'zustand';
 import { Octokit } from '@octokit/rest';
-import type { GitHubIssue, StoryMapLayout } from '../types';
+import type { GitHubIssue, GitHubProject, StoryMapLayout } from '../types';
 import { loadLayout, saveLayout } from '../lib/firebase';
 
 interface AppState {
@@ -15,6 +15,7 @@ interface AppState {
   waveLabels: string[];   // values without prefix, e.g. ["Q1", "Q2"]
   statusLabels: string[]; // values without prefix, e.g. ["Todo", "In Progress", "Done"]
   view: 'grid' | 'kanban';
+  projects: GitHubProject[];
 
   setCredentials: (token: string, owner: string, repo: string) => void;
   fetchIssues: () => Promise<void>;
@@ -42,9 +43,32 @@ interface AppState {
   updateIssue: (number: number, title: string, body: string) => Promise<void>;
   closeIssue: (number: number) => Promise<void>;
   deleteIssue: (number: number, nodeId: string) => Promise<void>;
+  fetchProjects: () => Promise<void>;
+  createProject: (title: string, description: string) => Promise<void>;
+  updateProject: (id: string, title: string, description: string) => Promise<void>;
+  deleteProject: (id: string) => Promise<void>;
 }
 
 const emptyLayout: StoryMapLayout = { epicOrder: [], storyOrder: { backlog: [] } };
+
+async function gql<T>(
+  token: string,
+  query: string,
+  variables?: Record<string, unknown>,
+): Promise<T> {
+  const res = await fetch('https://api.github.com/graphql', {
+    method: 'POST',
+    headers: { Authorization: `bearer ${token}`, 'Content-Type': 'application/json' },
+    body: JSON.stringify({ query, variables }),
+  });
+  const json = await res.json() as { data?: T; errors?: { message: string; path?: string[] }[] };
+  if (json.errors?.length) {
+    const { message, path } = json.errors[0];
+    const location = path?.length ? ` (at: ${path.join(' → ')})` : '';
+    throw new Error(`${message}${location}`);
+  }
+  return json.data as T;
+}
 
 function isEpic(issue: GitHubIssue) {
   return issue.labels.some((l) => l.name.toLowerCase() === 'epic');
@@ -76,6 +100,7 @@ export const useAppStore = create<AppState>((set, get) => ({
   waveLabels: [],
   statusLabels: [],
   view: 'grid',
+  projects: [],
 
   setCredentials: (token, owner, repo) => {
     localStorage.setItem('gh_token', token);
@@ -370,5 +395,102 @@ export const useAppStore = create<AppState>((set, get) => ({
 
     set({ issues: issues.filter((i) => i.number !== number), layout: newLayout });
     saveLayout(owner, repo, newLayout).catch(() => { /* offline */ });
+  },
+
+  fetchProjects: async () => {
+    const { token, owner } = get();
+    if (!token || !owner) return;
+    const data = await gql<{
+      repositoryOwner: {
+        projectsV2?: { nodes: GitHubProject[] };
+      } | null;
+    }>(token, `
+      query($login: String!) {
+        repositoryOwner(login: $login) {
+          ... on User { projectsV2(first: 50) { nodes { id number title shortDescription url closed } } }
+          ... on Organization { projectsV2(first: 50) { nodes { id number title shortDescription url closed } } }
+        }
+      }
+    `, { login: owner });
+    set({ projects: data.repositoryOwner?.projectsV2?.nodes ?? [] });
+  },
+
+  createProject: async (title, description) => {
+    const { token, owner, repo, projects } = get();
+
+    const repoData = await gql<{
+      repository: { id: string; owner: { id: string } };
+    }>(token, `
+      query($owner: String!, $repo: String!) {
+        repository(owner: $owner, name: $repo) {
+          id
+          owner { id }
+        }
+      }
+    `, { owner, repo });
+
+    const ownerId = repoData.repository.owner.id;
+    const repositoryId = repoData.repository.id;
+
+    const createData = await gql<{
+      createProjectV2: { projectV2: GitHubProject };
+    }>(token, `
+      mutation($ownerId: ID!, $title: String!) {
+        createProjectV2(input: { ownerId: $ownerId, title: $title }) {
+          projectV2 { id number title shortDescription url closed }
+        }
+      }
+    `, { ownerId, title });
+
+    const project = { ...createData.createProjectV2.projectV2 };
+
+    if (description.trim()) {
+      await gql(token, `
+        mutation($projectId: ID!, $desc: String!) {
+          updateProjectV2(input: { projectId: $projectId, shortDescription: $desc }) {
+            projectV2 { id }
+          }
+        }
+      `, { projectId: project.id, desc: description.trim() });
+      project.shortDescription = description.trim();
+    }
+
+    await gql(token, `
+      mutation($projectId: ID!, $repositoryId: ID!) {
+        linkProjectV2ToRepository(input: { projectId: $projectId, repositoryId: $repositoryId }) {
+          repository { id }
+        }
+      }
+    `, { projectId: project.id, repositoryId });
+
+    set({ projects: [project, ...projects] });
+  },
+
+  updateProject: async (id, title, description) => {
+    const { token, projects } = get();
+    await gql(token, `
+      mutation($projectId: ID!, $title: String!, $desc: String) {
+        updateProjectV2(input: { projectId: $projectId, title: $title, shortDescription: $desc }) {
+          projectV2 { id }
+        }
+      }
+    `, { projectId: id, title, desc: description.trim() || null });
+    set({
+      projects: projects.map((p) =>
+        p.id === id ? { ...p, title, shortDescription: description.trim() || null } : p,
+      ),
+    });
+  },
+
+  deleteProject: async (id) => {
+    const { token, projects } = get();
+    await gql(token, `
+      mutation($projectId: ID!) {
+        deleteProjectV2(input: { projectId: $projectId }) {
+          projectV2 { id }
+        }
+      }
+    `, { projectId: id });
+    set({ projects: projects.filter((p) => p.id !== id) });
   },
 }));

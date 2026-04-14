@@ -31,3 +31,12 @@ export interface StoryMapLayout {
   // key is epic issue number as string, or "backlog" for unassigned
   storyOrder: Record<string, number[]>;
 }
+
+export interface GitHubProject {
+  id: string;          // GraphQL node ID
+  number: number;
+  title: string;
+  shortDescription: string | null;
+  url: string;
+  closed: boolean;
+}

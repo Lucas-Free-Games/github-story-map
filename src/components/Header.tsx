@@ -2,11 +2,13 @@ import { useState } from 'react';
 import { useAppStore } from '../store/appStore';
 import CreateIssueModal from './CreateIssueModal';
 import LabelsManagerModal from './LabelsManagerModal';
+import ProjectsManagerModal from './ProjectsManagerModal';
 
 export default function Header() {
   const { owner, repo, issues, fetchIssues, reset, loading, view, setView } = useAppStore();
   const [showCreate, setShowCreate] = useState(false);
   const [showLabels, setShowLabels] = useState(false);
+  const [showProjects, setShowProjects] = useState(false);
 
   return (
     <>
@@ -57,6 +59,12 @@ export default function Header() {
             Epics & Waves
           </button>
           <button
+            onClick={() => setShowProjects(true)}
+            className="text-sm text-gray-600 hover:text-gray-900 px-3 py-1.5 rounded-lg hover:bg-gray-100 transition-colors"
+          >
+            Projects
+          </button>
+          <button
             onClick={fetchIssues}
             disabled={loading}
             className="text-sm text-gray-600 hover:text-gray-900 px-3 py-1.5 rounded-lg hover:bg-gray-100 disabled:opacity-40 transition-colors"
@@ -74,6 +82,7 @@ export default function Header() {
 
       {showCreate && <CreateIssueModal onClose={() => setShowCreate(false)} />}
       {showLabels && <LabelsManagerModal onClose={() => setShowLabels(false)} />}
+      {showProjects && <ProjectsManagerModal onClose={() => setShowProjects(false)} />}
     </>
   );
 }
