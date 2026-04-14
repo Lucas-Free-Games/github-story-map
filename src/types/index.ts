@@ -16,6 +16,7 @@ export interface GitHubMilestone {
 
 export interface GitHubIssue {
   number: number;
+  node_id: string;
   title: string;
   body: string | null;
   labels: GitHubLabel[];

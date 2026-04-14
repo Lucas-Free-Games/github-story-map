@@ -36,6 +36,7 @@ interface AppState {
   ) => Promise<void>;
   updateIssue: (number: number, title: string, body: string) => Promise<void>;
   closeIssue: (number: number) => Promise<void>;
+  deleteIssue: (number: number, nodeId: string) => Promise<void>;
 }
 
 const emptyLayout: StoryMapLayout = { epicOrder: [], storyOrder: { backlog: [] } };
@@ -140,6 +141,7 @@ export const useAppStore = create<AppState>((set, get) => ({
           .filter((item) => !(item as { pull_request?: unknown }).pull_request)
           .map((item) => ({
             number: item.number,
+            node_id: item.node_id,
             title: item.title,
             body: item.body ?? null,
             labels: (item.labels ?? []).map((l) =>
@@ -267,6 +269,7 @@ export const useAppStore = create<AppState>((set, get) => ({
 
     const newIssue: GitHubIssue = {
       number: data.number,
+      node_id: data.node_id,
       title: data.title,
       body: data.body ?? null,
       labels: (data.labels ?? []).map((l) =>
@@ -308,6 +311,32 @@ export const useAppStore = create<AppState>((set, get) => ({
     const { token, owner, repo, issues, layout } = get();
     const octokit = new Octokit({ auth: token });
     await octokit.rest.issues.update({ owner, repo, issue_number: number, state: 'closed' });
+
+    const newStoryOrder = Object.fromEntries(
+      Object.entries(layout.storyOrder).map(([key, nums]) => [key, nums.filter((n) => n !== number)]),
+    );
+    const newLayout: StoryMapLayout = {
+      epicOrder: layout.epicOrder.filter((n) => n !== number),
+      storyOrder: newStoryOrder,
+    };
+
+    set({ issues: issues.filter((i) => i.number !== number), layout: newLayout });
+    saveLayout(owner, repo, newLayout).catch(() => { /* offline */ });
+  },
+
+  deleteIssue: async (number, nodeId) => {
+    const { token, owner, repo, issues, layout } = get();
+
+    const res = await fetch('https://api.github.com/graphql', {
+      method: 'POST',
+      headers: { Authorization: `bearer ${token}`, 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        query: `mutation DeleteIssue($id: ID!) { deleteIssue(input: {issueId: $id}) { repository { id } } }`,
+        variables: { id: nodeId },
+      }),
+    });
+    const json = await res.json() as { errors?: { message: string }[] };
+    if (json.errors?.length) throw new Error(json.errors[0].message);
 
     const newStoryOrder = Object.fromEntries(
       Object.entries(layout.storyOrder).map(([key, nums]) => [key, nums.filter((n) => n !== number)]),
