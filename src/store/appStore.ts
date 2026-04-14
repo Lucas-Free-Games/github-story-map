@@ -22,12 +22,33 @@ interface AppState {
   ) => void;
   reorderEpics: (fromIndex: number, toIndex: number) => void;
   reset: () => void;
+  createIssue: (
+    title: string,
+    body: string,
+    epicKey?: string,
+    epicLabel?: string,
+    waveLabel?: string,
+  ) => Promise<void>;
 }
 
 const emptyLayout: StoryMapLayout = { epicOrder: [], storyOrder: { backlog: [] } };
 
 function isEpic(issue: GitHubIssue) {
   return issue.labels.some((l) => l.name.toLowerCase() === 'epic');
+}
+
+async function ensureLabel(
+  octokit: Octokit,
+  owner: string,
+  repo: string,
+  name: string,
+  color: string,
+) {
+  try {
+    await octokit.rest.issues.createLabel({ owner, repo, name, color });
+  } catch {
+    // 422 = label already exists — safe to ignore
+  }
 }
 
 export const useAppStore = create<AppState>((set, get) => ({
@@ -174,6 +195,59 @@ export const useAppStore = create<AppState>((set, get) => ({
     epicOrder.splice(toIndex, 0, moved);
     const newLayout = { ...layout, epicOrder };
     set({ layout: newLayout });
+    saveLayout(owner, repo, newLayout).catch(() => { /* offline */ });
+  },
+
+  createIssue: async (title, body, epicKey, epicLabel, waveLabel) => {
+    const { token, owner, repo, issues, layout } = get();
+    const octokit = new Octokit({ auth: token });
+
+    // Ensure labels exist on the repo, then collect names to attach
+    const labelNames: string[] = [];
+    if (epicLabel?.trim()) {
+      const name = `e_${epicLabel.trim()}`;
+      await ensureLabel(octokit, owner, repo, name, '0075ca');
+      labelNames.push(name);
+    }
+    if (waveLabel?.trim()) {
+      const name = `w_${waveLabel.trim()}`;
+      await ensureLabel(octokit, owner, repo, name, '7057ff');
+      labelNames.push(name);
+    }
+
+    const { data } = await octokit.rest.issues.create({
+      owner,
+      repo,
+      title,
+      body,
+      labels: labelNames,
+    });
+
+    const newIssue: GitHubIssue = {
+      number: data.number,
+      title: data.title,
+      body: data.body ?? null,
+      labels: (data.labels ?? []).map((l) =>
+        typeof l === 'string'
+          ? { id: 0, name: l, color: 'cccccc' }
+          : { id: l.id ?? 0, name: l.name ?? '', color: l.color ?? 'cccccc' },
+      ),
+      assignees: (data.assignees ?? []).map((u) => ({ login: u.login, avatar_url: u.avatar_url })),
+      milestone: data.milestone ? { number: data.milestone.number, title: data.milestone.title } : null,
+      state: 'open',
+      html_url: data.html_url,
+    };
+
+    const targetKey = epicKey ?? 'backlog';
+    const newLayout: StoryMapLayout = {
+      ...layout,
+      storyOrder: {
+        ...layout.storyOrder,
+        [targetKey]: [newIssue.number, ...(layout.storyOrder[targetKey] ?? [])],
+      },
+    };
+
+    set({ issues: [...issues, newIssue], layout: newLayout });
     saveLayout(owner, repo, newLayout).catch(() => { /* offline */ });
   },
 }));
