@@ -32,10 +32,15 @@ Provide a bulleted list of specific, verifiable conditions. Use **Markdown Bold*
     - Read the title and any existing body.
     - Infer the intended functionality based on the codebase (referencing styles in `IssueCard.tsx` or logic in `appStore.ts`).
 3. **Drafting**: Apply the three-part structure described above.
-4. **Formatting**: Wrap the output for each issue in a clear Markdown code block for easy copy-pasting.
+4. **Formatting**: Write the description directly in Markdown (bold, bullet lists, headings) — do **not** wrap it in a code block. The output is intended to be passed directly to `gh issue edit --body`.
+5. **Publishing**: For each issue, run:
+   ```
+   gh issue edit <number> --repo Lucas-Free-Games/github-story-map --body "<generated markdown body>"
+   ```
+   Confirm success by printing the issue URL returned by the command.
 
 ## Commands
 When this skill is invoked, Antigravity should:
 - Fetch the list of issues from the repository.
 - Generate the descriptions.
-- Present them to the user.
+- Publish each description directly to GitHub via `gh issue edit`.
