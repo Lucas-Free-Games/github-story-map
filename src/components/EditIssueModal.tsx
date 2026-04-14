@@ -8,7 +8,7 @@ interface Props {
 }
 
 export default function EditIssueModal({ issue, onClose }: Props) {
-  const { projects, projectIssues, updateIssue, addIssueToProject, removeIssueFromProject } = useAppStore();
+  const { projects, projectIssues, milestones, updateIssue, addIssueToProject, removeIssueFromProject } = useAppStore();
 
   const [title, setTitle] = useState(issue.title);
   const [body, setBody] = useState(issue.body ?? '');
@@ -17,6 +17,10 @@ export default function EditIssueModal({ issue, onClose }: Props) {
     nums.includes(issue.number)
   )?.[0] ?? '';
   const [projectId, setProjectId] = useState(initialProjectId);
+
+  const [milestoneNumber, setMilestoneNumber] = useState<string>(
+    issue.milestone?.number.toString() ?? ''
+  );
 
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
@@ -33,7 +37,14 @@ export default function EditIssueModal({ issue, onClose }: Props) {
         if (initialProjectId) await removeIssueFromProject(issue.node_id, initialProjectId);
         if (projectId) await addIssueToProject(issue.node_id, projectId);
       }
-      await updateIssue(issue.number, title.trim(), body.trim());
+      const newMilestone = milestoneNumber ? Number(milestoneNumber) : null;
+      const milestoneChanged = newMilestone !== (issue.milestone?.number ?? null);
+      await updateIssue(
+        issue.number,
+        title.trim(),
+        body.trim(),
+        milestoneChanged ? newMilestone : undefined,
+      );
       onClose();
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to update issue');
@@ -82,18 +93,34 @@ export default function EditIssueModal({ issue, onClose }: Props) {
             />
           </div>
 
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Epic</label>
-            <select
-              value={projectId}
-              onChange={(e) => setProjectId(e.target.value)}
-              className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white"
-            >
-              <option value="">— none —</option>
-              {openProjects.map((p) => (
-                <option key={p.id} value={p.id}>{p.title}</option>
-              ))}
-            </select>
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Epic</label>
+              <select
+                value={projectId}
+                onChange={(e) => setProjectId(e.target.value)}
+                className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white"
+              >
+                <option value="">— none —</option>
+                {openProjects.map((p) => (
+                  <option key={p.id} value={p.id}>{p.title}</option>
+                ))}
+              </select>
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Wave</label>
+              <select
+                value={milestoneNumber}
+                onChange={(e) => setMilestoneNumber(e.target.value)}
+                className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-purple-500 bg-white"
+              >
+                <option value="">— none —</option>
+                {milestones.map((m) => (
+                  <option key={m.number} value={m.number}>{m.title}</option>
+                ))}
+              </select>
+            </div>
           </div>
 
           {error && <p className="text-red-500 text-sm">{error}</p>}

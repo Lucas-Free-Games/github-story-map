@@ -42,7 +42,7 @@ interface AppState {
     milestoneNumber?: number,
     statusLabel?: string,
   ) => Promise<void>;
-  updateIssue: (number: number, title: string, body: string) => Promise<void>;
+  updateIssue: (number: number, title: string, body: string, milestoneNumber?: number | null) => Promise<void>;
   closeIssue: (number: number) => Promise<void>;
   deleteIssue: (number: number, nodeId: string) => Promise<void>;
   fetchProjects: () => Promise<void>;
@@ -348,13 +348,25 @@ export const useAppStore = create<AppState>((set, get) => ({
     }
   },
 
-  updateIssue: async (number, title, body) => {
-    const { token, owner, repo, issues } = get();
+  updateIssue: async (number, title, body, milestoneNumber) => {
+    const { token, owner, repo, issues, milestones } = get();
     const octokit = new Octokit({ auth: token });
-    const { data } = await octokit.rest.issues.update({ owner, repo, issue_number: number, title, body });
+    const { data } = await octokit.rest.issues.update({
+      owner, repo, issue_number: number, title, body,
+      ...(milestoneNumber !== undefined ? { milestone: milestoneNumber ?? null } : {}),
+    });
+    const milestone = data.milestone
+      ? milestones.find((m) => m.number === data.milestone!.number) ?? {
+          number: data.milestone.number,
+          title: data.milestone.title,
+          description: null,
+          state: 'open' as const,
+          due_on: data.milestone.due_on ?? null,
+        }
+      : null;
     set({
       issues: issues.map((i) =>
-        i.number === number ? { ...i, title: data.title, body: data.body ?? null } : i,
+        i.number === number ? { ...i, title: data.title, body: data.body ?? null, milestone } : i,
       ),
     });
   },
