@@ -73,12 +73,18 @@ export default function IssueCard({ issue, hideLabels }: Props) {
         ref={cardRef}
         onMouseEnter={handleCardEnter}
         onMouseLeave={handleCardLeave}
-        className={`relative group bg-white rounded-lg border px-2 py-1.5 text-sm select-none transition-shadow cursor-pointer shadow-sm ${
+        className={`relative group select-none cursor-pointer hover:z-20 text-sm ${
           busy ? 'opacity-40 pointer-events-none' :
-          issue.state === 'closed' ? 'opacity-60 border-gray-200 hover:border-gray-300 hover:shadow-md' :
-          'border-gray-200 hover:border-gray-300 hover:shadow-md'
+          issue.state === 'closed' ? 'opacity-60' : ''
         }`}
       >
+        {/* Card surface — z-10 so it sits visually in front of the tray */}
+        <div className={`relative z-10 bg-white rounded-lg border px-2 py-1.5 shadow-sm transition-all ${
+          issue.state === 'closed'
+            ? 'border-gray-200 hover:border-gray-300 hover:shadow-md'
+            : 'border-gray-200 hover:border-gray-300 hover:shadow-md'
+        }`}>
+
         {/* Single-line title row */}
         <div className="flex items-center gap-1.5 min-w-0">
 
@@ -149,8 +155,10 @@ export default function IssueCard({ issue, hideLabels }: Props) {
           </div>
         )}
 
-        {/* Clip wrapper — overflow-hidden so the tray slides out from under the card */}
-        <div className="absolute left-0 right-0 top-full z-10 overflow-hidden rounded-b-lg">
+        </div>{/* end card surface */}
+
+        {/* Clip wrapper — z-0 so it stays behind the card surface (z-10) */}
+        <div className="absolute left-0 right-0 top-full z-0 overflow-hidden rounded-b-lg">
           <div className="
             -translate-y-full group-hover:translate-y-0 transition-transform duration-200 ease-out
             bg-gray-100 border-x border-b border-gray-200 rounded-b-lg
