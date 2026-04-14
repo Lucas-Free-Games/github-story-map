@@ -5,13 +5,14 @@ import Header from './components/Header';
 import StoryMap from './components/StoryMap';
 
 export default function App() {
-  const { token, owner, repo, issues, loading, error, fetchIssues } = useAppStore();
+  const { token, owner, repo, issues, loading, error, fetchIssues, fetchLabels } = useAppStore();
 
   const isConfigured = Boolean(token && owner && repo);
 
   useEffect(() => {
     if (isConfigured && issues.length === 0) {
       fetchIssues();
+      fetchLabels();
     }
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 

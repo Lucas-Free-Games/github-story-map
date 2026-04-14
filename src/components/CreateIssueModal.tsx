@@ -7,7 +7,7 @@ interface Props {
 }
 
 export default function CreateIssueModal({ defaultEpicKey, onClose }: Props) {
-  const { layout, issues, createIssue } = useAppStore();
+  const { layout, issues, epicLabels, waveLabels, createIssue } = useAppStore();
   const issueMap = new Map(issues.map((i) => [i.number, i]));
 
   const [title, setTitle] = useState('');
@@ -81,40 +81,34 @@ export default function CreateIssueModal({ defaultEpicKey, onClose }: Props) {
             />
           </div>
 
-          {/* Epic and Wave labels side by side */}
+          {/* Epic and Wave label dropdowns */}
           <div className="grid grid-cols-2 gap-3">
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                Epic
-                <span className="ml-1 text-xs font-normal text-gray-400">→ e_…</span>
-              </label>
-              <input
-                type="text"
+              <label className="block text-sm font-medium text-gray-700 mb-1">Epic</label>
+              <select
                 value={epicLabel}
                 onChange={(e) => setEpicLabel(e.target.value)}
-                placeholder="e.g. Auth"
-                className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-              />
-              {epicLabel.trim() && (
-                <p className="text-xs text-blue-500 mt-1 font-mono">e_{epicLabel.trim()}</p>
-              )}
+                className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white"
+              >
+                <option value="">— none —</option>
+                {epicLabels.map((l) => (
+                  <option key={l} value={l}>{l}</option>
+                ))}
+              </select>
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                Wave
-                <span className="ml-1 text-xs font-normal text-gray-400">→ w_…</span>
-              </label>
-              <input
-                type="text"
+              <label className="block text-sm font-medium text-gray-700 mb-1">Wave</label>
+              <select
                 value={waveLabel}
                 onChange={(e) => setWaveLabel(e.target.value)}
-                placeholder="e.g. Q1"
-                className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-purple-500"
-              />
-              {waveLabel.trim() && (
-                <p className="text-xs text-purple-500 mt-1 font-mono">w_{waveLabel.trim()}</p>
-              )}
+                className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-purple-500 bg-white"
+              >
+                <option value="">— none —</option>
+                {waveLabels.map((l) => (
+                  <option key={l} value={l}>{l}</option>
+                ))}
+              </select>
             </div>
           </div>
 

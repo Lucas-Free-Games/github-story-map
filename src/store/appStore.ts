@@ -11,9 +11,14 @@ interface AppState {
   layout: StoryMapLayout;
   loading: boolean;
   error: string | null;
+  epicLabels: string[];  // values without prefix, e.g. ["Auth", "Backend"]
+  waveLabels: string[];  // values without prefix, e.g. ["Q1", "Q2"]
 
   setCredentials: (token: string, owner: string, repo: string) => void;
   fetchIssues: () => Promise<void>;
+  fetchLabels: () => Promise<void>;
+  addEpicLabel: (name: string) => Promise<void>;
+  addWaveLabel: (name: string) => Promise<void>;
   moveStory: (
     storyNumber: number,
     fromKey: string,
@@ -59,19 +64,54 @@ export const useAppStore = create<AppState>((set, get) => ({
   layout: emptyLayout,
   loading: false,
   error: null,
+  epicLabels: [],
+  waveLabels: [],
 
   setCredentials: (token, owner, repo) => {
     localStorage.setItem('gh_token', token);
     localStorage.setItem('gh_owner', owner);
     localStorage.setItem('gh_repo', repo);
-    set({ token, owner, repo, issues: [], layout: emptyLayout, error: null });
+    set({ token, owner, repo, issues: [], layout: emptyLayout, error: null, epicLabels: [], waveLabels: [] });
   },
 
   reset: () => {
     localStorage.removeItem('gh_token');
     localStorage.removeItem('gh_owner');
     localStorage.removeItem('gh_repo');
-    set({ token: '', owner: '', repo: '', issues: [], layout: emptyLayout, error: null });
+    set({ token: '', owner: '', repo: '', issues: [], layout: emptyLayout, error: null, epicLabels: [], waveLabels: [] });
+  },
+
+  fetchLabels: async () => {
+    const { token, owner, repo } = get();
+    if (!token || !owner || !repo) return;
+    const octokit = new Octokit({ auth: token });
+    const allLabels: string[] = [];
+    let page = 1;
+    while (true) {
+      const { data } = await octokit.rest.issues.listLabelsForRepo({ owner, repo, per_page: 100, page });
+      if (data.length === 0) break;
+      allLabels.push(...data.map((l) => l.name));
+      if (data.length < 100) break;
+      page++;
+    }
+    set({
+      epicLabels: allLabels.filter((n) => n.startsWith('e_')).map((n) => n.slice(2)),
+      waveLabels: allLabels.filter((n) => n.startsWith('w_')).map((n) => n.slice(2)),
+    });
+  },
+
+  addEpicLabel: async (name) => {
+    const { token, owner, repo, epicLabels } = get();
+    const octokit = new Octokit({ auth: token });
+    await ensureLabel(octokit, owner, repo, `e_${name}`, '0075ca');
+    set({ epicLabels: [...epicLabels, name] });
+  },
+
+  addWaveLabel: async (name) => {
+    const { token, owner, repo, waveLabels } = get();
+    const octokit = new Octokit({ auth: token });
+    await ensureLabel(octokit, owner, repo, `w_${name}`, '7057ff');
+    set({ waveLabels: [...waveLabels, name] });
   },
 
   fetchIssues: async () => {
