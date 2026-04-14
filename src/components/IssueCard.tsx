@@ -73,7 +73,7 @@ export default function IssueCard({ issue, hideLabels }: Props) {
         ref={cardRef}
         onMouseEnter={handleCardEnter}
         onMouseLeave={handleCardLeave}
-        className={`relative group bg-white rounded-lg border px-2 py-1.5 text-sm select-none transition-shadow ${
+        className={`relative group bg-white rounded-lg border px-2 py-1.5 text-sm select-none transition-shadow cursor-pointer ${
           busy ? 'opacity-40 pointer-events-none' :
           issue.state === 'closed' ? 'opacity-60 border-gray-200 hover:border-gray-300 hover:shadow-sm' :
           'border-gray-200 hover:border-gray-300 hover:shadow-sm'
