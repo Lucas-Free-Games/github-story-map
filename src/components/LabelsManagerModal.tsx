@@ -95,7 +95,7 @@ function LabelSection({
 }
 
 export default function LabelsManagerModal({ onClose }: Props) {
-  const { epicLabels, waveLabels, statusLabels, addEpicLabel, addWaveLabel, addStatusLabel } = useAppStore();
+  const { waveLabels, statusLabels, addWaveLabel, addStatusLabel } = useAppStore();
 
   return (
     <div
@@ -114,16 +114,6 @@ export default function LabelsManagerModal({ onClose }: Props) {
         </div>
 
         <div className="px-6 py-5 space-y-6">
-          <LabelSection
-            title="Epics"
-            prefix="e_"
-            color="#0075ca"
-            items={epicLabels}
-            onAdd={addEpicLabel}
-          />
-
-          <div className="border-t border-gray-100" />
-
           <LabelSection
             title="Waves"
             prefix="w_"

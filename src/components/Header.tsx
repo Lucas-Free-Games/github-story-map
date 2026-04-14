@@ -5,7 +5,7 @@ import LabelsManagerModal from './LabelsManagerModal';
 import ProjectsManagerModal from './ProjectsManagerModal';
 
 export default function Header() {
-  const { owner, repo, issues, fetchIssues, reset, loading, view, setView } = useAppStore();
+  const { owner, repo, issues, fetchIssues, fetchProjects, reset, loading, view, setView } = useAppStore();
   const [showCreate, setShowCreate] = useState(false);
   const [showLabels, setShowLabels] = useState(false);
   const [showProjects, setShowProjects] = useState(false);
@@ -56,7 +56,7 @@ export default function Header() {
             onClick={() => setShowLabels(true)}
             className="text-sm text-gray-600 hover:text-gray-900 px-3 py-1.5 rounded-lg hover:bg-gray-100 transition-colors"
           >
-            Epics & Waves
+            Waves & Status
           </button>
           <button
             onClick={() => setShowProjects(true)}
@@ -65,7 +65,7 @@ export default function Header() {
             Projects
           </button>
           <button
-            onClick={fetchIssues}
+            onClick={() => { fetchIssues(); fetchProjects(); }}
             disabled={loading}
             className="text-sm text-gray-600 hover:text-gray-900 px-3 py-1.5 rounded-lg hover:bg-gray-100 disabled:opacity-40 transition-colors"
           >

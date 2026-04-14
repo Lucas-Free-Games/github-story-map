@@ -11,16 +11,15 @@ interface AppState {
   layout: StoryMapLayout;
   loading: boolean;
   error: string | null;
-  epicLabels: string[];   // values without prefix, e.g. ["Auth", "Backend"]
   waveLabels: string[];   // values without prefix, e.g. ["Q1", "Q2"]
   statusLabels: string[]; // values without prefix, e.g. ["Todo", "In Progress", "Done"]
   view: 'grid' | 'kanban';
   projects: GitHubProject[];
+  projectIssues: Record<string, number[]>; // project node_id → issue numbers
 
   setCredentials: (token: string, owner: string, repo: string) => void;
   fetchIssues: () => Promise<void>;
   fetchLabels: () => Promise<void>;
-  addEpicLabel: (name: string) => Promise<void>;
   addWaveLabel: (name: string) => Promise<void>;
   addStatusLabel: (name: string) => Promise<void>;
   setView: (view: 'grid' | 'kanban') => void;
@@ -30,13 +29,11 @@ interface AppState {
     toKey: string,
     toIndex: number,
   ) => void;
-  reorderEpics: (fromIndex: number, toIndex: number) => void;
   reset: () => void;
   createIssue: (
     title: string,
     body: string,
-    epicKey?: string,
-    epicLabel?: string,
+    projectId?: string,
     waveLabel?: string,
     statusLabel?: string,
   ) => Promise<void>;
@@ -47,6 +44,7 @@ interface AppState {
   createProject: (title: string, description: string) => Promise<void>;
   updateProject: (id: string, title: string, description: string) => Promise<void>;
   deleteProject: (id: string) => Promise<void>;
+  addIssueToProject: (issueNodeId: string, projectId: string) => Promise<void>;
 }
 
 const emptyLayout: StoryMapLayout = { epicOrder: [], storyOrder: { backlog: [] } };
@@ -68,10 +66,6 @@ async function gql<T>(
     throw new Error(`${message}${location}`);
   }
   return json.data as T;
-}
-
-function isEpic(issue: GitHubIssue) {
-  return issue.labels.some((l) => l.name.toLowerCase() === 'epic');
 }
 
 async function ensureLabel(
@@ -96,24 +90,24 @@ export const useAppStore = create<AppState>((set, get) => ({
   layout: emptyLayout,
   loading: false,
   error: null,
-  epicLabels: [],
   waveLabels: [],
   statusLabels: [],
   view: 'grid',
   projects: [],
+  projectIssues: {},
 
   setCredentials: (token, owner, repo) => {
     localStorage.setItem('gh_token', token);
     localStorage.setItem('gh_owner', owner);
     localStorage.setItem('gh_repo', repo);
-    set({ token, owner, repo, issues: [], layout: emptyLayout, error: null, epicLabels: [], waveLabels: [], statusLabels: [] });
+    set({ token, owner, repo, issues: [], layout: emptyLayout, error: null, waveLabels: [], statusLabels: [], projects: [], projectIssues: {} });
   },
 
   reset: () => {
     localStorage.removeItem('gh_token');
     localStorage.removeItem('gh_owner');
     localStorage.removeItem('gh_repo');
-    set({ token: '', owner: '', repo: '', issues: [], layout: emptyLayout, error: null, epicLabels: [], waveLabels: [], statusLabels: [] });
+    set({ token: '', owner: '', repo: '', issues: [], layout: emptyLayout, error: null, waveLabels: [], statusLabels: [], projects: [], projectIssues: {} });
   },
 
   setView: (view) => set({ view }),
@@ -132,17 +126,9 @@ export const useAppStore = create<AppState>((set, get) => ({
       page++;
     }
     set({
-      epicLabels: allLabels.filter((n) => n.startsWith('e_')).map((n) => n.slice(2)),
       waveLabels: allLabels.filter((n) => n.startsWith('w_')).map((n) => n.slice(2)),
       statusLabels: allLabels.filter((n) => n.startsWith('s_')).map((n) => n.slice(2)),
     });
-  },
-
-  addEpicLabel: async (name) => {
-    const { token, owner, repo, epicLabels } = get();
-    const octokit = new Octokit({ auth: token });
-    await ensureLabel(octokit, owner, repo, `e_${name}`, '0075ca');
-    set({ epicLabels: [...epicLabels, name] });
   },
 
   addWaveLabel: async (name) => {
@@ -217,36 +203,21 @@ export const useAppStore = create<AppState>((set, get) => ({
 
       let layout: StoryMapLayout;
       if (!savedLayout) {
-        const epics = allItems.filter(isEpic);
-        const stories = allItems.filter((i) => !isEpic(i));
         layout = {
-          epicOrder: epics.map((e) => e.number),
-          storyOrder: {
-            backlog: stories.map((i) => i.number),
-            ...Object.fromEntries(epics.map((e) => [String(e.number), []])),
-          },
+          epicOrder: [],
+          storyOrder: { backlog: allItems.map((i) => i.number) },
         };
         try { await saveLayout(owner, repo, layout); } catch { /* offline */ }
       } else {
         layout = savedLayout;
-        // Add any new issues not yet in the layout
-        const allInLayout = new Set([
-          ...layout.epicOrder,
-          ...Object.values(layout.storyOrder).flat(),
-        ]);
-
-        const newEpics = allItems.filter(isEpic).filter((i) => !allInLayout.has(i.number));
-        const newStories = allItems
-          .filter((i) => !isEpic(i))
-          .filter((i) => !allInLayout.has(i.number));
-
-        if (newEpics.length || newStories.length) {
+        const allInLayout = new Set(Object.values(layout.storyOrder).flat());
+        const newIssues = allItems.filter((i) => !allInLayout.has(i.number));
+        if (newIssues.length) {
           layout = {
-            epicOrder: [...layout.epicOrder, ...newEpics.map((e) => e.number)],
+            ...layout,
             storyOrder: {
               ...layout.storyOrder,
-              backlog: [...(layout.storyOrder.backlog ?? []), ...newStories.map((i) => i.number)],
-              ...Object.fromEntries(newEpics.map((e) => [String(e.number), []])),
+              backlog: [...(layout.storyOrder.backlog ?? []), ...newIssues.map((i) => i.number)],
             },
           };
           try { await saveLayout(owner, repo, layout); } catch { /* offline */ }
@@ -274,27 +245,11 @@ export const useAppStore = create<AppState>((set, get) => ({
     saveLayout(owner, repo, newLayout).catch(() => { /* offline */ });
   },
 
-  reorderEpics: (fromIndex, toIndex) => {
-    const { layout, owner, repo } = get();
-    const epicOrder = [...layout.epicOrder];
-    const [moved] = epicOrder.splice(fromIndex, 1);
-    epicOrder.splice(toIndex, 0, moved);
-    const newLayout = { ...layout, epicOrder };
-    set({ layout: newLayout });
-    saveLayout(owner, repo, newLayout).catch(() => { /* offline */ });
-  },
-
-  createIssue: async (title, body, epicKey, epicLabel, waveLabel, statusLabel) => {
-    const { token, owner, repo, issues, layout } = get();
+  createIssue: async (title, body, projectId, waveLabel, statusLabel) => {
+    const { token, owner, repo, issues } = get();
     const octokit = new Octokit({ auth: token });
 
-    // Ensure labels exist on the repo, then collect names to attach
     const labelNames: string[] = [];
-    if (epicLabel?.trim()) {
-      const name = `e_${epicLabel.trim()}`;
-      await ensureLabel(octokit, owner, repo, name, '0075ca');
-      labelNames.push(name);
-    }
     if (waveLabel?.trim()) {
       const name = `w_${waveLabel.trim()}`;
       await ensureLabel(octokit, owner, repo, name, '7057ff');
@@ -330,17 +285,11 @@ export const useAppStore = create<AppState>((set, get) => ({
       html_url: data.html_url,
     };
 
-    const targetKey = epicKey ?? 'backlog';
-    const newLayout: StoryMapLayout = {
-      ...layout,
-      storyOrder: {
-        ...layout.storyOrder,
-        [targetKey]: [newIssue.number, ...(layout.storyOrder[targetKey] ?? [])],
-      },
-    };
+    set({ issues: [...issues, newIssue] });
 
-    set({ issues: [...issues, newIssue], layout: newLayout });
-    saveLayout(owner, repo, newLayout).catch(() => { /* offline */ });
+    if (projectId) {
+      await get().addIssueToProject(data.node_id, projectId);
+    }
   },
 
   updateIssue: async (number, title, body) => {
@@ -400,19 +349,67 @@ export const useAppStore = create<AppState>((set, get) => ({
   fetchProjects: async () => {
     const { token, owner } = get();
     if (!token || !owner) return;
+
+    type ProjectNode = GitHubProject & {
+      items: { nodes: Array<{ content: { number: number } | null }> };
+    };
+
     const data = await gql<{
-      repositoryOwner: {
-        projectsV2?: { nodes: GitHubProject[] };
-      } | null;
+      repositoryOwner: { projectsV2?: { nodes: ProjectNode[] } } | null;
     }>(token, `
       query($login: String!) {
         repositoryOwner(login: $login) {
-          ... on User { projectsV2(first: 50) { nodes { id number title shortDescription url closed } } }
-          ... on Organization { projectsV2(first: 50) { nodes { id number title shortDescription url closed } } }
+          ... on User {
+            projectsV2(first: 50) {
+              nodes {
+                id number title shortDescription url closed
+                items(first: 100) { nodes { content { ... on Issue { number } } } }
+              }
+            }
+          }
+          ... on Organization {
+            projectsV2(first: 50) {
+              nodes {
+                id number title shortDescription url closed
+                items(first: 100) { nodes { content { ... on Issue { number } } } }
+              }
+            }
+          }
         }
       }
     `, { login: owner });
-    set({ projects: data.repositoryOwner?.projectsV2?.nodes ?? [] });
+
+    const nodes = data.repositoryOwner?.projectsV2?.nodes ?? [];
+    const projects: GitHubProject[] = nodes.map(({ items: _items, ...p }) => p);
+    const projectIssues: Record<string, number[]> = {};
+    for (const node of nodes) {
+      projectIssues[node.id] = node.items.nodes
+        .map((item) => item.content?.number)
+        .filter((n): n is number => n !== undefined);
+    }
+
+    set({ projects, projectIssues });
+  },
+
+  addIssueToProject: async (issueNodeId, projectId) => {
+    const { token, projectIssues, issues } = get();
+    await gql(token, `
+      mutation($projectId: ID!, $contentId: ID!) {
+        addProjectV2ItemById(input: { projectId: $projectId, contentId: $contentId }) {
+          item { id }
+        }
+      }
+    `, { projectId, contentId: issueNodeId });
+
+    const issue = issues.find((i) => i.node_id === issueNodeId);
+    if (issue) {
+      set({
+        projectIssues: {
+          ...projectIssues,
+          [projectId]: [issue.number, ...(projectIssues[projectId] ?? [])],
+        },
+      });
+    }
   },
 
   createProject: async (title, description) => {

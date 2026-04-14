@@ -2,18 +2,18 @@ import { useState } from 'react';
 import { useAppStore } from '../store/appStore';
 
 interface Props {
-  defaultEpicLabel?: string;
+  defaultProjectId?: string;
   defaultWaveLabel?: string;
   defaultStatusLabel?: string;
   onClose: () => void;
 }
 
-export default function CreateIssueModal({ defaultEpicLabel, defaultWaveLabel, defaultStatusLabel, onClose }: Props) {
-  const { epicLabels, waveLabels, statusLabels, createIssue } = useAppStore();
+export default function CreateIssueModal({ defaultProjectId, defaultWaveLabel, defaultStatusLabel, onClose }: Props) {
+  const { projects, waveLabels, statusLabels, createIssue } = useAppStore();
 
   const [title, setTitle] = useState('');
   const [body, setBody] = useState('');
-  const [epicLabel, setEpicLabel] = useState(defaultEpicLabel ?? '');
+  const [projectId, setProjectId] = useState(defaultProjectId ?? '');
   const [waveLabel, setWaveLabel] = useState(defaultWaveLabel ?? '');
   const [statusLabel, setStatusLabel] = useState(defaultStatusLabel ?? '');
   const [submitting, setSubmitting] = useState(false);
@@ -28,8 +28,7 @@ export default function CreateIssueModal({ defaultEpicLabel, defaultWaveLabel, d
       await createIssue(
         title.trim(),
         body.trim(),
-        undefined,
-        epicLabel || undefined,
+        projectId || undefined,
         waveLabel || undefined,
         statusLabel || undefined,
       );
@@ -39,6 +38,8 @@ export default function CreateIssueModal({ defaultEpicLabel, defaultWaveLabel, d
       setSubmitting(false);
     }
   }
+
+  const openProjects = projects.filter((p) => !p.closed);
 
   return (
     <div
@@ -83,18 +84,17 @@ export default function CreateIssueModal({ defaultEpicLabel, defaultWaveLabel, d
             />
           </div>
 
-          {/* Epic, Wave, Status label dropdowns */}
           <div className="grid grid-cols-2 gap-3">
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Epic</label>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Project</label>
               <select
-                value={epicLabel}
-                onChange={(e) => setEpicLabel(e.target.value)}
+                value={projectId}
+                onChange={(e) => setProjectId(e.target.value)}
                 className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white"
               >
                 <option value="">— none —</option>
-                {epicLabels.map((l) => (
-                  <option key={l} value={l}>{l}</option>
+                {openProjects.map((p) => (
+                  <option key={p.id} value={p.id}>{p.title}</option>
                 ))}
               </select>
             </div>

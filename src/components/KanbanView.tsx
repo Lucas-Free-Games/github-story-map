@@ -4,10 +4,6 @@ import type { GitHubIssue } from '../types';
 import IssueCard from './IssueCard';
 import CreateIssueModal from './CreateIssueModal';
 
-function isEpic(issue: GitHubIssue): boolean {
-  return issue.labels.some((l) => l.name.toLowerCase() === 'epic');
-}
-
 function getWaveLabel(issue: GitHubIssue): string | null {
   const label = issue.labels.find((l) => l.name.startsWith('w_'));
   return label ? label.name.slice(2) : null;
@@ -27,7 +23,7 @@ export default function KanbanView() {
   const { issues, waveLabels, statusLabels } = useAppStore();
   const [createCell, setCreateCell] = useState<CellKey | null>(null);
 
-  const stories = issues.filter((i) => !isEpic(i));
+  const stories = issues;
 
   // '' sentinel = "No Status" / "No Wave"
   const cols = [...statusLabels, ''];
