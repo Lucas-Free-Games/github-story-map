@@ -5,9 +5,10 @@ import EditIssueModal from './EditIssueModal';
 
 interface Props {
   issue: GitHubIssue;
+  hideLabels?: boolean;
 }
 
-export default function IssueCard({ issue }: Props) {
+export default function IssueCard({ issue, hideLabels }: Props) {
   const { closeIssue, deleteIssue } = useAppStore();
   const [showEdit, setShowEdit] = useState(false);
   const [busy, setBusy] = useState(false);
@@ -99,7 +100,7 @@ export default function IssueCard({ issue }: Props) {
           </a>
         </div>
 
-        {issue.labels.length > 0 && (
+        {!hideLabels && issue.labels.length > 0 && (
           <div className="flex flex-wrap gap-1 mb-1.5">
             {issue.labels.map((label) => (
               <span
