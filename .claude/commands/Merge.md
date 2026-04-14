@@ -54,7 +54,14 @@ If the state is still `OPEN`, close it explicitly:
 gh issue close <number> --repo Lucas-Free-Games/github-story-map --comment "Closed via squash-merge of PR #<pr-number>."
 ```
 
-### Step 5 — Report
+### Step 5 — Switch to master and pull
+Run:
+```
+git checkout master && git pull
+```
+This leaves the local repo on master, up to date with the squash commit.
+
+### Step 6 — Report
 Print a short summary:
 - PR that was merged and its URL.
 - Squash commit SHA (from `gh pr view` after merge).
