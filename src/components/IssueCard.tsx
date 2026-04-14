@@ -26,11 +26,10 @@ export default function IssueCard({ issue, hideLabels }: Props) {
 
   const statusLabel = issue.labels.find(l => l.name.startsWith('s_'));
   const statusName = statusLabel ? statusLabel.name.slice(2) : null;
-  const statusColor = statusLabel?.color ?? null;
 
-  const badgeStyle: React.CSSProperties = statusColor
-    ? { backgroundColor: `#${statusColor}28`, color: `#${statusColor}`, border: `1px solid #${statusColor}50` }
-    : { backgroundColor: '#f3f4f6', color: '#6b7280', border: '1px solid #e5e7eb' };
+  const badgeStyle: React.CSSProperties = issue.state === 'open'
+    ? { backgroundColor: '#eff6ff', color: '#2563eb', border: '1px solid #bfdbfe' }
+    : { backgroundColor: '#f0fdf4', color: '#16a34a', border: '1px solid #bbf7d0' };
 
   function handleCardEnter() {
     timerRef.current = setTimeout(() => {
