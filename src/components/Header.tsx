@@ -53,7 +53,7 @@ export default function Header() {
             onClick={toggleShowClosedIssues}
             className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg border text-sm transition-colors mr-2 ${
               showClosedIssues
-                ? 'bg-purple-50 text-purple-700 border-purple-200 hover:bg-purple-100'
+                ? 'bg-green-50 text-green-700 border-green-200 hover:bg-green-100'
                 : 'text-gray-600 border-gray-200 hover:bg-gray-100'
             }`}
           >
