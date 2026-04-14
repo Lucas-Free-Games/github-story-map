@@ -30,7 +30,8 @@ Provide a bulleted list of specific, verifiable conditions. Use **Markdown Bold*
 2. **Identify Target Issues**: Iterate through all open issues in the target repository.
 2. **Analysis**: For each issue:
     - Read the title and any existing body.
-    - Infer the intended functionality based on the codebase (referencing styles in `IssueCard.tsx` or logic in `appStore.ts`).
+    - If the issue already has a non-trivial description, use it as the authoritative source of intent — preserve its meaning, terminology, and acceptance criteria. Rewrite only the structure and wording to match the standard format.
+    - If the body is sparse or missing, infer the intended functionality from the title and the codebase (referencing styles in `IssueCard.tsx` or logic in `appStore.ts`).
 3. **Drafting**: Apply the three-part structure described above.
 4. **Formatting**: Write the description directly in Markdown (bold, bullet lists, headings) — do **not** wrap it in a code block. The output is intended to be passed directly to `gh issue edit --body`.
 5. **Publishing**: For each issue, run:
