@@ -55,7 +55,7 @@ function MilestoneRow({
           type="text"
           value={title}
           onChange={(e) => setTitle(e.target.value)}
-          placeholder="Milestone title"
+          placeholder="Wave title"
           className="w-full border border-gray-300 rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-purple-500"
         />
         <input
@@ -155,7 +155,7 @@ export default function MilestonesManagerModal({ onClose }: Props) {
     >
       <div className="bg-white rounded-2xl shadow-xl w-full max-w-md flex flex-col max-h-[80vh]">
         <div className="flex items-center justify-between px-6 pt-5 pb-4 border-b border-gray-100 shrink-0">
-          <h2 className="font-semibold text-gray-900">Milestones</h2>
+          <h2 className="font-semibold text-gray-900">Waves</h2>
           <button onClick={onClose} className="text-gray-400 hover:text-gray-600 text-xl leading-none">×</button>
         </div>
 
@@ -163,7 +163,7 @@ export default function MilestonesManagerModal({ onClose }: Props) {
           {loading ? (
             <p className="text-sm text-gray-400 text-center py-6">Loading…</p>
           ) : milestones.length === 0 ? (
-            <p className="text-sm text-gray-400 text-center py-6 italic">No open milestones yet</p>
+            <p className="text-sm text-gray-400 text-center py-6 italic">No open waves yet</p>
           ) : (
             <div className="space-y-1">
               {milestones.map((m) => (
@@ -187,7 +187,7 @@ export default function MilestonesManagerModal({ onClose }: Props) {
                 value={newTitle}
                 onChange={(e) => { setNewTitle(e.target.value); setCreateError(''); }}
                 onKeyDown={(e) => e.key === 'Enter' && handleCreate()}
-                placeholder="Milestone title"
+                placeholder="Wave title"
                 className="w-full border border-gray-300 rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-purple-500"
               />
               <input
@@ -219,7 +219,7 @@ export default function MilestonesManagerModal({ onClose }: Props) {
               onClick={() => setShowCreate(true)}
               className="w-full text-sm text-gray-600 hover:text-gray-900 px-3 py-2 rounded-lg hover:bg-gray-100 transition-colors text-left"
             >
-              + New Milestone
+              + New Wave
             </button>
           )}
         </div>

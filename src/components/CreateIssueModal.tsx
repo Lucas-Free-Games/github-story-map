@@ -100,7 +100,7 @@ export default function CreateIssueModal({ defaultProjectId, defaultMilestoneNum
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Milestone</label>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Wave</label>
               <select
                 value={milestoneNumber}
                 onChange={(e) => setMilestoneNumber(e.target.value)}

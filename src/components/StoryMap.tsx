@@ -191,7 +191,7 @@ export default function StoryMap() {
                   {/* "No Milestone" row — always last, not draggable */}
                   <tr key="no-milestone">
                     <th className="sticky left-0 z-10 bg-purple-50 border border-gray-200 px-3 py-2 text-xs font-semibold text-purple-900 text-right whitespace-nowrap align-top pt-3">
-                      <span className="text-purple-400 font-normal italic">No Milestone</span>
+                      <span className="text-purple-400 font-normal italic">No Wave</span>
                     </th>
                     {cols.map((project) => {
                       const items = cellIssues(project.id, null);
