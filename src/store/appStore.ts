@@ -14,11 +14,13 @@ interface AppState {
   milestones: GitHubMilestone[];
   statusLabels: string[]; // values without prefix, e.g. ["Todo", "In Progress", "Done"]
   view: 'grid' | 'kanban';
+  showClosedIssues: boolean;
   projects: GitHubProject[];
   projectIssues: Record<string, number[]>; // project node_id → issue numbers
 
   setCredentials: (token: string, owner: string, repo: string) => void;
   fetchIssues: () => Promise<void>;
+  toggleShowClosedIssues: () => void;
   fetchLabels: () => Promise<void>;
   fetchMilestones: () => Promise<void>;
   createMilestone: (title: string, description: string) => Promise<void>;
@@ -98,6 +100,7 @@ export const useAppStore = create<AppState>((set, get) => ({
   milestones: [],
   statusLabels: [],
   view: 'grid',
+  showClosedIssues: false,
   projects: [],
   projectIssues: {},
 
@@ -116,6 +119,8 @@ export const useAppStore = create<AppState>((set, get) => ({
   },
 
   setView: (view) => set({ view }),
+
+  toggleShowClosedIssues: () => set((state) => ({ showClosedIssues: !state.showClosedIssues })),
 
   fetchLabels: async () => {
     const { token, owner, repo } = get();
@@ -212,7 +217,7 @@ export const useAppStore = create<AppState>((set, get) => ({
         const { data } = await octokit.rest.issues.listForRepo({
           owner,
           repo,
-          state: 'open',
+          state: 'all',
           per_page: 100,
           page,
         });

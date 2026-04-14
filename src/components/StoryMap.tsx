@@ -34,15 +34,17 @@ interface CellKey {
 }
 
 export default function StoryMap() {
-  const { issues, projects, projectIssues, milestones, layout, reorderProjects, reorderMilestones } = useAppStore();
+  const { issues, projects, projectIssues, milestones, layout, reorderProjects, reorderMilestones, showClosedIssues } = useAppStore();
   const [createCell, setCreateCell] = useState<CellKey | null>(null);
 
   const cols = sortedProjects(projects, layout.epicOrder);
   const orderedMilestones = sortedMilestones(milestones, layout.milestoneOrder);
 
+  const visibleIssues = showClosedIssues ? issues : issues.filter((i) => i.state === 'open');
+
   function cellIssues(projectId: string, milestoneNumber: number | null): GitHubIssue[] {
     const inProject = new Set(projectIssues[projectId] ?? []);
-    return issues.filter((issue) => {
+    return visibleIssues.filter((issue) => {
       const mMatch = milestoneNumber === null
         ? issue.milestone === null
         : issue.milestone?.number === milestoneNumber;
@@ -53,7 +55,7 @@ export default function StoryMap() {
   function noProjectCellIssues(milestoneNumber: number | null): GitHubIssue[] {
     const allProjectIssueNumbers = new Set<number>();
     Object.values(projectIssues).forEach((nums) => nums.forEach((n) => allProjectIssueNumbers.add(n)));
-    return issues.filter((issue) => {
+    return visibleIssues.filter((issue) => {
       const mMatch = milestoneNumber === null
         ? issue.milestone === null
         : issue.milestone?.number === milestoneNumber;

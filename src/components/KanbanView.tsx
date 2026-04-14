@@ -26,7 +26,7 @@ function sortedMilestones(milestones: GitHubMilestone[], milestoneOrder: number[
 }
 
 export default function KanbanView() {
-  const { issues, milestones, statusLabels, layout } = useAppStore();
+  const { issues, milestones, statusLabels, layout, showClosedIssues } = useAppStore();
   const [createCell, setCreateCell] = useState<CellKey | null>(null);
 
   // null sentinel = "No Milestone" swimlane — always last
@@ -34,8 +34,10 @@ export default function KanbanView() {
   // '' sentinel = "No Status" column
   const cols = [...statusLabels, ''];
 
+  const visibleIssues = showClosedIssues ? issues : issues.filter((i) => i.state === 'open');
+
   function cellIssues(milestoneNumber: number | null, status: string): GitHubIssue[] {
-    return issues.filter((issue) => {
+    return visibleIssues.filter((issue) => {
       const mMatch = milestoneNumber === null
         ? issue.milestone === null
         : issue.milestone?.number === milestoneNumber;

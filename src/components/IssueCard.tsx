@@ -40,8 +40,10 @@ export default function IssueCard({ issue, hideLabels, showStatus }: Props) {
   return (
     <>
       <div
-        className={`group bg-white rounded-lg border p-3 text-sm select-none transition-shadow border-gray-200 hover:border-gray-300 hover:shadow-sm ${
-          busy ? 'opacity-40 pointer-events-none' : ''
+        className={`group bg-white rounded-lg border p-3 text-sm select-none transition-shadow ${
+          busy ? 'opacity-40 pointer-events-none' :
+          issue.state === 'closed' ? 'opacity-60 border-gray-200 hover:border-gray-300 hover:shadow-sm' :
+          'border-gray-200 hover:border-gray-300 hover:shadow-sm'
         }`}
       >
         <div className="flex items-start justify-between gap-2 mb-1.5">
