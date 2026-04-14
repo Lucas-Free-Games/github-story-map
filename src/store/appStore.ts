@@ -34,6 +34,8 @@ interface AppState {
     epicLabel?: string,
     waveLabel?: string,
   ) => Promise<void>;
+  updateIssue: (number: number, title: string, body: string) => Promise<void>;
+  closeIssue: (number: number) => Promise<void>;
 }
 
 const emptyLayout: StoryMapLayout = { epicOrder: [], storyOrder: { backlog: [] } };
@@ -288,6 +290,34 @@ export const useAppStore = create<AppState>((set, get) => ({
     };
 
     set({ issues: [...issues, newIssue], layout: newLayout });
+    saveLayout(owner, repo, newLayout).catch(() => { /* offline */ });
+  },
+
+  updateIssue: async (number, title, body) => {
+    const { token, owner, repo, issues } = get();
+    const octokit = new Octokit({ auth: token });
+    const { data } = await octokit.rest.issues.update({ owner, repo, issue_number: number, title, body });
+    set({
+      issues: issues.map((i) =>
+        i.number === number ? { ...i, title: data.title, body: data.body ?? null } : i,
+      ),
+    });
+  },
+
+  closeIssue: async (number) => {
+    const { token, owner, repo, issues, layout } = get();
+    const octokit = new Octokit({ auth: token });
+    await octokit.rest.issues.update({ owner, repo, issue_number: number, state: 'closed' });
+
+    const newStoryOrder = Object.fromEntries(
+      Object.entries(layout.storyOrder).map(([key, nums]) => [key, nums.filter((n) => n !== number)]),
+    );
+    const newLayout: StoryMapLayout = {
+      epicOrder: layout.epicOrder.filter((n) => n !== number),
+      storyOrder: newStoryOrder,
+    };
+
+    set({ issues: issues.filter((i) => i.number !== number), layout: newLayout });
     saveLayout(owner, repo, newLayout).catch(() => { /* offline */ });
   },
 }));
