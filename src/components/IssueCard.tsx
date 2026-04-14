@@ -1,7 +1,13 @@
-import { useState } from 'react';
+import { createPortal } from 'react-dom';
+import { useState, useRef } from 'react';
 import type { GitHubIssue } from '../types';
 import { useAppStore } from '../store/appStore';
 import EditIssueModal from './EditIssueModal';
+
+function truncateMiddle(text: string, max: number): string {
+  if (text.length <= max) return text;
+  return text.slice(0, max - 6) + '...' + text.slice(-3);
+}
 
 interface Props {
   issue: GitHubIssue;
@@ -9,20 +15,47 @@ interface Props {
   showStatus?: boolean;
 }
 
-export default function IssueCard({ issue, hideLabels, showStatus }: Props) {
+export default function IssueCard({ issue }: Props) {
   const { closeIssue, deleteIssue } = useAppStore();
   const [showEdit, setShowEdit] = useState(false);
   const [busy, setBusy] = useState(false);
+  const [hovered, setHovered] = useState(false);
+  const [showBadgeTip, setShowBadgeTip] = useState(false);
+  const [calloutStyle, setCalloutStyle] = useState<React.CSSProperties | null>(null);
+  const cardRef = useRef<HTMLDivElement>(null);
+  const calloutTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const statusLabel = issue.labels.find(l => l.name.startsWith('s_'));
+  const statusName = statusLabel ? statusLabel.name.slice(2) : null;
+
+  const badgeStyle: React.CSSProperties = issue.state === 'open'
+    ? { backgroundColor: '#eff6ff', color: '#2563eb', border: '1px solid #bfdbfe' }
+    : { backgroundColor: '#f0fdf4', color: '#16a34a', border: '1px solid #bbf7d0' };
+
+  function onCardEnter() {
+    setHovered(true);
+    calloutTimerRef.current = setTimeout(() => {
+      if (!cardRef.current) return;
+      const r = cardRef.current.getBoundingClientRect();
+      const W = 280, H = 180;
+      const style: React.CSSProperties = { position: 'fixed', width: W, zIndex: 9999 };
+      style.left = r.right + 8 + W <= window.innerWidth ? r.right + 8 : r.left - W - 8;
+      style.top = r.top + H <= window.innerHeight ? r.top : r.bottom - H;
+      setCalloutStyle(style);
+    }, 400);
+  }
+
+  function onCardLeave() {
+    setHovered(false);
+    if (calloutTimerRef.current) clearTimeout(calloutTimerRef.current);
+    setCalloutStyle(null);
+  }
 
   async function handleClose(e: React.MouseEvent) {
     e.stopPropagation();
     if (!confirm(`Close issue #${issue.number}?`)) return;
     setBusy(true);
-    try {
-      await closeIssue(issue.number);
-    } catch {
-      setBusy(false);
-    }
+    try { await closeIssue(issue.number); } catch { setBusy(false); }
   }
 
   async function handleDelete(e: React.MouseEvent) {
@@ -40,34 +73,75 @@ export default function IssueCard({ issue, hideLabels, showStatus }: Props) {
   return (
     <>
       <div
-        className={`group bg-white rounded-lg border p-3 text-sm select-none transition-shadow ${
+        ref={cardRef}
+        onMouseEnter={onCardEnter}
+        onMouseLeave={onCardLeave}
+        className={`relative select-none cursor-pointer text-sm ${hovered ? 'z-20' : ''} ${
           busy ? 'opacity-40 pointer-events-none' :
-          issue.state === 'closed' ? 'opacity-60 border-gray-200 hover:border-gray-300 hover:shadow-sm' :
-          'border-gray-200 hover:border-gray-300 hover:shadow-sm'
+          issue.state === 'closed' ? 'opacity-60' : ''
         }`}
       >
-        <div className="flex items-start justify-between gap-2 mb-1.5">
-          <div className="flex items-start gap-1.5 flex-1 min-w-0">
-            <a
-              href={issue.html_url}
-              target="_blank"
-              rel="noopener noreferrer"
-              onClick={(e) => e.stopPropagation()}
-              className="shrink-0 px-1.5 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-500 border border-gray-200 tabular-nums leading-none mt-0.5 hover:bg-blue-50 hover:text-blue-600 hover:border-blue-200 transition-colors"
+        <div className={`relative bg-white rounded-lg border px-2 py-1.5 shadow-sm transition-all ${
+          hovered ? 'border-gray-300 shadow-md' : 'border-gray-200'
+        }`}>
+
+          {/* Single-line title row */}
+          <div className="flex items-center gap-1.5 min-w-0">
+
+            {/* ID badge — background reflects open/closed state; tooltip on hover */}
+            <div
+              className="relative shrink-0"
+              onMouseEnter={() => setShowBadgeTip(true)}
+              onMouseLeave={() => setShowBadgeTip(false)}
             >
-              #{issue.number}
-            </a>
-            <span className="text-gray-900 font-medium leading-snug line-clamp-2">
-              {issue.title}
+              <a
+                href={issue.html_url}
+                target="_blank"
+                rel="noopener noreferrer"
+                onClick={e => e.stopPropagation()}
+                className="block px-1.5 py-0.5 rounded-full text-xs font-medium tabular-nums leading-none transition-colors"
+                style={badgeStyle}
+              >
+                #{issue.number}
+              </a>
+
+              {showBadgeTip && (
+                <div className="absolute bottom-full left-0 mb-1.5 z-30 bg-gray-900 text-white text-xs rounded-md px-2.5 py-2 shadow-lg whitespace-nowrap min-w-max">
+                  {statusName && <div className="font-semibold mb-1">{statusName}</div>}
+                  <a
+                    href={issue.html_url}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    onClick={e => e.stopPropagation()}
+                    className="text-blue-300 hover:text-blue-200 transition-colors"
+                  >
+                    View on GitHub →
+                  </a>
+                </div>
+              )}
+            </div>
+
+            {/* Title — single line, middle-truncated */}
+            <span className="flex-1 min-w-0 overflow-hidden whitespace-nowrap text-gray-900 font-medium leading-none">
+              {truncateMiddle(issue.title, 45)}
             </span>
+
+            {/* Assignees — inline so they never add height */}
+            {issue.assignees.length > 0 && (
+              <div className="flex shrink-0 -space-x-1">
+                {issue.assignees.map((user) => (
+                  <img key={user.login} src={user.avatar_url} alt={user.login} title={user.login} className="w-4 h-4 rounded-full ring-1 ring-white" />
+                ))}
+              </div>
+            )}
           </div>
 
-          {/* Actions — visible on hover */}
-          <div className="flex items-center gap-1 shrink-0 opacity-0 group-hover:opacity-100 transition-opacity">
+          {/* Action buttons — absolute overlay on the right, visible on hover */}
+          <div className={`absolute right-1.5 inset-y-0 flex items-center gap-1 transition-opacity ${hovered ? 'opacity-100' : 'opacity-0 pointer-events-none'}`}>
             <button
-              onClick={(e) => { e.stopPropagation(); setShowEdit(true); }}
+              onClick={e => { e.stopPropagation(); setShowEdit(true); }}
               title="Edit issue"
-              className="text-gray-400 hover:text-blue-500 p-0.5 rounded transition-colors"
+              className="text-blue-500 p-1 rounded-md border border-blue-200 bg-blue-50 hover:bg-blue-100 transition-colors"
             >
               <svg xmlns="http://www.w3.org/2000/svg" className="w-3.5 h-3.5" viewBox="0 0 20 20" fill="currentColor">
                 <path d="M13.586 3.586a2 2 0 112.828 2.828l-.793.793-2.828-2.828.793-.793zM11.379 5.793L3 14.172V17h2.828l8.38-8.379-2.83-2.828z" />
@@ -76,7 +150,7 @@ export default function IssueCard({ issue, hideLabels, showStatus }: Props) {
             <button
               onClick={handleClose}
               title="Close issue"
-              className="text-gray-400 hover:text-orange-500 p-0.5 rounded transition-colors"
+              className="text-green-600 p-1 rounded-md border border-green-200 bg-green-50 hover:bg-green-100 transition-colors"
             >
               <svg xmlns="http://www.w3.org/2000/svg" className="w-3.5 h-3.5" viewBox="0 0 20 20" fill="currentColor">
                 <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
@@ -85,63 +159,34 @@ export default function IssueCard({ issue, hideLabels, showStatus }: Props) {
             <button
               onClick={handleDelete}
               title="Delete issue permanently"
-              className="text-gray-400 hover:text-red-500 p-0.5 rounded transition-colors"
+              className="text-red-500 p-1 rounded-md border border-red-200 bg-red-50 hover:bg-red-100 transition-colors"
             >
               <svg xmlns="http://www.w3.org/2000/svg" className="w-3.5 h-3.5" viewBox="0 0 20 20" fill="currentColor">
                 <path fillRule="evenodd" d="M9 2a1 1 0 00-.894.553L7.382 4H4a1 1 0 000 2v10a2 2 0 002 2h8a2 2 0 002-2V6a1 1 0 100-2h-3.382l-.724-1.447A1 1 0 0011 2H9zM7 8a1 1 0 012 0v6a1 1 0 11-2 0V8zm5-1a1 1 0 00-1 1v6a1 1 0 102 0V8a1 1 0 00-1-1z" clipRule="evenodd" />
               </svg>
             </button>
           </div>
+
         </div>
-
-        {showStatus && (
-          <div className="mb-1.5">
-            {issue.state === 'open' ? (
-              <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full text-xs font-medium bg-blue-50 text-blue-700 border border-blue-200">
-                <span className="w-1.5 h-1.5 rounded-full bg-blue-500 shrink-0" />
-                Open
-              </span>
-            ) : (
-              <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full text-xs font-medium bg-green-50 text-green-700 border border-green-200">
-                <span className="w-1.5 h-1.5 rounded-full bg-green-500 shrink-0" />
-                Closed
-              </span>
-            )}
-          </div>
-        )}
-
-        {!hideLabels && issue.labels.length > 0 && (
-          <div className="flex flex-wrap gap-1 mb-1.5">
-            {issue.labels.map((label) => (
-              <span
-                key={label.id || label.name}
-                className="px-1.5 py-0.5 rounded text-xs font-medium"
-                style={{
-                  backgroundColor: `#${label.color}28`,
-                  color: `#${label.color}`,
-                  border: `1px solid #${label.color}50`,
-                }}
-              >
-                {label.name}
-              </span>
-            ))}
-          </div>
-        )}
-
-        {issue.assignees.length > 0 && (
-          <div className="flex gap-1 mt-1">
-            {issue.assignees.map((user) => (
-              <img
-                key={user.login}
-                src={user.avatar_url}
-                alt={user.login}
-                title={user.login}
-                className="w-5 h-5 rounded-full"
-              />
-            ))}
-          </div>
-        )}
       </div>
+
+      {/* Description callout — rendered into body to escape any stacking context */}
+      {calloutStyle && createPortal(
+        <div
+          style={calloutStyle}
+          className="pointer-events-none bg-white border border-gray-200 rounded-lg shadow-xl p-3"
+        >
+          <div className="font-semibold text-gray-900 text-xs mb-1.5">{issue.title}</div>
+          {issue.body ? (
+            <div className="text-gray-500 text-xs leading-relaxed line-clamp-6 whitespace-pre-wrap break-words">
+              {issue.body}
+            </div>
+          ) : (
+            <div className="text-gray-400 text-xs italic">No description.</div>
+          )}
+        </div>,
+        document.body
+      )}
 
       {showEdit && <EditIssueModal issue={issue} onClose={() => setShowEdit(false)} />}
     </>
