@@ -45,6 +45,7 @@ interface AppState {
   updateProject: (id: string, title: string, description: string) => Promise<void>;
   deleteProject: (id: string) => Promise<void>;
   addIssueToProject: (issueNodeId: string, projectId: string) => Promise<void>;
+  reorderProjects: (fromIndex: number, toIndex: number) => void;
 }
 
 const emptyLayout: StoryMapLayout = { epicOrder: [], storyOrder: { backlog: [] } };
@@ -347,7 +348,7 @@ export const useAppStore = create<AppState>((set, get) => ({
   },
 
   fetchProjects: async () => {
-    const { token, owner } = get();
+    const { token, owner, repo, layout } = get();
     if (!token || !owner) return;
 
     type ProjectNode = GitHubProject & {
@@ -388,7 +389,21 @@ export const useAppStore = create<AppState>((set, get) => ({
         .filter((n): n is number => n !== undefined);
     }
 
-    set({ projects, projectIssues });
+    // Sync epicOrder with current project numbers (preserving saved order, appending new)
+    const projectNumbers = projects.map((p) => p.number);
+    const preserved = layout.epicOrder.filter((n) => projectNumbers.includes(n));
+    const added = projectNumbers.filter((n) => !preserved.includes(n));
+    const newEpicOrder = [...preserved, ...added];
+    const orderChanged = newEpicOrder.some((n, i) => n !== layout.epicOrder[i]) ||
+      newEpicOrder.length !== layout.epicOrder.length;
+
+    if (orderChanged) {
+      const newLayout = { ...layout, epicOrder: newEpicOrder };
+      set({ projects, projectIssues, layout: newLayout });
+      saveLayout(owner, repo, newLayout).catch(() => { /* offline */ });
+    } else {
+      set({ projects, projectIssues });
+    }
   },
 
   addIssueToProject: async (issueNodeId, projectId) => {
@@ -489,5 +504,15 @@ export const useAppStore = create<AppState>((set, get) => ({
       }
     `, { projectId: id });
     set({ projects: projects.filter((p) => p.id !== id) });
+  },
+
+  reorderProjects: (fromIndex, toIndex) => {
+    const { layout, owner, repo } = get();
+    const epicOrder = [...layout.epicOrder];
+    const [moved] = epicOrder.splice(fromIndex, 1);
+    epicOrder.splice(toIndex, 0, moved);
+    const newLayout = { ...layout, epicOrder };
+    set({ layout: newLayout });
+    saveLayout(owner, repo, newLayout).catch(() => { /* offline */ });
   },
 }));
