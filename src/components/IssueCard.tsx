@@ -45,9 +45,20 @@ export default function IssueCard({ issue, hideLabels, showStatus }: Props) {
         }`}
       >
         <div className="flex items-start justify-between gap-2 mb-1.5">
-          <span className="text-gray-900 font-medium leading-snug line-clamp-2 flex-1">
-            {issue.title}
-          </span>
+          <div className="flex items-start gap-1.5 flex-1 min-w-0">
+            <a
+              href={issue.html_url}
+              target="_blank"
+              rel="noopener noreferrer"
+              onClick={(e) => e.stopPropagation()}
+              className="shrink-0 px-1.5 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-500 border border-gray-200 tabular-nums leading-none mt-0.5 hover:bg-blue-50 hover:text-blue-600 hover:border-blue-200 transition-colors"
+            >
+              #{issue.number}
+            </a>
+            <span className="text-gray-900 font-medium leading-snug line-clamp-2">
+              {issue.title}
+            </span>
+          </div>
 
           {/* Actions — visible on hover */}
           <div className="flex items-center gap-1 shrink-0 opacity-0 group-hover:opacity-100 transition-opacity">
@@ -78,27 +89,7 @@ export default function IssueCard({ issue, hideLabels, showStatus }: Props) {
                 <path fillRule="evenodd" d="M9 2a1 1 0 00-.894.553L7.382 4H4a1 1 0 000 2v10a2 2 0 002 2h8a2 2 0 002-2V6a1 1 0 100-2h-3.382l-.724-1.447A1 1 0 0011 2H9zM7 8a1 1 0 012 0v6a1 1 0 11-2 0V8zm5-1a1 1 0 00-1 1v6a1 1 0 102 0V8a1 1 0 00-1-1z" clipRule="evenodd" />
               </svg>
             </button>
-            <a
-              href={issue.html_url}
-              target="_blank"
-              rel="noopener noreferrer"
-              onClick={(e) => e.stopPropagation()}
-              className="text-gray-400 hover:text-blue-500 text-xs tabular-nums"
-            >
-              #{issue.number}
-            </a>
           </div>
-
-          {/* Issue number — visible when not hovering */}
-          <a
-            href={issue.html_url}
-            target="_blank"
-            rel="noopener noreferrer"
-            onClick={(e) => e.stopPropagation()}
-            className="text-gray-400 hover:text-blue-500 shrink-0 text-xs tabular-nums group-hover:hidden"
-          >
-            #{issue.number}
-          </a>
         </div>
 
         {showStatus && (
