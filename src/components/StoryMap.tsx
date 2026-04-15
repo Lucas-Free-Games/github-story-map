@@ -91,7 +91,7 @@ function CardCell({ droppableId, items, onAdd, addColor = 'blue' }: CardCellProp
             className={`mt-auto w-full text-xs text-gray-400 ${hoverCls} rounded-lg py-1.5 border border-dashed border-gray-200 transition-colors flex items-center justify-center gap-1`}
           >
             <span className="text-sm font-medium leading-none">+</span>
-            Add issue
+            New Issue
           </button>
         </div>
       )}

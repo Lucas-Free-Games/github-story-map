@@ -149,7 +149,7 @@ export default function KanbanView() {
                                   className="mt-auto w-full text-xs text-gray-400 hover:text-green-600 hover:bg-green-50 rounded-lg py-1.5 border border-dashed border-gray-200 hover:border-green-300 transition-colors flex items-center justify-center gap-1"
                                 >
                                   <span className="text-sm font-medium leading-none">+</span>
-                                  Add issue
+                                  New Issue
                                 </button>
                               </div>
                             )}
