@@ -273,10 +273,7 @@ export default function StoryMap() {
                       </Draggable>
                     ))}
                     {provided.placeholder}
-                    <th className="sticky top-0 z-20 bg-gray-50 border border-gray-200 px-4 py-3 text-sm font-semibold text-gray-500 text-center w-72 min-w-72 whitespace-nowrap">
-                      No Epic
-                    </th>
-                    <th className="sticky top-0 z-20 bg-white border border-gray-200 px-2 py-2 w-44 min-w-44">
+                    <th className="sticky top-0 z-20 bg-gray-50 border border-gray-200 px-2 py-2 text-sm font-semibold text-gray-500 text-center w-72 min-w-72">
                       {addingEpic ? (
                         <form onSubmit={handleCreateEpic} className="flex items-center gap-1">
                           <input
@@ -290,13 +287,15 @@ export default function StoryMap() {
                           <button type="button" onClick={() => { setAddingEpic(false); setNewEpicTitle(''); }} className="text-gray-400 hover:text-gray-600 px-1 text-base leading-none">✕</button>
                         </form>
                       ) : (
-                        <button
-                          onClick={() => setAddingEpic(true)}
-                          className="w-full text-xs text-blue-400 hover:text-blue-600 hover:bg-blue-50 rounded py-1 px-2 transition-colors flex items-center gap-1"
-                        >
-                          <span className="text-sm font-medium leading-none">+</span>
-                          New Epic
-                        </button>
+                        <div className="flex items-center justify-between px-2">
+                          <span className="text-gray-500">No Epic</span>
+                          <button
+                            onClick={() => setAddingEpic(true)}
+                            className="text-xs text-blue-400 hover:text-blue-600 hover:bg-blue-100 rounded px-1.5 py-0.5 transition-colors"
+                          >
+                            + New Epic
+                          </button>
+                        </div>
                       )}
                     </th>
                   </tr>
@@ -351,8 +350,30 @@ export default function StoryMap() {
 
                   {/* "No Wave" row — always last, not draggable */}
                   <tr key="no-wave">
-                    <th className="sticky left-0 z-10 bg-purple-50 border border-gray-200 px-3 py-2 text-xs font-semibold text-purple-900 text-right whitespace-nowrap align-top pt-3">
-                      <span className="text-purple-400 font-normal italic">No Wave</span>
+                    <th className="sticky left-0 z-10 bg-purple-50 border border-gray-200 px-2 py-2 text-xs font-semibold text-purple-900 text-right whitespace-nowrap align-top pt-3">
+                      {addingWave ? (
+                        <form onSubmit={handleCreateWave} className="flex items-center gap-1">
+                          <input
+                            autoFocus
+                            value={newWaveTitle}
+                            onChange={(e) => setNewWaveTitle(e.target.value)}
+                            placeholder="Wave name…"
+                            className="flex-1 min-w-0 border border-purple-300 rounded px-2 py-1 text-xs focus:outline-none focus:ring-1 focus:ring-purple-400"
+                          />
+                          <button type="submit" disabled={waveSaving || !newWaveTitle.trim()} className="text-purple-600 hover:text-purple-800 disabled:opacity-40 px-1 text-base leading-none">✓</button>
+                          <button type="button" onClick={() => { setAddingWave(false); setNewWaveTitle(''); }} className="text-gray-400 hover:text-gray-600 px-1 text-base leading-none">✕</button>
+                        </form>
+                      ) : (
+                        <div className="flex items-center justify-end gap-2">
+                          <span className="text-purple-400 font-normal italic">No Wave</span>
+                          <button
+                            onClick={() => setAddingWave(true)}
+                            className="text-xs text-purple-400 hover:text-purple-600 hover:bg-purple-100 rounded px-1.5 py-0.5 transition-colors not-italic font-normal"
+                          >
+                            + New Wave
+                          </button>
+                        </div>
+                      )}
                     </th>
                     {cols.map((project) => (
                       <td key={project.id} className="border border-gray-200 align-top p-2 bg-white w-72 min-w-72">
@@ -372,35 +393,6 @@ export default function StoryMap() {
                         addColor="gray"
                       />
                     </td>
-                    <td className="border-0" />
-                  </tr>
-
-                  {/* "+ New Wave" row */}
-                  <tr key="add-wave">
-                    <th className="sticky left-0 z-10 bg-white border border-gray-200 px-2 py-2">
-                      {addingWave ? (
-                        <form onSubmit={handleCreateWave} className="flex items-center gap-1">
-                          <input
-                            autoFocus
-                            value={newWaveTitle}
-                            onChange={(e) => setNewWaveTitle(e.target.value)}
-                            placeholder="Wave name…"
-                            className="flex-1 min-w-0 border border-purple-300 rounded px-2 py-1 text-xs focus:outline-none focus:ring-1 focus:ring-purple-400"
-                          />
-                          <button type="submit" disabled={waveSaving || !newWaveTitle.trim()} className="text-purple-600 hover:text-purple-800 disabled:opacity-40 px-1 text-base leading-none">✓</button>
-                          <button type="button" onClick={() => { setAddingWave(false); setNewWaveTitle(''); }} className="text-gray-400 hover:text-gray-600 px-1 text-base leading-none">✕</button>
-                        </form>
-                      ) : (
-                        <button
-                          onClick={() => setAddingWave(true)}
-                          className="w-full text-xs text-purple-400 hover:text-purple-600 hover:bg-purple-50 rounded py-1 px-2 transition-colors flex items-center justify-end gap-1"
-                        >
-                          <span className="text-sm font-medium leading-none">+</span>
-                          New Wave
-                        </button>
-                      )}
-                    </th>
-                    <td colSpan={cols.length + 2} className="border border-gray-100 bg-white" />
                   </tr>
                 </tbody>
               )}
