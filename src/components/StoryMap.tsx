@@ -103,9 +103,53 @@ export default function StoryMap() {
   const {
     issues, projects, projectIssues, milestones, layout,
     reorderProjects, reorderMilestones, moveIssueInGrid, showClosedIssues,
+    createProject, createMilestone,
   } = useAppStore();
   const [createCell, setCreateCell] = useState<CellKey | null>(null);
   const [moveError, setMoveError] = useState<string | null>(null);
+
+  const [addingEpic, setAddingEpic] = useState(false);
+  const [newEpicTitle, setNewEpicTitle] = useState('');
+  const [epicSaving, setEpicSaving] = useState(false);
+
+  const [addingWave, setAddingWave] = useState(false);
+  const [newWaveTitle, setNewWaveTitle] = useState('');
+  const [waveSaving, setWaveSaving] = useState(false);
+
+  function showError(msg: string) {
+    setMoveError(msg);
+    setTimeout(() => setMoveError(null), 4000);
+  }
+
+  async function handleCreateEpic(e: React.FormEvent) {
+    e.preventDefault();
+    if (!newEpicTitle.trim()) return;
+    setEpicSaving(true);
+    try {
+      await createProject(newEpicTitle.trim(), '');
+      setNewEpicTitle('');
+      setAddingEpic(false);
+    } catch (err) {
+      showError(err instanceof Error ? err.message : 'Failed to create epic');
+    } finally {
+      setEpicSaving(false);
+    }
+  }
+
+  async function handleCreateWave(e: React.FormEvent) {
+    e.preventDefault();
+    if (!newWaveTitle.trim()) return;
+    setWaveSaving(true);
+    try {
+      await createMilestone(newWaveTitle.trim(), '');
+      setNewWaveTitle('');
+      setAddingWave(false);
+    } catch (err) {
+      showError(err instanceof Error ? err.message : 'Failed to create wave');
+    } finally {
+      setWaveSaving(false);
+    }
+  }
 
   const cols = sortedProjects(projects, layout.epicOrder);
   const orderedMilestones = sortedMilestones(milestones, layout.milestoneOrder);
@@ -159,10 +203,43 @@ export default function StoryMap() {
 
   if (cols.length === 0) {
     return (
-      <div className="flex items-center justify-center h-full text-gray-400 text-sm">
-        No epics found. Use{' '}
-        <span className="font-mono mx-1 bg-gray-100 px-1 rounded">Epics</span>
-        {' '}to create one.
+      <div className="flex flex-col items-center justify-center h-full gap-3">
+        <p className="text-gray-400 text-sm">No epics yet.</p>
+        {addingEpic ? (
+          <form onSubmit={handleCreateEpic} className="flex items-center gap-2">
+            <input
+              autoFocus
+              value={newEpicTitle}
+              onChange={(e) => setNewEpicTitle(e.target.value)}
+              placeholder="Epic name…"
+              className="border border-blue-300 rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-400"
+            />
+            <button
+              type="submit"
+              disabled={epicSaving || !newEpicTitle.trim()}
+              className="px-3 py-1.5 text-sm font-medium bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 transition-colors"
+            >
+              {epicSaving ? 'Creating…' : 'Create'}
+            </button>
+            <button
+              type="button"
+              onClick={() => { setAddingEpic(false); setNewEpicTitle(''); }}
+              className="px-3 py-1.5 text-sm text-gray-500 hover:text-gray-700 rounded-lg hover:bg-gray-100 transition-colors"
+            >
+              Cancel
+            </button>
+          </form>
+        ) : (
+          <button
+            onClick={() => setAddingEpic(true)}
+            className="text-sm text-blue-600 hover:text-blue-800 px-4 py-2 border border-blue-200 rounded-lg hover:bg-blue-50 transition-colors"
+          >
+            + New Epic
+          </button>
+        )}
+        {moveError && (
+          <p className="text-red-500 text-sm">{moveError}</p>
+        )}
       </div>
     );
   }
@@ -198,6 +275,29 @@ export default function StoryMap() {
                     {provided.placeholder}
                     <th className="sticky top-0 z-20 bg-gray-50 border border-gray-200 px-4 py-3 text-sm font-semibold text-gray-500 text-center w-72 min-w-72 whitespace-nowrap">
                       No Epic
+                    </th>
+                    <th className="sticky top-0 z-20 bg-white border border-gray-200 px-2 py-2 w-44 min-w-44">
+                      {addingEpic ? (
+                        <form onSubmit={handleCreateEpic} className="flex items-center gap-1">
+                          <input
+                            autoFocus
+                            value={newEpicTitle}
+                            onChange={(e) => setNewEpicTitle(e.target.value)}
+                            placeholder="Epic name…"
+                            className="flex-1 min-w-0 border border-blue-300 rounded px-2 py-1 text-xs focus:outline-none focus:ring-1 focus:ring-blue-400"
+                          />
+                          <button type="submit" disabled={epicSaving || !newEpicTitle.trim()} className="text-blue-600 hover:text-blue-800 disabled:opacity-40 px-1 text-base leading-none">✓</button>
+                          <button type="button" onClick={() => { setAddingEpic(false); setNewEpicTitle(''); }} className="text-gray-400 hover:text-gray-600 px-1 text-base leading-none">✕</button>
+                        </form>
+                      ) : (
+                        <button
+                          onClick={() => setAddingEpic(true)}
+                          className="w-full text-xs text-blue-400 hover:text-blue-600 hover:bg-blue-50 rounded py-1 px-2 transition-colors flex items-center gap-1"
+                        >
+                          <span className="text-sm font-medium leading-none">+</span>
+                          New Epic
+                        </button>
+                      )}
                     </th>
                   </tr>
                 )}
@@ -272,6 +372,35 @@ export default function StoryMap() {
                         addColor="gray"
                       />
                     </td>
+                    <td className="border-0" />
+                  </tr>
+
+                  {/* "+ New Wave" row */}
+                  <tr key="add-wave">
+                    <th className="sticky left-0 z-10 bg-white border border-gray-200 px-2 py-2">
+                      {addingWave ? (
+                        <form onSubmit={handleCreateWave} className="flex items-center gap-1">
+                          <input
+                            autoFocus
+                            value={newWaveTitle}
+                            onChange={(e) => setNewWaveTitle(e.target.value)}
+                            placeholder="Wave name…"
+                            className="flex-1 min-w-0 border border-purple-300 rounded px-2 py-1 text-xs focus:outline-none focus:ring-1 focus:ring-purple-400"
+                          />
+                          <button type="submit" disabled={waveSaving || !newWaveTitle.trim()} className="text-purple-600 hover:text-purple-800 disabled:opacity-40 px-1 text-base leading-none">✓</button>
+                          <button type="button" onClick={() => { setAddingWave(false); setNewWaveTitle(''); }} className="text-gray-400 hover:text-gray-600 px-1 text-base leading-none">✕</button>
+                        </form>
+                      ) : (
+                        <button
+                          onClick={() => setAddingWave(true)}
+                          className="w-full text-xs text-purple-400 hover:text-purple-600 hover:bg-purple-50 rounded py-1 px-2 transition-colors flex items-center justify-end gap-1"
+                        >
+                          <span className="text-sm font-medium leading-none">+</span>
+                          New Wave
+                        </button>
+                      )}
+                    </th>
+                    <td colSpan={cols.length + 2} className="border border-gray-100 bg-white" />
                   </tr>
                 </tbody>
               )}
