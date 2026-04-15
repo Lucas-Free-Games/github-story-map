@@ -350,7 +350,7 @@ export default function StoryMap() {
 
                   {/* "No Wave" row — always last, not draggable */}
                   <tr key="no-wave">
-                    <th className="sticky left-0 z-10 bg-purple-50 border border-gray-200 px-2 py-2 text-xs font-semibold text-purple-900 text-right whitespace-nowrap align-top pt-3">
+                    <th className="sticky left-0 z-10 bg-gray-50 border border-gray-200 px-2 py-2 text-xs font-semibold text-gray-500 text-right whitespace-nowrap align-top pt-3">
                       {addingWave ? (
                         <form onSubmit={handleCreateWave} className="flex items-center gap-1">
                           <input
@@ -358,17 +358,17 @@ export default function StoryMap() {
                             value={newWaveTitle}
                             onChange={(e) => setNewWaveTitle(e.target.value)}
                             placeholder="Wave name…"
-                            className="flex-1 min-w-0 border border-purple-300 rounded px-2 py-1 text-xs focus:outline-none focus:ring-1 focus:ring-purple-400"
+                            className="flex-1 min-w-0 border border-gray-300 rounded px-2 py-1 text-xs focus:outline-none focus:ring-1 focus:ring-gray-400"
                           />
-                          <button type="submit" disabled={waveSaving || !newWaveTitle.trim()} className="text-purple-600 hover:text-purple-800 disabled:opacity-40 px-1 text-base leading-none">✓</button>
+                          <button type="submit" disabled={waveSaving || !newWaveTitle.trim()} className="text-gray-600 hover:text-gray-800 disabled:opacity-40 px-1 text-base leading-none">✓</button>
                           <button type="button" onClick={() => { setAddingWave(false); setNewWaveTitle(''); }} className="text-gray-400 hover:text-gray-600 px-1 text-base leading-none">✕</button>
                         </form>
                       ) : (
                         <div className="flex items-center justify-end gap-2">
-                          <span className="text-purple-400 font-normal italic">No Wave</span>
+                          <span className="text-gray-400 font-normal italic">No Wave</span>
                           <button
                             onClick={() => setAddingWave(true)}
-                            className="text-xs text-purple-400 hover:text-purple-600 hover:bg-purple-100 rounded px-1.5 py-0.5 transition-colors not-italic font-normal"
+                            className="text-xs text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded px-1.5 py-0.5 transition-colors not-italic font-normal"
                           >
                             + New Wave
                           </button>
