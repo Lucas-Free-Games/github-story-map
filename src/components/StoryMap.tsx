@@ -28,18 +28,87 @@ function sortedMilestones(milestones: GitHubMilestone[], milestoneOrder: number[
   });
 }
 
+// Encode/decode cell droppable IDs for the grid.
+// Format: "g:{projectId|none}:{milestoneNumber|none}"
+// Using lastIndexOf so projectId (base-64, no colons) is safely sliced.
+function cellId(projectId: string, milestoneNumber: number | null): string {
+  return `g:${projectId || 'none'}:${milestoneNumber ?? 'none'}`;
+}
+function parseCell(id: string): { projectId: string; milestoneNumber: number | null } {
+  const first = id.indexOf(':');
+  const last = id.lastIndexOf(':');
+  const projectPart = id.slice(first + 1, last);
+  const milestonePart = id.slice(last + 1);
+  return {
+    projectId: projectPart === 'none' ? '' : projectPart,
+    milestoneNumber: milestonePart === 'none' ? null : Number(milestonePart),
+  };
+}
+
 interface CellKey {
   projectId: string;
   milestoneNumber: number | null;
 }
 
+interface CardCellProps {
+  droppableId: string;
+  items: GitHubIssue[];
+  onAdd: () => void;
+  addColor?: 'blue' | 'gray';
+}
+
+function CardCell({ droppableId, items, onAdd, addColor = 'blue' }: CardCellProps) {
+  const hoverCls = addColor === 'gray'
+    ? 'hover:text-gray-600 hover:bg-gray-100 hover:border-gray-300'
+    : 'hover:text-blue-500 hover:bg-blue-50 hover:border-blue-300';
+  return (
+    <Droppable droppableId={droppableId} type="CARD">
+      {(provided, snapshot) => (
+        <div
+          ref={provided.innerRef}
+          {...provided.droppableProps}
+          className={`flex flex-col gap-2 min-h-16 rounded transition-colors ${
+            snapshot.isDraggingOver ? 'bg-blue-50/60' : ''
+          }`}
+        >
+          {items.map((issue, idx) => (
+            <Draggable key={issue.number} draggableId={`i:${issue.number}`} index={idx}>
+              {(provided, snapshot) => (
+                <div
+                  ref={provided.innerRef}
+                  {...provided.draggableProps}
+                  {...provided.dragHandleProps}
+                  className={`transition-opacity ${snapshot.isDragging ? 'opacity-75 rotate-1 shadow-lg' : ''}`}
+                >
+                  <IssueCard issue={issue} hideLabels showStatus />
+                </div>
+              )}
+            </Draggable>
+          ))}
+          {provided.placeholder}
+          <button
+            onClick={onAdd}
+            className={`mt-auto w-full text-xs text-gray-400 ${hoverCls} rounded-lg py-1.5 border border-dashed border-gray-200 transition-colors flex items-center justify-center gap-1`}
+          >
+            <span className="text-sm font-medium leading-none">+</span>
+            Add issue
+          </button>
+        </div>
+      )}
+    </Droppable>
+  );
+}
+
 export default function StoryMap() {
-  const { issues, projects, projectIssues, milestones, layout, reorderProjects, reorderMilestones, showClosedIssues } = useAppStore();
+  const {
+    issues, projects, projectIssues, milestones, layout,
+    reorderProjects, reorderMilestones, moveIssueInGrid, showClosedIssues,
+  } = useAppStore();
   const [createCell, setCreateCell] = useState<CellKey | null>(null);
+  const [moveError, setMoveError] = useState<string | null>(null);
 
   const cols = sortedProjects(projects, layout.epicOrder);
   const orderedMilestones = sortedMilestones(milestones, layout.milestoneOrder);
-
   const visibleIssues = showClosedIssues ? issues : issues.filter((i) => i.state === 'open');
 
   function cellIssues(projectId: string, milestoneNumber: number | null): GitHubIssue[] {
@@ -64,12 +133,28 @@ export default function StoryMap() {
   }
 
   function handleDragEnd(result: DropResult) {
-    if (!result.destination || result.source.index === result.destination.index) return;
-    if (result.source.droppableId === 'columns') {
-      reorderProjects(result.source.index, result.destination.index);
-    } else if (result.source.droppableId === 'rows') {
-      reorderMilestones(result.source.index, result.destination.index);
+    if (!result.destination) return;
+    const { draggableId, source, destination } = result;
+
+    if (source.droppableId === 'columns') {
+      if (source.index !== destination.index) reorderProjects(source.index, destination.index);
+      return;
     }
+    if (source.droppableId === 'rows') {
+      if (source.index !== destination.index) reorderMilestones(source.index, destination.index);
+      return;
+    }
+
+    // Issue card drop
+    if (source.droppableId === destination.droppableId && source.index === destination.index) return;
+    const issueNumber = Number(draggableId.slice(2));
+    const src = parseCell(source.droppableId);
+    const dst = parseCell(destination.droppableId);
+    moveIssueInGrid(issueNumber, src.projectId, dst.projectId, src.milestoneNumber, dst.milestoneNumber)
+      .catch((err) => {
+        setMoveError(err instanceof Error ? err.message : 'Failed to move issue');
+        setTimeout(() => setMoveError(null), 4000);
+      });
   }
 
   if (cols.length === 0) {
@@ -89,7 +174,7 @@ export default function StoryMap() {
           <table className="border-collapse">
             {/* Column headers — draggable horizontally */}
             <thead>
-              <Droppable droppableId="columns" direction="horizontal">
+              <Droppable droppableId="columns" direction="horizontal" type="COLUMN">
                 {(provided) => (
                   <tr ref={provided.innerRef} {...provided.droppableProps}>
                     <th className="sticky left-0 top-0 z-30 bg-white border border-gray-200 w-36 min-w-36" />
@@ -120,7 +205,7 @@ export default function StoryMap() {
             </thead>
 
             {/* Milestone rows — draggable vertically */}
-            <Droppable droppableId="rows">
+            <Droppable droppableId="rows" type="ROW">
               {(provided) => (
                 <tbody ref={provided.innerRef} {...provided.droppableProps}>
                   {orderedMilestones.map((milestone, index) => (
@@ -140,101 +225,53 @@ export default function StoryMap() {
                             <span className="text-purple-300 mr-1 text-xs">⠿</span>
                             {milestone.title}
                           </th>
-                          {cols.map((project) => {
-                            const items = cellIssues(project.id, milestone.number);
-                            return (
-                              <td
-                                key={project.id}
-                                className="border border-gray-200 align-top p-2 bg-white w-72 min-w-72"
-                              >
-                                <div className="flex flex-col gap-2 min-h-16">
-                                  {items.map((issue) => (
-                                    <IssueCard key={issue.number} issue={issue} hideLabels showStatus />
-                                  ))}
-                                  <button
-                                    onClick={() => setCreateCell({ projectId: project.id, milestoneNumber: milestone.number })}
-                                    className="mt-auto w-full text-xs text-gray-400 hover:text-blue-500 hover:bg-blue-50 rounded-lg py-1.5 border border-dashed border-gray-200 hover:border-blue-300 transition-colors flex items-center justify-center gap-1"
-                                  >
-                                    <span className="text-sm font-medium leading-none">+</span>
-                                    Add issue
-                                  </button>
-                                </div>
-                              </td>
-                            );
-                          })}
-                          {/* No Project cell */}
-                          {(() => {
-                            const items = noProjectCellIssues(milestone.number);
-                            return (
-                              <td className="border border-gray-200 align-top p-2 bg-gray-50/50 w-72 min-w-72">
-                                <div className="flex flex-col gap-2 min-h-16">
-                                  {items.map((issue) => (
-                                    <IssueCard key={issue.number} issue={issue} hideLabels showStatus />
-                                  ))}
-                                  <button
-                                    onClick={() => setCreateCell({ projectId: '', milestoneNumber: milestone.number })}
-                                    className="mt-auto w-full text-xs text-gray-400 hover:text-blue-500 hover:bg-blue-50 rounded-lg py-1.5 border border-dashed border-gray-200 hover:border-blue-300 transition-colors flex items-center justify-center gap-1"
-                                  >
-                                    <span className="text-sm font-medium leading-none">+</span>
-                                    Add issue
-                                  </button>
-                                </div>
-                              </td>
-                            );
-                          })()}
+                          {cols.map((project) => (
+                            <td key={project.id} className="border border-gray-200 align-top p-2 bg-white w-72 min-w-72">
+                              <CardCell
+                                droppableId={cellId(project.id, milestone.number)}
+                                items={cellIssues(project.id, milestone.number)}
+                                onAdd={() => setCreateCell({ projectId: project.id, milestoneNumber: milestone.number })}
+                              />
+                            </td>
+                          ))}
+                          {/* No Epic cell */}
+                          <td className="border border-gray-200 align-top p-2 bg-gray-50/50 w-72 min-w-72">
+                            <CardCell
+                              droppableId={cellId('', milestone.number)}
+                              items={noProjectCellIssues(milestone.number)}
+                              onAdd={() => setCreateCell({ projectId: '', milestoneNumber: milestone.number })}
+                              addColor="gray"
+                            />
+                          </td>
                         </tr>
                       )}
                     </Draggable>
                   ))}
                   {provided.placeholder}
 
-                  {/* "No Milestone" row — always last, not draggable */}
-                  <tr key="no-milestone">
+                  {/* "No Wave" row — always last, not draggable */}
+                  <tr key="no-wave">
                     <th className="sticky left-0 z-10 bg-purple-50 border border-gray-200 px-3 py-2 text-xs font-semibold text-purple-900 text-right whitespace-nowrap align-top pt-3">
                       <span className="text-purple-400 font-normal italic">No Wave</span>
                     </th>
-                    {cols.map((project) => {
-                      const items = cellIssues(project.id, null);
-                      return (
-                        <td
-                          key={project.id}
-                          className="border border-gray-200 align-top p-2 bg-white w-72 min-w-72"
-                        >
-                          <div className="flex flex-col gap-2 min-h-16">
-                            {items.map((issue) => (
-                              <IssueCard key={issue.number} issue={issue} hideLabels showStatus />
-                            ))}
-                            <button
-                              onClick={() => setCreateCell({ projectId: project.id, milestoneNumber: null })}
-                              className="mt-auto w-full text-xs text-gray-400 hover:text-blue-500 hover:bg-blue-50 rounded-lg py-1.5 border border-dashed border-gray-200 hover:border-blue-300 transition-colors flex items-center justify-center gap-1"
-                            >
-                              <span className="text-sm font-medium leading-none">+</span>
-                              Add issue
-                            </button>
-                          </div>
-                        </td>
-                      );
-                    })}
-                    {/* No Project cell — No Milestone row */}
-                    {(() => {
-                      const items = noProjectCellIssues(null);
-                      return (
-                        <td className="border border-gray-200 align-top p-2 bg-gray-50/50 w-72 min-w-72">
-                          <div className="flex flex-col gap-2 min-h-16">
-                            {items.map((issue) => (
-                              <IssueCard key={issue.number} issue={issue} hideLabels showStatus />
-                            ))}
-                            <button
-                              onClick={() => setCreateCell({ projectId: '', milestoneNumber: null })}
-                              className="mt-auto w-full text-xs text-gray-400 hover:text-blue-500 hover:bg-blue-50 rounded-lg py-1.5 border border-dashed border-gray-200 hover:border-blue-300 transition-colors flex items-center justify-center gap-1"
-                            >
-                              <span className="text-sm font-medium leading-none">+</span>
-                              Add issue
-                            </button>
-                          </div>
-                        </td>
-                      );
-                    })()}
+                    {cols.map((project) => (
+                      <td key={project.id} className="border border-gray-200 align-top p-2 bg-white w-72 min-w-72">
+                        <CardCell
+                          droppableId={cellId(project.id, null)}
+                          items={cellIssues(project.id, null)}
+                          onAdd={() => setCreateCell({ projectId: project.id, milestoneNumber: null })}
+                        />
+                      </td>
+                    ))}
+                    {/* No Epic / No Wave corner */}
+                    <td className="border border-gray-200 align-top p-2 bg-gray-50/50 w-72 min-w-72">
+                      <CardCell
+                        droppableId={cellId('', null)}
+                        items={noProjectCellIssues(null)}
+                        onAdd={() => setCreateCell({ projectId: '', milestoneNumber: null })}
+                        addColor="gray"
+                      />
+                    </td>
                   </tr>
                 </tbody>
               )}
@@ -249,6 +286,12 @@ export default function StoryMap() {
           defaultMilestoneNumber={createCell.milestoneNumber ?? undefined}
           onClose={() => setCreateCell(null)}
         />
+      )}
+
+      {moveError && (
+        <div className="fixed bottom-4 left-1/2 -translate-x-1/2 bg-red-600 text-white text-sm px-4 py-2.5 rounded-lg shadow-lg z-50">
+          {moveError}
+        </div>
       )}
     </>
   );
