@@ -53,6 +53,20 @@ interface AppState {
   removeIssueFromProject: (issueNodeId: string, projectId: string) => Promise<void>;
   reorderProjects: (fromIndex: number, toIndex: number) => void;
   reorderMilestones: (fromIndex: number, toIndex: number) => void;
+  moveIssueInGrid: (
+    issueNumber: number,
+    fromProjectId: string,
+    toProjectId: string,
+    fromMilestoneNumber: number | null,
+    toMilestoneNumber: number | null,
+  ) => Promise<void>;
+  moveIssueInKanban: (
+    issueNumber: number,
+    fromStatus: string | null,
+    toStatus: string | null,
+    fromMilestoneNumber: number | null,
+    toMilestoneNumber: number | null,
+  ) => Promise<void>;
 }
 
 const emptyLayout: StoryMapLayout = { epicOrder: [], milestoneOrder: [], storyOrder: { backlog: [] } };
@@ -636,5 +650,128 @@ export const useAppStore = create<AppState>((set, get) => ({
     const newLayout = { ...layout, milestoneOrder };
     set({ layout: newLayout });
     saveLayout(owner, repo, newLayout).catch(() => { /* offline */ });
+  },
+
+  moveIssueInGrid: async (issueNumber, fromProjectId, toProjectId, fromMilestoneNumber, toMilestoneNumber) => {
+    const { token, owner, repo, issues, projectIssues, milestones } = get();
+    const issue = issues.find((i) => i.number === issueNumber);
+    if (!issue) return;
+
+    const snapIssues = issues;
+    const snapProjectIssues = projectIssues;
+
+    // Optimistic update — milestone and project membership
+    const newMilestone = toMilestoneNumber === null
+      ? null
+      : milestones.find((m) => m.number === toMilestoneNumber) ?? null;
+
+    let updatedProjectIssues = { ...projectIssues };
+    if (fromProjectId !== toProjectId) {
+      if (fromProjectId) {
+        updatedProjectIssues = {
+          ...updatedProjectIssues,
+          [fromProjectId]: (updatedProjectIssues[fromProjectId] ?? []).filter((n) => n !== issueNumber),
+        };
+      }
+      if (toProjectId) {
+        updatedProjectIssues = {
+          ...updatedProjectIssues,
+          [toProjectId]: [issueNumber, ...(updatedProjectIssues[toProjectId] ?? [])],
+        };
+      }
+    }
+
+    set({
+      issues: issues.map((i) => i.number === issueNumber ? { ...i, milestone: newMilestone } : i),
+      projectIssues: updatedProjectIssues,
+    });
+
+    try {
+      if (fromProjectId !== toProjectId) {
+        if (fromProjectId) {
+          const data = await gql<{
+            node: { items: { nodes: Array<{ id: string; content: { id: string } | null }> } } | null;
+          }>(token, `
+            query($projectId: ID!) {
+              node(id: $projectId) {
+                ... on ProjectV2 {
+                  items(first: 100) {
+                    nodes { id content { ... on Issue { id } } }
+                  }
+                }
+              }
+            }
+          `, { projectId: fromProjectId });
+          const item = data.node?.items.nodes.find((n) => n.content?.id === issue.node_id);
+          if (item) {
+            await gql(token, `
+              mutation($projectId: ID!, $itemId: ID!) {
+                deleteProjectV2Item(input: { projectId: $projectId, itemId: $itemId }) { deletedItemId }
+              }
+            `, { projectId: fromProjectId, itemId: item.id });
+          }
+        }
+        if (toProjectId) {
+          await gql(token, `
+            mutation($projectId: ID!, $contentId: ID!) {
+              addProjectV2ItemById(input: { projectId: $projectId, contentId: $contentId }) { item { id } }
+            }
+          `, { projectId: toProjectId, contentId: issue.node_id });
+        }
+      }
+      if (fromMilestoneNumber !== toMilestoneNumber) {
+        const octokit = new Octokit({ auth: token });
+        await octokit.rest.issues.update({
+          owner, repo, issue_number: issueNumber,
+          milestone: toMilestoneNumber,
+        });
+      }
+    } catch (err) {
+      set({ issues: snapIssues, projectIssues: snapProjectIssues });
+      throw err;
+    }
+  },
+
+  moveIssueInKanban: async (issueNumber, fromStatus, toStatus, fromMilestoneNumber, toMilestoneNumber) => {
+    const { token, owner, repo, issues, milestones } = get();
+    const issue = issues.find((i) => i.number === issueNumber);
+    if (!issue) return;
+
+    const snapIssues = issues;
+
+    const baseLabels = issue.labels.filter((l) => !l.name.startsWith('s_'));
+    const newLabels = toStatus
+      ? [...baseLabels, { id: 0, name: `s_${toStatus}`, color: '0e8a16' }]
+      : baseLabels;
+
+    const newMilestone = toMilestoneNumber === null
+      ? null
+      : milestones.find((m) => m.number === toMilestoneNumber) ?? null;
+
+    set({
+      issues: issues.map((i) =>
+        i.number === issueNumber ? { ...i, labels: newLabels, milestone: newMilestone } : i
+      ),
+    });
+
+    try {
+      const octokit = new Octokit({ auth: token });
+      if (fromStatus !== toStatus) {
+        if (toStatus) await ensureLabel(octokit, owner, repo, `s_${toStatus}`, '0e8a16');
+        await octokit.rest.issues.setLabels({
+          owner, repo, issue_number: issueNumber,
+          labels: newLabels.map((l) => l.name),
+        });
+      }
+      if (fromMilestoneNumber !== toMilestoneNumber) {
+        await octokit.rest.issues.update({
+          owner, repo, issue_number: issueNumber,
+          milestone: toMilestoneNumber,
+        });
+      }
+    } catch (err) {
+      set({ issues: snapIssues });
+      throw err;
+    }
   },
 }));
