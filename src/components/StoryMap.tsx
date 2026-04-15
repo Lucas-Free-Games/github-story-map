@@ -368,7 +368,7 @@ export default function StoryMap() {
                           <span className="text-gray-400 font-normal italic">No Wave</span>
                           <button
                             onClick={() => setAddingWave(true)}
-                            className="text-xs text-purple-400 hover:text-purple-600 hover:bg-purple-100 rounded px-1.5 py-0.5 transition-colors not-italic font-normal"
+                            className="text-xs text-purple-400 hover:text-purple-600 hover:bg-purple-100 rounded px-1.5 py-0.5 transition-colors not-italic font-semibold"
                           >
                             + New Wave
                           </button>
