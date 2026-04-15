@@ -2,11 +2,13 @@ import { useState } from 'react';
 import { useAppStore } from '../store/appStore';
 import CreateIssueModal from './CreateIssueModal';
 import LabelsManagerModal from './LabelsManagerModal';
+import SettingsModal from './SettingsModal';
 
 export default function Header() {
   const { owner, repo, issues, fetchIssues, fetchProjects, fetchMilestones, reset, loading, view, setView, showClosedIssues, toggleShowClosedIssues } = useAppStore();
   const [showCreate, setShowCreate] = useState(false);
   const [showLabels, setShowLabels] = useState(false);
+  const [showSettings, setShowSettings] = useState(false);
 
   return (
     <>
@@ -65,6 +67,12 @@ export default function Header() {
             {loading ? 'Syncing…' : 'Sync'}
           </button>
           <button
+            onClick={() => setShowSettings(true)}
+            className="text-sm text-gray-600 hover:text-gray-900 px-3 py-1.5 rounded-lg hover:bg-gray-100 transition-colors"
+          >
+            Settings
+          </button>
+          <button
             onClick={reset}
             className="text-sm text-gray-500 hover:text-red-600 px-3 py-1.5 rounded-lg hover:bg-red-50 transition-colors"
           >
@@ -93,6 +101,7 @@ export default function Header() {
 
       {showCreate && <CreateIssueModal onClose={() => setShowCreate(false)} />}
       {showLabels && <LabelsManagerModal onClose={() => setShowLabels(false)} />}
+      {showSettings && <SettingsModal onClose={() => setShowSettings(false)} />}
     </>
   );
 }
