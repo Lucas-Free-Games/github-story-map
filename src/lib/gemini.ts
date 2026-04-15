@@ -1,8 +1,9 @@
-const GEMINI_URL =
-  'https://generativelanguage.googleapis.com/v1beta/models/gemini-3.1-pro-preview:generateContent';
+const GEMINI_BASE = 'https://generativelanguage.googleapis.com/v1beta/models';
+export const DEFAULT_GEMINI_MODEL = 'gemini-3.1-pro-preview';
 
 export interface GeminiSettings {
   apiKey: string;
+  model: string;
   exampleIssueNumbers: number[];
   extraInstructions: string;
 }
@@ -10,6 +11,7 @@ export interface GeminiSettings {
 export function loadGeminiSettings(): GeminiSettings {
   return {
     apiKey: localStorage.getItem('gemini_api_key') ?? '',
+    model: localStorage.getItem('gemini_model') ?? DEFAULT_GEMINI_MODEL,
     exampleIssueNumbers: JSON.parse(localStorage.getItem('gemini_example_issue_numbers') ?? '[]'),
     extraInstructions: localStorage.getItem('gemini_extra_instructions') ?? '',
   };
@@ -17,8 +19,27 @@ export function loadGeminiSettings(): GeminiSettings {
 
 export function saveGeminiSettings(settings: GeminiSettings): void {
   localStorage.setItem('gemini_api_key', settings.apiKey.trim());
+  localStorage.setItem('gemini_model', settings.model.trim() || DEFAULT_GEMINI_MODEL);
   localStorage.setItem('gemini_example_issue_numbers', JSON.stringify(settings.exampleIssueNumbers));
   localStorage.setItem('gemini_extra_instructions', settings.extraInstructions);
+}
+
+function geminiUrl(model: string, apiKey: string): string {
+  return `${GEMINI_BASE}/${model}:generateContent?key=${apiKey}`;
+}
+
+export async function testGeminiConnection(): Promise<void> {
+  const { apiKey, model } = loadGeminiSettings();
+  if (!apiKey) throw new Error('No API key configured.');
+  const res = await fetch(geminiUrl(model, apiKey), {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ contents: [{ parts: [{ text: 'Say OK' }] }] }),
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({})) as { error?: { message?: string } };
+    throw new Error(err?.error?.message ?? `Gemini API error ${res.status}`);
+  }
 }
 
 export async function generateDescription(
@@ -28,7 +49,7 @@ export async function generateDescription(
   title: string,
   existingBody: string,
 ): Promise<string> {
-  const { apiKey, exampleIssueNumbers, extraInstructions } = loadGeminiSettings();
+  const { apiKey, model, exampleIssueNumbers, extraInstructions } = loadGeminiSettings();
   if (!apiKey) throw new Error('No Gemini API key configured. Add one in Settings.');
 
   // Fetch README
@@ -95,7 +116,7 @@ export async function generateDescription(
     ].join('\n'),
   );
 
-  const res = await fetch(`${GEMINI_URL}?key=${apiKey}`, {
+  const res = await fetch(geminiUrl(model, apiKey), {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ contents: [{ parts: [{ text: sections.join('\n\n') }] }] }),

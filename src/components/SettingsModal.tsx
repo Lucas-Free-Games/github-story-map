@@ -1,9 +1,33 @@
 import { useState } from 'react';
 import { useAppStore } from '../store/appStore';
-import { loadGeminiSettings, saveGeminiSettings } from '../lib/gemini';
+import { loadGeminiSettings, saveGeminiSettings, testGeminiConnection, DEFAULT_GEMINI_MODEL } from '../lib/gemini';
 
 interface Props {
   onClose: () => void;
+}
+
+type LedState = 'idle' | 'testing' | 'success' | 'error';
+
+function Led({ state, onClick }: { state: LedState; onClick: () => void }) {
+  const colors: Record<LedState, string> = {
+    idle: 'bg-gray-300',
+    testing: 'bg-green-400 animate-pulse',
+    success: 'bg-green-500',
+    error: 'bg-red-500',
+  };
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      title={state === 'idle' ? 'Click to test connection' : state === 'testing' ? 'Testing…' : state === 'success' ? 'Connected' : 'Connection failed — click to retry'}
+      className="flex items-center gap-1.5 group"
+    >
+      <span className={`w-2.5 h-2.5 rounded-full shrink-0 transition-colors ${colors[state]}`} />
+      <span className="text-xs text-gray-400 group-hover:text-gray-600 transition-colors">
+        {state === 'idle' ? 'Test' : state === 'testing' ? 'Testing…' : state === 'success' ? 'Connected' : 'Failed'}
+      </span>
+    </button>
+  );
 }
 
 export default function SettingsModal({ onClose }: Props) {
@@ -11,12 +35,27 @@ export default function SettingsModal({ onClose }: Props) {
   const saved = loadGeminiSettings();
 
   const [apiKey, setApiKey] = useState(saved.apiKey);
+  const [model, setModel] = useState(saved.model);
   const [exampleNumbers, setExampleNumbers] = useState<number[]>(saved.exampleIssueNumbers);
   const [extraInstructions, setExtraInstructions] = useState(saved.extraInstructions);
   const [search, setSearch] = useState('');
+  const [ledState, setLedState] = useState<LedState>('idle');
+
+  async function handleTest() {
+    if (!apiKey.trim()) return;
+    // Save current key+model so testGeminiConnection picks them up
+    saveGeminiSettings({ apiKey, model, exampleIssueNumbers: exampleNumbers, extraInstructions });
+    setLedState('testing');
+    try {
+      await testGeminiConnection();
+      setLedState('success');
+    } catch {
+      setLedState('error');
+    }
+  }
 
   function handleSave() {
-    saveGeminiSettings({ apiKey, exampleIssueNumbers: exampleNumbers, extraInstructions });
+    saveGeminiSettings({ apiKey, model, exampleIssueNumbers: exampleNumbers, extraInstructions });
     onClose();
   }
 
@@ -50,19 +89,32 @@ export default function SettingsModal({ onClose }: Props) {
 
           {/* Gemini API Key */}
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
-              Gemini API Key
-            </label>
+            <div className="flex items-center justify-between mb-1">
+              <label className="block text-sm font-medium text-gray-700">Gemini API Key</label>
+              <Led state={ledState} onClick={handleTest} />
+            </div>
             <input
               type="password"
               value={apiKey}
-              onChange={(e) => setApiKey(e.target.value)}
+              onChange={(e) => { setApiKey(e.target.value); setLedState('idle'); }}
               placeholder="AIza…"
               className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
             />
             <p className="text-xs text-gray-400 mt-1">
               Stored in localStorage only. Used to auto-generate issue descriptions via Gemini.
             </p>
+          </div>
+
+          {/* Model */}
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">Model</label>
+            <input
+              type="text"
+              value={model}
+              onChange={(e) => { setModel(e.target.value); setLedState('idle'); }}
+              placeholder={DEFAULT_GEMINI_MODEL}
+              className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 font-mono"
+            />
           </div>
 
           {/* Example Issues */}
