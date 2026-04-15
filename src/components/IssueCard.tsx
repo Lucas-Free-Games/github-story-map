@@ -85,8 +85,8 @@ export default function IssueCard({ issue }: Props) {
           hovered ? 'border-gray-300 shadow-md' : 'border-gray-200'
         }`}>
 
-          {/* Single-line title row */}
-          <div className="flex items-center gap-1.5 min-w-0">
+          {/* Title row */}
+          <div className="flex items-start gap-1.5 min-w-0">
 
             {/* ID badge — background reflects open/closed state; tooltip on hover */}
             <div
@@ -121,9 +121,9 @@ export default function IssueCard({ issue }: Props) {
               )}
             </div>
 
-            {/* Title — single line, middle-truncated */}
-            <span className="flex-1 min-w-0 overflow-hidden whitespace-nowrap text-gray-900 font-medium leading-none">
-              {truncateMiddle(issue.title, 45)}
+            {/* Title — up to 2 lines */}
+            <span className="flex-1 min-w-0 text-gray-900 font-medium leading-snug line-clamp-2">
+              {issue.title}
             </span>
 
             {/* Assignees — inline so they never add height */}

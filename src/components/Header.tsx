@@ -2,51 +2,25 @@ import { useState } from 'react';
 import { useAppStore } from '../store/appStore';
 import CreateIssueModal from './CreateIssueModal';
 import LabelsManagerModal from './LabelsManagerModal';
-import ProjectsManagerModal from './ProjectsManagerModal';
-import MilestonesManagerModal from './MilestonesManagerModal';
 
 export default function Header() {
   const { owner, repo, issues, fetchIssues, fetchProjects, fetchMilestones, reset, loading, view, setView, showClosedIssues, toggleShowClosedIssues } = useAppStore();
   const [showCreate, setShowCreate] = useState(false);
   const [showLabels, setShowLabels] = useState(false);
-  const [showProjects, setShowProjects] = useState(false);
-  const [showMilestones, setShowMilestones] = useState(false);
 
   return (
     <>
-      <header className="bg-white border-b border-gray-200 px-6 py-3 flex items-center justify-between shrink-0">
-        <div className="flex items-center gap-3">
-          <span className="font-semibold text-gray-900">
-            {owner}/{repo}
-          </span>
-          <span className="text-sm text-gray-400">
-            {issues.filter((i) => i.state === 'open').length} open issue{issues.filter((i) => i.state === 'open').length !== 1 ? 's' : ''}
-          </span>
-        </div>
-        <div className="flex items-center gap-1">
-          {/* View toggle */}
-          <div className="flex items-center rounded-lg border border-gray-200 overflow-hidden mr-2">
-            <button
-              onClick={() => setView('grid')}
-              className={`px-3 py-1.5 text-sm transition-colors ${
-                view === 'grid'
-                  ? 'bg-gray-900 text-white'
-                  : 'text-gray-600 hover:bg-gray-100'
-              }`}
-            >
-              Grid
-            </button>
-            <button
-              onClick={() => setView('kanban')}
-              className={`px-3 py-1.5 text-sm transition-colors ${
-                view === 'kanban'
-                  ? 'bg-gray-900 text-white'
-                  : 'text-gray-600 hover:bg-gray-100'
-              }`}
-            >
-              Kanban
-            </button>
+      <header className="bg-white border-b border-gray-200 px-6 shrink-0">
+        <div className="flex items-center justify-between py-3">
+          <div className="flex items-center gap-3">
+            <span className="font-semibold text-gray-900">
+              {owner}/{repo}
+            </span>
+            <span className="text-sm text-gray-400">
+              {issues.filter((i) => i.state === 'open').length} open issue{issues.filter((i) => i.state === 'open').length !== 1 ? 's' : ''}
+            </span>
           </div>
+          <div className="flex items-center gap-1">
 
           {/* Show/hide closed issues toggle */}
           <button
@@ -78,22 +52,10 @@ export default function Header() {
             + New Issue
           </button>
           <button
-            onClick={() => setShowMilestones(true)}
-            className="text-sm text-gray-600 hover:text-gray-900 px-3 py-1.5 rounded-lg hover:bg-gray-100 transition-colors"
-          >
-            Waves
-          </button>
-          <button
             onClick={() => setShowLabels(true)}
             className="text-sm text-gray-600 hover:text-gray-900 px-3 py-1.5 rounded-lg hover:bg-gray-100 transition-colors"
           >
             Status
-          </button>
-          <button
-            onClick={() => setShowProjects(true)}
-            className="text-sm text-gray-600 hover:text-gray-900 px-3 py-1.5 rounded-lg hover:bg-gray-100 transition-colors"
-          >
-            Epics
           </button>
           <button
             onClick={() => { fetchIssues(); fetchProjects(); fetchMilestones(); }}
@@ -109,12 +71,28 @@ export default function Header() {
             Disconnect
           </button>
         </div>
+        </div>
+
+        {/* Tabs */}
+        <div className="flex gap-1">
+          {(['grid', 'kanban', 'waves', 'epics'] as const).map((v) => (
+            <button
+              key={v}
+              onClick={() => setView(v)}
+              className={`px-4 py-2 text-sm font-medium border-b-2 transition-colors ${
+                view === v
+                  ? 'border-gray-900 text-gray-900'
+                  : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+              }`}
+            >
+              {v === 'grid' ? 'Story Map' : v === 'kanban' ? 'Kanban' : v === 'waves' ? 'Waves' : 'Epics'}
+            </button>
+          ))}
+        </div>
       </header>
 
       {showCreate && <CreateIssueModal onClose={() => setShowCreate(false)} />}
       {showLabels && <LabelsManagerModal onClose={() => setShowLabels(false)} />}
-      {showProjects && <ProjectsManagerModal onClose={() => setShowProjects(false)} />}
-      {showMilestones && <MilestonesManagerModal onClose={() => setShowMilestones(false)} />}
     </>
   );
 }

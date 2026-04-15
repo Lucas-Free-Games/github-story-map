@@ -13,7 +13,7 @@ interface AppState {
   error: string | null;
   milestones: GitHubMilestone[];
   statusLabels: string[]; // values without prefix, e.g. ["Todo", "In Progress", "Done"]
-  view: 'grid' | 'kanban';
+  view: 'grid' | 'kanban' | 'waves' | 'epics';
   showClosedIssues: boolean;
   projects: GitHubProject[];
   projectIssues: Record<string, number[]>; // project node_id → issue numbers
@@ -27,7 +27,7 @@ interface AppState {
   updateMilestone: (number: number, title: string, description: string) => Promise<void>;
   deleteMilestone: (number: number) => Promise<void>;
   addStatusLabel: (name: string) => Promise<void>;
-  setView: (view: 'grid' | 'kanban') => void;
+  setView: (view: 'grid' | 'kanban' | 'waves' | 'epics') => void;
   moveStory: (
     storyNumber: number,
     fromKey: string,
@@ -105,9 +105,9 @@ async function ensureLabel(
 }
 
 export const useAppStore = create<AppState>((set, get) => ({
-  token: localStorage.getItem('gh_token') ?? '',
-  owner: localStorage.getItem('gh_owner') ?? '',
-  repo: localStorage.getItem('gh_repo') ?? '',
+  token: localStorage.getItem('gh_token') ?? import.meta.env.VITE_GITHUB_TOKEN ?? '',
+  owner: localStorage.getItem('gh_owner') ?? import.meta.env.VITE_GITHUB_OWNER ?? '',
+  repo: localStorage.getItem('gh_repo') ?? import.meta.env.VITE_GITHUB_REPO ?? '',
   issues: [],
   layout: emptyLayout,
   loading: false,

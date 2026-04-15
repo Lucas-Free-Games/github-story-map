@@ -254,7 +254,7 @@ export default function StoryMap() {
               <Droppable droppableId="columns" direction="horizontal" type="COLUMN">
                 {(provided) => (
                   <tr ref={provided.innerRef} {...provided.droppableProps}>
-                    <th className="sticky left-0 top-0 z-30 bg-white border border-gray-200 w-36 min-w-36" />
+                    <th className="sticky left-0 top-0 z-30 bg-white border border-gray-200 w-[200px] min-w-[200px] max-w-[200px]" />
                     {cols.map((project, index) => (
                       <Draggable key={project.id} draggableId={project.id} index={index}>
                         {(provided, snapshot) => (
@@ -262,7 +262,7 @@ export default function StoryMap() {
                             ref={provided.innerRef}
                             {...provided.draggableProps}
                             {...provided.dragHandleProps}
-                            className={`sticky top-0 z-20 border border-gray-200 px-4 py-3 text-sm font-semibold text-blue-900 text-center w-72 min-w-72 whitespace-nowrap cursor-grab select-none transition-colors ${
+                            className={`sticky top-0 z-20 border border-gray-200 px-4 py-3 text-sm font-semibold text-blue-900 text-center w-[200px] min-w-[200px] max-w-[200px] whitespace-nowrap cursor-grab select-none transition-colors ${
                               snapshot.isDragging ? 'bg-blue-100 shadow-lg z-50' : 'bg-blue-50'
                             }`}
                           >
@@ -273,7 +273,7 @@ export default function StoryMap() {
                       </Draggable>
                     ))}
                     {provided.placeholder}
-                    <th className="sticky top-0 z-20 bg-gray-50 border border-gray-200 px-2 py-2 text-sm font-semibold text-gray-500 text-center w-72 min-w-72">
+                    <th className="sticky top-0 z-20 bg-gray-50 border border-gray-200 px-2 py-2 text-sm font-semibold text-gray-500 text-center w-[200px] min-w-[200px] max-w-[200px]">
                       {addingEpic ? (
                         <form onSubmit={handleCreateEpic} className="flex items-center gap-1">
                           <input
@@ -317,15 +317,15 @@ export default function StoryMap() {
                         >
                           <th
                             {...provided.dragHandleProps}
-                            className={`sticky left-0 z-10 border border-gray-200 px-3 py-2 text-xs font-semibold text-purple-900 text-right whitespace-nowrap align-top pt-3 cursor-grab select-none transition-colors ${
+                            className={`sticky left-0 z-10 border border-gray-200 px-3 py-2 text-xs font-semibold text-purple-900 text-right align-top pt-3 cursor-grab select-none transition-colors w-[200px] min-w-[200px] max-w-[200px] ${
                               snapshot.isDragging ? 'bg-purple-100' : 'bg-purple-50'
                             }`}
                           >
                             <span className="text-purple-300 mr-1 text-xs">⠿</span>
-                            {milestone.title}
+                            <span className="truncate block">{milestone.title}</span>
                           </th>
                           {cols.map((project) => (
-                            <td key={project.id} className="border border-gray-200 align-top p-2 bg-white w-72 min-w-72">
+                            <td key={project.id} className="border border-gray-200 align-top p-2 bg-white w-[200px] min-w-[200px] max-w-[200px]">
                               <CardCell
                                 droppableId={cellId(project.id, milestone.number)}
                                 items={cellIssues(project.id, milestone.number)}
@@ -334,7 +334,7 @@ export default function StoryMap() {
                             </td>
                           ))}
                           {/* No Epic cell */}
-                          <td className="border border-gray-200 align-top p-2 bg-gray-50/50 w-72 min-w-72">
+                          <td className="border border-gray-200 align-top p-2 bg-gray-50/50 w-[200px] min-w-[200px] max-w-[200px]">
                             <CardCell
                               droppableId={cellId('', milestone.number)}
                               items={noProjectCellIssues(milestone.number)}
@@ -350,7 +350,7 @@ export default function StoryMap() {
 
                   {/* "No Wave" row — always last, not draggable */}
                   <tr key="no-wave">
-                    <th className="sticky left-0 z-10 bg-gray-50 border border-gray-200 px-2 py-2 text-xs font-semibold text-gray-500 text-right whitespace-nowrap align-top pt-3">
+                    <th className="sticky left-0 z-10 bg-gray-50 border border-gray-200 px-2 py-2 text-xs font-semibold text-gray-500 text-right align-top pt-3 w-[200px] min-w-[200px] max-w-[200px]">
                       {addingWave ? (
                         <form onSubmit={handleCreateWave} className="flex items-center gap-1">
                           <input
@@ -376,7 +376,7 @@ export default function StoryMap() {
                       )}
                     </th>
                     {cols.map((project) => (
-                      <td key={project.id} className="border border-gray-200 align-top p-2 bg-white w-72 min-w-72">
+                      <td key={project.id} className="border border-gray-200 align-top p-2 bg-white w-[200px] min-w-[200px] max-w-[200px]">
                         <CardCell
                           droppableId={cellId(project.id, null)}
                           items={cellIssues(project.id, null)}
@@ -385,7 +385,7 @@ export default function StoryMap() {
                       </td>
                     ))}
                     {/* No Epic / No Wave corner */}
-                    <td className="border border-gray-200 align-top p-2 bg-gray-50/50 w-72 min-w-72">
+                    <td className="border border-gray-200 align-top p-2 bg-gray-50/50 w-[200px] min-w-[200px] max-w-[200px]">
                       <CardCell
                         droppableId={cellId('', null)}
                         items={noProjectCellIssues(null)}

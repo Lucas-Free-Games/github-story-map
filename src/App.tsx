@@ -4,6 +4,8 @@ import Setup from './components/Setup';
 import Header from './components/Header';
 import StoryMap from './components/StoryMap';
 import KanbanView from './components/KanbanView';
+import WavesView from './components/WavesView';
+import EpicsView from './components/EpicsView';
 
 export default function App() {
   const { token, owner, repo, issues, loading, error, fetchIssues, fetchLabels, fetchProjects, fetchMilestones, view } = useAppStore();
@@ -42,7 +44,10 @@ export default function App() {
 
       {!loading && !error && (
         <div className="flex-1 overflow-hidden flex">
-          {view === 'grid' ? <StoryMap /> : <KanbanView />}
+          {view === 'grid' && <StoryMap />}
+          {view === 'kanban' && <KanbanView />}
+          {view === 'waves' && <WavesView />}
+          {view === 'epics' && <EpicsView />}
         </div>
       )}
     </div>
