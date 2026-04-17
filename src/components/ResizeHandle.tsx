@@ -1,79 +1,65 @@
-import { useRef } from 'react';
+import { useCallback } from 'react';
 
-const MIN_WIDTH = 120;
-const MAX_WIDTH = 600;
+const MIN_COLUMN_WIDTH = 120;
+const MAX_COLUMN_WIDTH = 600;
 
 interface ResizeHandleProps {
-  /** Unique key used to store this column's width in the Zustand store. */
-  colKey: string;
+  /** Unique key identifying this column in the columnWidths store. */
+  columnKey: string;
   /** The column's current width in pixels. */
   currentWidth: number;
-  /** Called continuously while the user drags. */
+  /** Called continuously while dragging with the new clamped width. */
   onResize: (key: string, width: number) => void;
-  /** Accent colour for the handle indicator bar. */
-  color?: 'blue' | 'green';
 }
 
 /**
- * An absolutely-positioned drag handle that sits on the right edge of a table
- * header cell. The parent <th> must have `position: relative` (add the
- * `relative` Tailwind class).
+ * Drag handle rendered at the right edge of a column header.
+ * The parent element must have `position: relative` (Tailwind: `relative`).
  *
- * Dragging updates the column width in real-time and enforces MIN/MAX bounds.
- * `e.stopPropagation()` prevents @hello-pangea/dnd column-drag from firing
- * while the user is resizing.
+ * Min width: 120 px  |  Max width: 600 px
  */
-export default function ResizeHandle({
-  colKey,
-  currentWidth,
-  onResize,
-  color = 'blue',
-}: ResizeHandleProps) {
-  const startXRef = useRef(0);
-  const startWidthRef = useRef(0);
+export default function ResizeHandle({ columnKey, currentWidth, onResize }: ResizeHandleProps) {
+  const handleMouseDown = useCallback(
+    (e: React.MouseEvent) => {
+      e.preventDefault();
+      // Prevent the column drag-and-drop (e.g. @hello-pangea/dnd) from activating.
+      e.stopPropagation();
 
-  const barHover =
-    color === 'green'
-      ? 'group-hover/resize:bg-green-500'
-      : 'group-hover/resize:bg-blue-500';
-  const bgHover =
-    color === 'green'
-      ? 'hover:bg-green-200/40'
-      : 'hover:bg-blue-200/40';
+      const startX = e.clientX;
+      const startWidth = currentWidth;
 
-  function handleMouseDown(e: React.MouseEvent) {
-    // Prevent @hello-pangea/dnd from starting a column drag
-    e.stopPropagation();
-    e.preventDefault();
+      document.body.style.cursor = 'col-resize';
+      document.body.style.userSelect = 'none';
 
-    startXRef.current = e.clientX;
-    startWidthRef.current = currentWidth;
+      const onMouseMove = (moveEvent: MouseEvent) => {
+        const delta = moveEvent.clientX - startX;
+        const newWidth = Math.min(
+          MAX_COLUMN_WIDTH,
+          Math.max(MIN_COLUMN_WIDTH, startWidth + delta),
+        );
+        onResize(columnKey, newWidth);
+      };
 
-    function onMouseMove(mv: MouseEvent) {
-      const delta = mv.clientX - startXRef.current;
-      const next = Math.min(MAX_WIDTH, Math.max(MIN_WIDTH, startWidthRef.current + delta));
-      onResize(colKey, next);
-    }
+      const onMouseUp = () => {
+        document.removeEventListener('mousemove', onMouseMove);
+        document.removeEventListener('mouseup', onMouseUp);
+        document.body.style.cursor = '';
+        document.body.style.userSelect = '';
+      };
 
-    function onMouseUp() {
-      document.removeEventListener('mousemove', onMouseMove);
-      document.removeEventListener('mouseup', onMouseUp);
-    }
-
-    document.addEventListener('mousemove', onMouseMove);
-    document.addEventListener('mouseup', onMouseUp);
-  }
+      document.addEventListener('mousemove', onMouseMove);
+      document.addEventListener('mouseup', onMouseUp);
+    },
+    [columnKey, currentWidth, onResize],
+  );
 
   return (
     <div
       onMouseDown={handleMouseDown}
+      className="absolute top-0 right-0 h-full w-2 cursor-col-resize flex items-center justify-center group/resize"
       title="Drag to resize column"
-      className={`absolute top-0 right-0 h-full w-2 cursor-col-resize group/resize flex items-center justify-center z-20 select-none ${bgHover} transition-colors`}
     >
-      {/* Visual bar — visible only on hover */}
-      <div
-        className={`w-0.5 h-5 bg-gray-300 ${barHover} rounded-full opacity-0 group-hover/resize:opacity-100 transition-all duration-150`}
-      />
+      <div className="w-px h-4 bg-gray-300 group-hover/resize:bg-blue-400 rounded-full transition-colors" />
     </div>
   );
 }

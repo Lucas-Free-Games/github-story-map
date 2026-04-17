@@ -17,7 +17,7 @@ interface AppState {
   showClosedIssues: boolean;
   projects: GitHubProject[];
   projectIssues: Record<string, number[]>; // project node_id → issue numbers
-  columnWidths: Record<string, number>; // column key → width in pixels, persisted to localStorage
+  columnWidths: Record<string, number>; // column key → custom pixel width
 
   setCredentials: (token: string, owner: string, repo: string) => void;
   fetchIssues: () => Promise<void>;
@@ -68,7 +68,6 @@ interface AppState {
     fromMilestoneNumber: number | null,
     toMilestoneNumber: number | null,
   ) => Promise<void>;
-  /** Persist a custom width (in pixels) for a single column. */
   setColumnWidth: (key: string, width: number) => void;
 }
 
@@ -107,16 +106,6 @@ async function ensureLabel(
   }
 }
 
-function loadColumnWidths(): Record<string, number> {
-  try {
-    const raw = localStorage.getItem('gh_column_widths');
-    if (!raw) return {};
-    return JSON.parse(raw) as Record<string, number>;
-  } catch {
-    return {};
-  }
-}
-
 export const useAppStore = create<AppState>((set, get) => ({
   token: localStorage.getItem('gh_token') ?? import.meta.env.VITE_GITHUB_TOKEN ?? '',
   owner: localStorage.getItem('gh_owner') ?? import.meta.env.VITE_GITHUB_OWNER ?? '',
@@ -131,7 +120,7 @@ export const useAppStore = create<AppState>((set, get) => ({
   showClosedIssues: false,
   projects: [],
   projectIssues: {},
-  columnWidths: loadColumnWidths(),
+  columnWidths: JSON.parse(localStorage.getItem('gh_column_widths') ?? '{}') as Record<string, number>,
 
   setCredentials: (token, owner, repo) => {
     localStorage.setItem('gh_token', token);
@@ -151,14 +140,6 @@ export const useAppStore = create<AppState>((set, get) => ({
   setView: (view) => set({ view }),
 
   toggleShowClosedIssues: () => set((state) => ({ showClosedIssues: !state.showClosedIssues })),
-
-  setColumnWidth: (key, width) => {
-    set((state) => {
-      const next = { ...state.columnWidths, [key]: width };
-      localStorage.setItem('gh_column_widths', JSON.stringify(next));
-      return { columnWidths: next };
-    });
-  },
 
   fetchLabels: async () => {
     const { token, owner, repo } = get();
@@ -796,5 +777,13 @@ export const useAppStore = create<AppState>((set, get) => ({
       set({ issues: snapIssues });
       throw err;
     }
+  },
+
+  setColumnWidth: (key, width) => {
+    set((state) => {
+      const columnWidths = { ...state.columnWidths, [key]: width };
+      localStorage.setItem('gh_column_widths', JSON.stringify(columnWidths));
+      return { columnWidths };
+    });
   },
 }));
