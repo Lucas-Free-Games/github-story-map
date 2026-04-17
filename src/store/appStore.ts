@@ -17,7 +17,8 @@ interface AppState {
   showClosedIssues: boolean;
   projects: GitHubProject[];
   projectIssues: Record<string, number[]>; // project node_id → issue numbers
-  columnWidths: Record<string, number>; // column key → custom pixel width
+  /** Column resize widths in pixels, keyed by column identifier (project ID or status string). */
+  columnWidths: Record<string, number>;
 
   setCredentials: (token: string, owner: string, repo: string) => void;
   fetchIssues: () => Promise<void>;
@@ -68,6 +69,7 @@ interface AppState {
     fromMilestoneNumber: number | null,
     toMilestoneNumber: number | null,
   ) => Promise<void>;
+  /** Persist a resized column width to state and localStorage. */
   setColumnWidth: (key: string, width: number) => void;
 }
 
@@ -86,7 +88,7 @@ async function gql<T>(
   const json = await res.json() as { data?: T; errors?: { message: string; path?: string[] }[] };
   if (json.errors?.length) {
     const { message, path } = json.errors[0];
-    const location = path?.length ? ` (at: ${path.join(' → ')})` : '';
+    const location = path?.length ? ` (at: ${path.join(' \u2192 ')})` : '';
     throw new Error(`${message}${location}`);
   }
   return json.data as T;
@@ -133,8 +135,7 @@ export const useAppStore = create<AppState>((set, get) => ({
     localStorage.removeItem('gh_token');
     localStorage.removeItem('gh_owner');
     localStorage.removeItem('gh_repo');
-    localStorage.removeItem('gh_column_widths');
-    set({ token: '', owner: '', repo: '', issues: [], layout: emptyLayout, error: null, milestones: [], statusLabels: [], projects: [], projectIssues: {}, columnWidths: {} });
+    set({ token: '', owner: '', repo: '', issues: [], layout: emptyLayout, error: null, milestones: [], statusLabels: [], projects: [], projectIssues: {} });
   },
 
   setView: (view) => set({ view }),
@@ -780,10 +781,8 @@ export const useAppStore = create<AppState>((set, get) => ({
   },
 
   setColumnWidth: (key, width) => {
-    set((state) => {
-      const columnWidths = { ...state.columnWidths, [key]: width };
-      localStorage.setItem('gh_column_widths', JSON.stringify(columnWidths));
-      return { columnWidths };
-    });
+    const newWidths = { ...get().columnWidths, [key]: width };
+    localStorage.setItem('gh_column_widths', JSON.stringify(newWidths));
+    set({ columnWidths: newWidths });
   },
 }));

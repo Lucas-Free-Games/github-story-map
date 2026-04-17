@@ -4,10 +4,7 @@ import { useAppStore } from '../store/appStore';
 import type { GitHubIssue, GitHubMilestone } from '../types';
 import IssueCard from './IssueCard';
 import CreateIssueModal from './CreateIssueModal';
-import ResizeHandle from './ResizeHandle';
-
-// Default column width matches the original w-72 (288 px)
-const DEFAULT_COL_WIDTH = 288;
+import ResizableHeader, { KANBAN_DEFAULT_WIDTH } from './ResizableHeader';
 
 function getStatusLabel(issue: GitHubIssue): string | null {
   const label = issue.labels.find((l) => l.name.startsWith('s_'));
@@ -46,6 +43,14 @@ function sortedMilestones(milestones: GitHubMilestone[], milestoneOrder: number[
   });
 }
 
+/**
+ * Returns the localStorage key used for a given Kanban status column.
+ * Empty string ("No Status") maps to the sentinel '__no_status__'.
+ */
+function kanbanColKey(status: string): string {
+  return status === '' ? '__no_status__' : status;
+}
+
 export default function KanbanView() {
   const { issues, milestones, statusLabels, layout, showClosedIssues, moveIssueInKanban, columnWidths, setColumnWidth } = useAppStore();
   const [createCell, setCreateCell] = useState<CellKey | null>(null);
@@ -56,12 +61,10 @@ export default function KanbanView() {
   // '' sentinel = "No Status" column
   const cols = [...statusLabels, ''];
 
-  const visibleIssues = showClosedIssues ? issues : issues.filter((i) => i.state === 'open');
+  /** Returns the stored (or default) width for a given status column. */
+  const colK = (status: string) => columnWidths[kanbanColKey(status)] ?? KANBAN_DEFAULT_WIDTH;
 
-  /** Returns the stored pixel width for a status column (keyed by status label). */
-  function getColWidth(status: string): number {
-    return columnWidths[`kanban:${status || 'no-status'}`] ?? DEFAULT_COL_WIDTH;
-  }
+  const visibleIssues = showClosedIssues ? issues : issues.filter((i) => i.state === 'open');
 
   function cellIssues(milestoneNumber: number | null, status: string): GitHubIssue[] {
     return visibleIssues.filter((issue) => {
@@ -96,24 +99,18 @@ export default function KanbanView() {
           <table className="border-collapse">
             <thead>
               <tr>
-                {cols.map((status) => {
-                  const colKey = `kanban:${status || 'no-status'}`;
-                  const colW = getColWidth(status);
-                  return (
-                    <th
-                      key={status || 'no-status'}
-                      style={{ width: colW, minWidth: colW, maxWidth: colW }}
-                      className="sticky top-0 z-20 bg-green-50 border border-gray-200 px-4 py-3 text-sm font-semibold text-green-900 text-center whitespace-nowrap relative"
-                    >
-                      {status || <span className="text-green-400 font-normal italic">No Status</span>}
-                      <ResizeHandle
-                        columnKey={colKey}
-                        currentWidth={colW}
-                        onResize={setColumnWidth}
-                      />
-                    </th>
-                  );
-                })}
+                {cols.map((status) => (
+                  <ResizableHeader
+                    key={kanbanColKey(status)}
+                    columnKey={kanbanColKey(status)}
+                    width={colK(status)}
+                    onResize={setColumnWidth}
+                    handleVariant="green"
+                    className="sticky top-0 z-20 bg-green-50 border border-gray-200 px-4 py-3 text-sm font-semibold text-green-900 text-center whitespace-nowrap"
+                  >
+                    {status || <span className="text-green-400 font-normal italic">No Status</span>}
+                  </ResizableHeader>
+                ))}
               </tr>
             </thead>
             <tbody>
@@ -132,14 +129,13 @@ export default function KanbanView() {
 
                   <tr key={`${milestone?.number ?? 'no-milestone'}-cards`}>
                     {cols.map((status) => {
-                      const colW = getColWidth(status);
                       const milestoneNumber = milestone?.number ?? null;
                       const items = cellIssues(milestoneNumber, status);
                       return (
                         <td
-                          key={status || 'no-status'}
-                          style={{ width: colW, minWidth: colW, maxWidth: colW }}
+                          key={kanbanColKey(status)}
                           className="border border-gray-200 align-top p-2 bg-white"
+                          style={{ width: colK(status), minWidth: colK(status) }}
                         >
                           <Droppable droppableId={kanbanCellId(status, milestoneNumber)} type="CARD">
                             {(provided, snapshot) => (

@@ -4,9 +4,7 @@ import { useAppStore } from '../store/appStore';
 import type { GitHubIssue, GitHubMilestone, GitHubProject } from '../types';
 import IssueCard from './IssueCard';
 import CreateIssueModal from './CreateIssueModal';
-import ResizeHandle from './ResizeHandle';
-
-const DEFAULT_COL_WIDTH = 200;
+import ResizableHeader, { GRID_DEFAULT_WIDTH } from './ResizableHeader';
 
 function sortedProjects(projects: GitHubProject[], epicOrder: number[]): GitHubProject[] {
   const open = projects.filter((p) => !p.closed);
@@ -120,10 +118,8 @@ export default function StoryMap() {
   const [newWaveTitle, setNewWaveTitle] = useState('');
   const [waveSaving, setWaveSaving] = useState(false);
 
-  /** Returns the stored pixel width for a project column (keyed by project ID). */
-  function getColWidth(projectId: string): number {
-    return columnWidths[`grid:${projectId}`] ?? DEFAULT_COL_WIDTH;
-  }
+  /** Returns the stored (or default) width for a given column key. */
+  const colW = (key: string) => columnWidths[key] ?? GRID_DEFAULT_WIDTH;
 
   function showError(msg: string) {
     setMoveError(msg);
@@ -163,9 +159,6 @@ export default function StoryMap() {
   const cols = sortedProjects(projects, layout.epicOrder);
   const orderedMilestones = sortedMilestones(milestones, layout.milestoneOrder);
   const visibleIssues = showClosedIssues ? issues : issues.filter((i) => i.state === 'open');
-
-  // Width for the special "No Epic" column
-  const noEpicWidth = columnWidths['grid:no-epic'] ?? DEFAULT_COL_WIDTH;
 
   function cellIssues(projectId: string, milestoneNumber: number | null): GitHubIssue[] {
     const inProject = new Set(projectIssues[projectId] ?? []);
@@ -223,7 +216,7 @@ export default function StoryMap() {
               autoFocus
               value={newEpicTitle}
               onChange={(e) => setNewEpicTitle(e.target.value)}
-              placeholder="Epic name…"
+              placeholder="Epic name\u2026"
               className="border border-blue-300 rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-400"
             />
             <button
@@ -231,7 +224,7 @@ export default function StoryMap() {
               disabled={epicSaving || !newEpicTitle.trim()}
               className="px-3 py-1.5 text-sm font-medium bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 transition-colors"
             >
-              {epicSaving ? 'Creating…' : 'Create'}
+              {epicSaving ? 'Creating\u2026' : 'Create'}
             </button>
             <button
               type="button"
@@ -266,48 +259,38 @@ export default function StoryMap() {
               <Droppable droppableId="columns" direction="horizontal" type="COLUMN">
                 {(provided) => (
                   <tr ref={provided.innerRef} {...provided.droppableProps}>
-                    {/* Fixed sticky corner */}
+                    {/* Sticky corner — row-label placeholder, not resizable */}
                     <th className="sticky left-0 top-0 z-30 bg-white border border-gray-200 w-[200px] min-w-[200px] max-w-[200px]" />
 
-                    {/* Resizable epic column headers */}
-                    {cols.map((project, index) => {
-                      const colW = getColWidth(project.id);
-                      return (
-                        <Draggable key={project.id} draggableId={project.id} index={index}>
-                          {(provided, snapshot) => (
-                            <th
-                              ref={provided.innerRef}
-                              {...provided.draggableProps}
-                              {...provided.dragHandleProps}
-                              style={{
-                                ...provided.draggableProps.style,
-                                width: colW,
-                                minWidth: colW,
-                                maxWidth: colW,
-                              }}
-                              className={`sticky top-0 z-20 border border-gray-200 px-4 py-3 text-sm font-semibold text-blue-900 text-center whitespace-nowrap cursor-grab select-none transition-colors relative ${
-                                snapshot.isDragging ? 'bg-blue-100 shadow-lg z-50' : 'bg-blue-50'
-                              }`}
-                            >
-                              <span className="text-blue-300 mr-1.5 text-xs">⠷</span>
-                              {project.title}
-                              <ResizeHandle
-                                columnKey={`grid:${project.id}`}
-                                currentWidth={colW}
-                                onResize={setColumnWidth}
-                              />
-                            </th>
-                          )}
-                        </Draggable>
-                      );
-                    })}
-
+                    {/* Draggable + resizable epic column headers */}
+                    {cols.map((project, index) => (
+                      <Draggable key={project.id} draggableId={project.id} index={index}>
+                        {(provided, snapshot) => (
+                          <ResizableHeader
+                            ref={provided.innerRef}
+                            {...provided.draggableProps}
+                            {...provided.dragHandleProps}
+                            columnKey={project.id}
+                            width={colW(project.id)}
+                            onResize={setColumnWidth}
+                            className={`sticky top-0 z-20 border border-gray-200 px-4 py-3 text-sm font-semibold text-blue-900 text-center whitespace-nowrap cursor-grab select-none transition-colors ${
+                              snapshot.isDragging ? 'bg-blue-100 shadow-lg z-50' : 'bg-blue-50'
+                            }`}
+                          >
+                            <span className="text-blue-300 mr-1.5 text-xs">&#x2803;</span>
+                            {project.title}
+                          </ResizableHeader>
+                        )}
+                      </Draggable>
+                    ))}
                     {provided.placeholder}
 
                     {/* Resizable "No Epic" column header */}
-                    <th
-                      style={{ width: noEpicWidth, minWidth: noEpicWidth, maxWidth: noEpicWidth }}
-                      className="sticky top-0 z-20 bg-gray-50 border border-gray-200 px-2 py-2 text-sm font-semibold text-gray-500 text-center relative"
+                    <ResizableHeader
+                      columnKey="__no_epic__"
+                      width={colW('__no_epic__')}
+                      onResize={setColumnWidth}
+                      className="sticky top-0 z-20 bg-gray-50 border border-gray-200 px-2 py-2 text-sm font-semibold text-gray-500 text-center"
                     >
                       {addingEpic ? (
                         <form onSubmit={handleCreateEpic} className="flex items-center gap-1">
@@ -315,11 +298,11 @@ export default function StoryMap() {
                             autoFocus
                             value={newEpicTitle}
                             onChange={(e) => setNewEpicTitle(e.target.value)}
-                            placeholder="Epic name…"
+                            placeholder="Epic name\u2026"
                             className="flex-1 min-w-0 border border-blue-300 rounded px-2 py-1 text-xs focus:outline-none focus:ring-1 focus:ring-blue-400"
                           />
-                          <button type="submit" disabled={epicSaving || !newEpicTitle.trim()} className="text-blue-600 hover:text-blue-800 disabled:opacity-40 px-1 text-base leading-none">✓</button>
-                          <button type="button" onClick={() => { setAddingEpic(false); setNewEpicTitle(''); }} className="text-gray-400 hover:text-gray-600 px-1 text-base leading-none">✕</button>
+                          <button type="submit" disabled={epicSaving || !newEpicTitle.trim()} className="text-blue-600 hover:text-blue-800 disabled:opacity-40 px-1 text-base leading-none">&#x2713;</button>
+                          <button type="button" onClick={() => { setAddingEpic(false); setNewEpicTitle(''); }} className="text-gray-400 hover:text-gray-600 px-1 text-base leading-none">&#x2715;</button>
                         </form>
                       ) : (
                         <div className="flex items-center justify-between px-2">
@@ -332,12 +315,7 @@ export default function StoryMap() {
                           </button>
                         </div>
                       )}
-                      <ResizeHandle
-                        columnKey="grid:no-epic"
-                        currentWidth={noEpicWidth}
-                        onResize={setColumnWidth}
-                      />
-                    </th>
+                    </ResizableHeader>
                   </tr>
                 )}
               </Droppable>
@@ -355,39 +333,36 @@ export default function StoryMap() {
                           {...provided.draggableProps}
                           style={provided.draggableProps.style}
                         >
-                          {/* Fixed sticky row header */}
+                          {/* Row label — sticky left, not resizable */}
                           <th
                             {...provided.dragHandleProps}
                             className={`sticky left-0 z-10 border border-gray-200 px-3 py-2 text-xs font-semibold text-purple-900 text-right align-top pt-3 cursor-grab select-none transition-colors w-[200px] min-w-[200px] max-w-[200px] ${
                               snapshot.isDragging ? 'bg-purple-100' : 'bg-purple-50'
                             }`}
                           >
-                            <span className="text-purple-300 mr-1 text-xs">⠷</span>
+                            <span className="text-purple-300 mr-1 text-xs">&#x2803;</span>
                             <span className="truncate block">{milestone.title}</span>
                           </th>
 
-                          {/* Resizable epic cells */}
-                          {cols.map((project) => {
-                            const colW = getColWidth(project.id);
-                            return (
-                              <td
-                                key={project.id}
-                                style={{ width: colW, minWidth: colW, maxWidth: colW }}
-                                className="border border-gray-200 align-top p-2 bg-white"
-                              >
-                                <CardCell
-                                  droppableId={cellId(project.id, milestone.number)}
-                                  items={cellIssues(project.id, milestone.number)}
-                                  onAdd={() => setCreateCell({ projectId: project.id, milestoneNumber: milestone.number })}
-                                />
-                              </td>
-                            );
-                          })}
+                          {/* Epic column cells — width follows header */}
+                          {cols.map((project) => (
+                            <td
+                              key={project.id}
+                              className="border border-gray-200 align-top p-2 bg-white"
+                              style={{ width: colW(project.id), minWidth: colW(project.id) }}
+                            >
+                              <CardCell
+                                droppableId={cellId(project.id, milestone.number)}
+                                items={cellIssues(project.id, milestone.number)}
+                                onAdd={() => setCreateCell({ projectId: project.id, milestoneNumber: milestone.number })}
+                              />
+                            </td>
+                          ))}
 
-                          {/* "No Epic" cell */}
+                          {/* No Epic cell */}
                           <td
-                            style={{ width: noEpicWidth, minWidth: noEpicWidth, maxWidth: noEpicWidth }}
                             className="border border-gray-200 align-top p-2 bg-gray-50/50"
+                            style={{ width: colW('__no_epic__'), minWidth: colW('__no_epic__') }}
                           >
                             <CardCell
                               droppableId={cellId('', milestone.number)}
@@ -411,11 +386,11 @@ export default function StoryMap() {
                             autoFocus
                             value={newWaveTitle}
                             onChange={(e) => setNewWaveTitle(e.target.value)}
-                            placeholder="Wave name…"
+                            placeholder="Wave name\u2026"
                             className="flex-1 min-w-0 border border-purple-300 rounded px-2 py-1 text-xs focus:outline-none focus:ring-1 focus:ring-purple-400"
                           />
-                          <button type="submit" disabled={waveSaving || !newWaveTitle.trim()} className="text-purple-600 hover:text-purple-800 disabled:opacity-40 px-1 text-base leading-none">✓</button>
-                          <button type="button" onClick={() => { setAddingWave(false); setNewWaveTitle(''); }} className="text-gray-400 hover:text-gray-600 px-1 text-base leading-none">✕</button>
+                          <button type="submit" disabled={waveSaving || !newWaveTitle.trim()} className="text-purple-600 hover:text-purple-800 disabled:opacity-40 px-1 text-base leading-none">&#x2713;</button>
+                          <button type="button" onClick={() => { setAddingWave(false); setNewWaveTitle(''); }} className="text-gray-400 hover:text-gray-600 px-1 text-base leading-none">&#x2715;</button>
                         </form>
                       ) : (
                         <div className="flex items-center justify-end gap-2">
@@ -430,28 +405,25 @@ export default function StoryMap() {
                       )}
                     </th>
 
-                    {/* Resizable epic cells in "No Wave" row */}
-                    {cols.map((project) => {
-                      const colW = getColWidth(project.id);
-                      return (
-                        <td
-                          key={project.id}
-                          style={{ width: colW, minWidth: colW, maxWidth: colW }}
-                          className="border border-gray-200 align-top p-2 bg-white"
-                        >
-                          <CardCell
-                            droppableId={cellId(project.id, null)}
-                            items={cellIssues(project.id, null)}
-                            onAdd={() => setCreateCell({ projectId: project.id, milestoneNumber: null })}
-                          />
-                        </td>
-                      );
-                    })}
+                    {/* Epic column cells — width follows header */}
+                    {cols.map((project) => (
+                      <td
+                        key={project.id}
+                        className="border border-gray-200 align-top p-2 bg-white"
+                        style={{ width: colW(project.id), minWidth: colW(project.id) }}
+                      >
+                        <CardCell
+                          droppableId={cellId(project.id, null)}
+                          items={cellIssues(project.id, null)}
+                          onAdd={() => setCreateCell({ projectId: project.id, milestoneNumber: null })}
+                        />
+                      </td>
+                    ))}
 
-                    {/* "No Epic" / "No Wave" corner */}
+                    {/* No Epic / No Wave corner */}
                     <td
-                      style={{ width: noEpicWidth, minWidth: noEpicWidth, maxWidth: noEpicWidth }}
                       className="border border-gray-200 align-top p-2 bg-gray-50/50"
+                      style={{ width: colW('__no_epic__'), minWidth: colW('__no_epic__') }}
                     >
                       <CardCell
                         droppableId={cellId('', null)}
