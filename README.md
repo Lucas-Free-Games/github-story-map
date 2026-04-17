@@ -43,7 +43,8 @@ Labels are created automatically on GitHub when you add them through the **Epics
 - Grid/Kanban toggle in the toolbar
 - Create issues with pre-filled epic, wave, and status from any cell
 - **Read-only issue view** — clicking an issue card opens a formatted read-only modal (see below)
-- Edit, close, and permanently delete issues inline
+- Edit, close, reopen, and permanently delete issues inline
+- **Reopen closed issues** — a purple ↺ Reopen button replaces the Close button on closed issue cards (hover overlay) and in the read-only modal, sending a `PATCH` request to the GitHub Issues API to restore the issue to `open` state; the board updates immediately without a page refresh
 - Manage epic, wave, and status labels without leaving the app
 - Layout persisted to Firestore (optional — works fully offline)
 - Real-time sync with GitHub Issues API
@@ -61,7 +62,8 @@ Clicking any issue card in the Grid or Kanban view opens a **read-only modal** t
   | Button | Action |
   |--------|--------|
   | ✏️ Edit | Opens the edit modal (description tab) |
-  | ✓ Close | Closes the issue on GitHub |
+  | ✓ Close | Closes the issue on GitHub *(open issues only)* |
+  | ↺ Reopen | Reopens the issue on GitHub *(closed issues only)* |
   | 🗑 Delete | Permanently deletes the issue |
   | ✦ Describe with AI | Opens the edit modal to generate a description via Gemini (visible when Gemini is configured) |
   | ⚡ Code with AI | Opens the edit modal on the Implementation tab to start an AI coding session (visible when Anthropic is configured) |
@@ -69,7 +71,7 @@ Clicking any issue card in the Grid or Kanban view opens a **read-only modal** t
 
 ### Quick-edit fast path
 
-The hover overlay on each card still exposes **Edit**, **Close**, and **Delete** buttons directly, letting power users skip the read view and jump straight to the edit form.
+The hover overlay on each card still exposes **Edit**, **Close** (open issues) / **Reopen** (closed issues), and **Delete** buttons directly, letting power users skip the read view and jump straight to the action.
 
 ## Getting started
 
@@ -134,6 +136,16 @@ All values are stored in `localStorage` only.
 - **AI — code implementation:** Anthropic Claude Managed Agents API (direct `fetch`, beta `managed-agents-2026-04-01`)
 - **Markdown rendering:** Built-in lightweight renderer (`src/lib/markdown.ts`) — no extra dependency
 - **Build:** Vite
+
+## Changelog
+
+### Issue Reopen (#30)
+
+Closed issues can now be reopened directly from the board without switching to the native GitHub UI:
+
+- **IssueCard (hover overlay):** The green ✓ Close button is replaced by a purple ↺ Reopen button when the issue is already closed. Clicking it confirms and sends a `PATCH /repos/{owner}/{repo}/issues/{number}` request with `state: open`.
+- **IssueReadModal (action toolbar):** A purple ↺ Reopen button appears in place of the Close button for closed issues, giving the same action from the detailed view.
+- **State management (`appStore`):** A new `reopenIssue(number)` action updates the issue's `state` to `open` in the local Zustand cache immediately. If the issue was previously closed inline (and therefore removed from the layout), it is automatically restored to the backlog so it reappears on the Grid and Kanban views — preserving all existing `e_` and `w_` labels.
 
 ## Troubleshooting
 
