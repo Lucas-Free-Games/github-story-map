@@ -44,8 +44,37 @@ Labels are created automatically on GitHub when you add them through the **Epics
 - Create issues with pre-filled epic, wave, and status from any cell
 - Edit, close, and permanently delete issues inline
 - Manage epic, wave, and status labels without leaving the app
+- **Resizable columns** — drag the right edge of any column header to adjust its width in both Grid and Kanban views (see details below)
 - Layout persisted to Firestore (optional — works fully offline)
 - Real-time sync with GitHub Issues API
+
+## Resizable Columns
+
+Both the **Grid** (epics) and **Kanban** (statuses) views support draggable column resize handles.
+
+### How to use
+
+1. Hover over the **right edge** of any column header — a resize cursor (`col-resize`) and a thin visual indicator bar will appear.
+2. **Click and drag** left or right to adjust the column width in real-time.
+3. Release the mouse button to confirm the new width.
+
+### Constraints
+
+| Limit | Value |
+|-------|-------|
+| Minimum width | 120 px |
+| Maximum width | 600 px |
+
+### Persistence
+
+Custom column widths are stored in **`localStorage`** under the key `gh_col_widths_{owner}_{repo}`, scoped per repository. The widths are restored automatically when the page is refreshed or the app is reopened. Switching to a different repository loads that repo's own saved widths.
+
+### Implementation notes
+
+- `ResizeHandle` — a lightweight React component (`src/components/ResizeHandle.tsx`) that attaches `mousemove`/`mouseup` listeners to `document` during a drag and calls `onResize(colKey, newWidth)` continuously, enabling real-time feedback.
+- `columnWidths` / `setColumnWidth` — new state and action added to the Zustand store (`src/store/appStore.ts`). Widths are keyed by the epic's GitHub project ID (Grid) or a stable `kanban-status-{label}` string (Kanban).
+- Column `<th>` and all body `<td>` elements in each column receive matching inline `width` / `minWidth` styles so the table layout stays consistent.
+- In the Grid view the resize handle calls `e.stopPropagation()` on `mousedown` so the existing `@hello-pangea/dnd` column-drag behaviour is unaffected.
 
 ## Getting started
 
