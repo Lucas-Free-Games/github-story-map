@@ -17,6 +17,8 @@ interface AppState {
   showClosedIssues: boolean;
   projects: GitHubProject[];
   projectIssues: Record<string, number[]>; // project node_id → issue numbers
+  /** Column resize widths in pixels, keyed by column identifier (project ID or status string). */
+  columnWidths: Record<string, number>;
 
   setCredentials: (token: string, owner: string, repo: string) => void;
   fetchIssues: () => Promise<void>;
@@ -67,6 +69,8 @@ interface AppState {
     fromMilestoneNumber: number | null,
     toMilestoneNumber: number | null,
   ) => Promise<void>;
+  /** Persist a resized column width to state and localStorage. */
+  setColumnWidth: (key: string, width: number) => void;
 }
 
 const emptyLayout: StoryMapLayout = { epicOrder: [], milestoneOrder: [], storyOrder: { backlog: [] } };
@@ -84,7 +88,7 @@ async function gql<T>(
   const json = await res.json() as { data?: T; errors?: { message: string; path?: string[] }[] };
   if (json.errors?.length) {
     const { message, path } = json.errors[0];
-    const location = path?.length ? ` (at: ${path.join(' → ')})` : '';
+    const location = path?.length ? ` (at: ${path.join(' \u2192 ')})` : '';
     throw new Error(`${message}${location}`);
   }
   return json.data as T;
@@ -118,6 +122,7 @@ export const useAppStore = create<AppState>((set, get) => ({
   showClosedIssues: false,
   projects: [],
   projectIssues: {},
+  columnWidths: JSON.parse(localStorage.getItem('gh_column_widths') ?? '{}') as Record<string, number>,
 
   setCredentials: (token, owner, repo) => {
     localStorage.setItem('gh_token', token);
@@ -773,5 +778,11 @@ export const useAppStore = create<AppState>((set, get) => ({
       set({ issues: snapIssues });
       throw err;
     }
+  },
+
+  setColumnWidth: (key, width) => {
+    const newWidths = { ...get().columnWidths, [key]: width };
+    localStorage.setItem('gh_column_widths', JSON.stringify(newWidths));
+    set({ columnWidths: newWidths });
   },
 }));

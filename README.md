@@ -46,7 +46,9 @@ Labels are created automatically on GitHub when you add them through the **Epics
 - Manage epic, wave, and status labels without leaving the app
 - Layout persisted to Firestore (optional — works fully offline)
 - Real-time sync with GitHub Issues API
-- **Code with AI** — delegate issue implementation to a Claude Managed Agent (creates branch, writes code, opens PR)
+- Resizable columns in both Grid and Kanban views (see below)
+- Describe with AI uses the epic, the wave, the issue tilte, example issues, the code and additional instructions to create the issue's spec
+- Code with AI delegate issue implementation to a Claude Managed Agent (creates branch, writes code, opens PR)
 
 ## Getting started
 
