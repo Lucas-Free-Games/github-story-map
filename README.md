@@ -27,7 +27,7 @@ A "No Status" column and "No Wave" swimlane catch any untagged issues.
 All structure comes from GitHub labels with these prefixes:
 
 | Prefix | Example | Purpose |
-|--------|---------|---------| 
+|--------|---------|---------|
 | `e_` | `e_Auth` | Epic — defines Grid columns |
 | `w_` | `w_Q1` | Wave / release — defines Grid rows and Kanban swimlanes |
 | `s_` | `s_Done` | Status — defines Kanban columns |
@@ -46,18 +46,7 @@ Labels are created automatically on GitHub when you add them through the **Epics
 - Manage epic, wave, and status labels without leaving the app
 - Layout persisted to Firestore (optional — works fully offline)
 - Real-time sync with GitHub Issues API
-- **Resizable columns** in both Grid and Kanban views (widths persisted to `localStorage`)
-
-## Resizable Columns
-
-Both the Grid (Epics) view and the Kanban (Statuses) view support user-adjustable column widths:
-
-- **Hover** over the right edge of any column header to reveal the resize cursor (`col-resize`) and a subtle visual indicator.
-- **Click and drag** the handle left or right to resize the column in real-time.
-- **Width constraints** are enforced: minimum **150 px**, maximum **600 px**.
-- **Persistence** — adjusted widths are saved to `localStorage` under the key `gh_column_widths` and automatically restored on page refresh or the next browser session.
-
-Grid column widths are keyed by GitHub Project node ID (unique per epic). Kanban column widths are keyed by status label name (prefixed with `kanban:`).
+- **Resizable columns** — drag the handle on the right edge of any column header (Grid epics or Kanban statuses) to adjust its width. Custom widths are persisted to `localStorage` so your preferred layout survives page refreshes. Widths are clamped between 120 px and 600 px.
 
 ## Getting started
 
