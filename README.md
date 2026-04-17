@@ -46,7 +46,29 @@ Labels are created automatically on GitHub when you add them through the **Epics
 - Manage epic, wave, and status labels without leaving the app
 - Layout persisted to Firestore (optional — works fully offline)
 - Real-time sync with GitHub Issues API
-- **Resizable columns** — drag the handle on the right edge of any column header (Grid epics or Kanban statuses) to adjust its width. Custom widths are persisted to `localStorage` so your preferred layout survives page refreshes. Widths are clamped between 120 px and 600 px.
+- **Resizable columns** in both Grid and Kanban views (see below)
+
+## Resizable Columns
+
+Both the **Grid** (epics) and **Kanban** (statuses) views support drag-to-resize column headers.
+
+### How to use
+
+1. Hover over the **right edge** of any column header — a thin blue (Grid) or green (Kanban) indicator bar appears.
+2. Click and drag the edge **left or right** to resize the column in real time.
+3. Release the mouse to confirm the new width.
+
+### Behaviour
+
+| Detail | Value |
+|--------|-------|
+| Minimum column width | 100 px |
+| Maximum column width | 600 px |
+| Default Grid column width | 200 px |
+| Default Kanban column width | 280 px |
+| Persistence | Widths are saved to `localStorage` under the key `gh_column_widths` and restored automatically on the next page load. |
+
+Resizing a column does **not** interfere with the existing drag-to-reorder behaviour for epic columns in the Grid view — the resize handle intercepts the mouse event before the DnD drag handler fires.
 
 ## Getting started
 
