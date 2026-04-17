@@ -1,5 +1,5 @@
 import { createPortal } from 'react-dom';
-import { useState, useRef } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import type { GitHubIssue } from '../types';
 import { useAppStore } from '../store/appStore';
 import EditIssueModal from './EditIssueModal';
@@ -17,13 +17,23 @@ interface Props {
 
 export default function IssueCard({ issue }: Props) {
   const { closeIssue, deleteIssue } = useAppStore();
-  const [showEdit, setShowEdit] = useState(false);
+  const [showEdit, setShowEdit] = useState(
+    () => window.location.pathname === `/issue/${issue.number}`
+  );
   const [busy, setBusy] = useState(false);
   const [hovered, setHovered] = useState(false);
   const [showBadgeTip, setShowBadgeTip] = useState(false);
   const [calloutStyle, setCalloutStyle] = useState<React.CSSProperties | null>(null);
   const cardRef = useRef<HTMLDivElement>(null);
   const calloutTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  useEffect(() => {
+    if (showEdit) {
+      history.pushState({}, '', `/issue/${issue.number}`);
+    } else if (window.location.pathname === `/issue/${issue.number}`) {
+      history.pushState({}, '', '/');
+    }
+  }, [showEdit, issue.number]);
 
   const statusLabel = issue.labels.find(l => l.name.startsWith('s_'));
   const statusName = statusLabel ? statusLabel.name.slice(2) : null;

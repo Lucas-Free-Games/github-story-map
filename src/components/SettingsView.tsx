@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { useAppStore } from '../store/appStore';
 import { loadGeminiSettings, saveGeminiSettings, testGeminiConnection, DEFAULT_GEMINI_MODEL } from '../lib/gemini';
+import { loadAnthropicSettings, saveAnthropicSettings } from '../lib/anthropic';
 
 type LedState = 'idle' | 'testing' | 'success' | 'error';
 
@@ -29,13 +30,22 @@ function Led({ state, onClick }: { state: LedState; onClick: () => void }) {
 export default function SettingsView() {
   const { issues } = useAppStore();
   const saved = loadGeminiSettings();
+  const savedAnthropic = loadAnthropicSettings();
 
+  // Gemini
   const [apiKey, setApiKey] = useState(saved.apiKey);
   const [model, setModel] = useState(saved.model);
   const [exampleNumbers, setExampleNumbers] = useState<number[]>(saved.exampleIssueNumbers);
   const [extraInstructions, setExtraInstructions] = useState(saved.extraInstructions);
   const [search, setSearch] = useState('');
   const [ledState, setLedState] = useState<LedState>('idle');
+
+  // Anthropic
+  const [anthropicKey, setAnthropicKey] = useState(savedAnthropic.apiKey);
+  const [agentId, setAgentId] = useState(savedAnthropic.agentId);
+  const [envId, setEnvId] = useState(savedAnthropic.envId);
+  const [vaultId, setVaultId] = useState(savedAnthropic.vaultId);
+
   const [saved_, setSaved_] = useState(false);
 
   async function handleTest() {
@@ -52,6 +62,7 @@ export default function SettingsView() {
 
   function handleSave() {
     saveGeminiSettings({ apiKey, model, exampleIssueNumbers: exampleNumbers, extraInstructions });
+    saveAnthropicSettings({ apiKey: anthropicKey, agentId, envId, vaultId });
     setSaved_(true);
     setTimeout(() => setSaved_(false), 2000);
   }
@@ -74,8 +85,6 @@ export default function SettingsView() {
   return (
     <div className="flex-1 overflow-y-auto bg-gray-50">
       <div className="max-w-lg mx-auto py-8 px-4 space-y-6">
-        <h2 className="font-semibold text-gray-900 text-lg">Settings</h2>
-
         {/* Gemini API Key */}
         <div>
           <div className="flex items-center justify-between mb-1">
@@ -185,6 +194,63 @@ export default function SettingsView() {
             placeholder="e.g. Always write in Portuguese. Keep acceptance criteria concise."
             className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none"
           />
+        </div>
+
+        {/* Divider */}
+        <div className="border-t border-gray-200 pt-6">
+          <div className="flex items-center gap-2 mb-4">
+            <span className="text-sm font-semibold text-gray-900">Code with AI</span>
+            <span className="text-xs bg-orange-100 text-orange-700 px-2 py-0.5 rounded-full font-medium">beta</span>
+          </div>
+          <p className="text-xs text-gray-400 mb-4">
+            Triggers a Claude Managed Agent session to implement an issue — creating a branch, writing code, and opening a PR. Requires a pre-configured agent with GitHub MCP access.
+          </p>
+
+          <div className="space-y-3">
+            <div>
+              <label className="block text-xs font-medium text-gray-600 mb-1">Anthropic API Key</label>
+              <input
+                type="password"
+                value={anthropicKey}
+                onChange={(e) => setAnthropicKey(e.target.value)}
+                placeholder="sk-ant-…"
+                className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-orange-400 font-mono"
+              />
+            </div>
+            <div>
+              <label className="block text-xs font-medium text-gray-600 mb-1">Agent ID</label>
+              <input
+                type="text"
+                value={agentId}
+                onChange={(e) => setAgentId(e.target.value)}
+                placeholder="agent_…"
+                className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-orange-400 font-mono"
+              />
+            </div>
+            <div>
+              <label className="block text-xs font-medium text-gray-600 mb-1">Environment ID</label>
+              <input
+                type="text"
+                value={envId}
+                onChange={(e) => setEnvId(e.target.value)}
+                placeholder="env_…"
+                className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-orange-400 font-mono"
+              />
+            </div>
+            <div>
+              <label className="block text-xs font-medium text-gray-600 mb-1">Vault ID</label>
+              <input
+                type="text"
+                value={vaultId}
+                onChange={(e) => setVaultId(e.target.value)}
+                placeholder="vlt_…"
+                className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-orange-400 font-mono"
+              />
+              <p className="text-xs text-gray-400 mt-1">
+                The vault holds your GitHub OAuth token — the agent uses it automatically via GitHub MCP.
+              </p>
+            </div>
+          </div>
         </div>
 
         <div className="flex justify-end">
