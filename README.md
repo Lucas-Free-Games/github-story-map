@@ -46,6 +46,7 @@ Labels are created automatically on GitHub when you add them through the **Epics
 - Manage epic, wave, and status labels without leaving the app
 - Layout persisted to Firestore (optional — works fully offline)
 - Real-time sync with GitHub Issues API
+- **Code with AI** — delegate issue implementation to a Claude Managed Agent (creates branch, writes code, opens PR)
 
 ## Getting started
 
@@ -70,6 +71,35 @@ npm run dev
 
 Open [http://localhost:5173](http://localhost:5173), enter your GitHub token and `owner/repo`, then use **Epics & Waves** in the toolbar to add your first labels.
 
+## Code with AI
+
+The **⚡ Code with AI** button appears in the issue edit modal when the feature is configured. Clicking it starts a [Claude Managed Agent](https://docs.anthropic.com/en/docs/agents) session that reads the issue, creates a branch, writes the implementation, and opens a pull request — all without leaving the app.
+
+A live **Agent Log** streams tool calls and messages in real time. Once the agent finishes, a **Branch** and **Pull Request** link appear in the modal and are saved to the issue description for anyone to follow.
+
+### Setup
+
+1. **Create a Managed Agent** (one-time, via the Anthropic API or console):
+   - Give it a system prompt describing your repo conventions
+   - Attach a **GitHub MCP server** so it can call the GitHub API
+   - Note the returned `agent_id`
+
+2. **Create a Vault** that holds your GitHub OAuth token:
+   - Note the returned `vault_id`
+
+3. **Create an Environment** (compute environment for the agent):
+   - Note the returned `env_id`
+
+4. **Configure in the app** — go to **Settings → Code with AI** and enter:
+   - Anthropic API Key (`sk-ant-…`)
+   - Agent ID (`agent_…`)
+   - Environment ID (`env_…`)
+   - Vault ID (`vlt_…`)
+
+All values are stored in `localStorage` only.
+
+> **Note:** The Managed Agents API is called directly from the browser using `fetch`. This requires Anthropic's API to allow cross-origin requests from your domain. If you encounter CORS errors, set up a lightweight proxy (e.g., a Firebase Cloud Function or Vite dev proxy) that forwards requests to `https://api.anthropic.com`.
+
 ## Tech stack
 
 - **Frontend:** React 18 + TypeScript
@@ -77,6 +107,8 @@ Open [http://localhost:5173](http://localhost:5173), enter your GitHub token and
 - **GitHub integration:** GitHub REST API (Octokit)
 - **State management:** Zustand
 - **Persistence:** Firebase Firestore (optional)
+- **AI — description generation:** Google Gemini API (direct `fetch`)
+- **AI — code implementation:** Anthropic Claude Managed Agents API (direct `fetch`, beta `managed-agents-2026-04-01`)
 - **Build:** Vite
 
 ## Troubleshooting

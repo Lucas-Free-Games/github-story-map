@@ -1,19 +1,54 @@
-import { useState } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { useAppStore } from '../store/appStore';
 import type { GitHubIssue } from '../types';
 import { generateDescription, loadGeminiSettings } from '../lib/gemini';
 import type { IssueContext } from '../lib/gemini';
+import {
+  loadAnthropicSettings,
+  createSession,
+  sendTaskMessage,
+  streamEvents,
+  archiveSession,
+  parseAiLinks,
+  encodeAiLinks,
+  extractLinks,
+} from '../lib/anthropic';
+import type { AiLinks, AgentEvent } from '../lib/anthropic';
 
 interface Props {
   issue: GitHubIssue;
   onClose: () => void;
 }
 
+interface LogEntry {
+  id: number;
+  type: 'status' | 'message' | 'tool' | 'result' | 'error';
+  text: string;
+  ts: Date;
+}
+
+type CodingState = 'idle' | 'starting' | 'running' | 'done' | 'error';
+
+function Spinner() {
+  return (
+    <svg className="w-3.5 h-3.5 animate-spin" viewBox="0 0 24 24" fill="none">
+      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z" />
+    </svg>
+  );
+}
+
 export default function EditIssueModal({ issue, onClose }: Props) {
   const { token, owner, repo, projects, projectIssues, milestones, updateIssue, addIssueToProject, removeIssueFromProject } = useAppStore();
 
   const [title, setTitle] = useState(issue.title);
-  const [body, setBody] = useState(issue.body ?? '');
+
+  // Body shown in editor — strip the ai-links block so the user doesn't edit it directly
+  const [body, setBody] = useState(() => {
+    const b = issue.body ?? '';
+    const idx = b.indexOf('\n\n<!-- ai-links\n');
+    return idx >= 0 ? b.slice(0, idx) : b;
+  });
 
   const initialProjectId = Object.entries(projectIssues).find(([, nums]) =>
     nums.includes(issue.number)
@@ -28,8 +63,178 @@ export default function EditIssueModal({ issue, onClose }: Props) {
   const [error, setError] = useState('');
   const [generating, setGenerating] = useState(false);
 
+  // AI coding
+  const [aiLinks, setAiLinks] = useState<AiLinks>(() => parseAiLinks(issue.body ?? ''));
+  const [codingState, setCodingState] = useState<CodingState>('idle');
+  const [logs, setLogs] = useState<LogEntry[]>([]);
+  const logIdRef = useRef(0);
+  const abortRef = useRef<AbortController | null>(null);
+  const logEndRef = useRef<HTMLDivElement>(null);
+  // Keep a live ref to body so we can read it inside async callbacks
+  const bodyRef = useRef(body);
+  useEffect(() => { bodyRef.current = body; }, [body]);
+
+  // Auto-scroll log to bottom
+  useEffect(() => {
+    logEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+  }, [logs]);
+
+  // Abort stream on unmount
+  useEffect(() => () => { abortRef.current?.abort(); }, []);
+
   const openProjects = projects.filter((p) => !p.closed);
   const hasGeminiKey = Boolean(loadGeminiSettings().apiKey);
+  const anthropicSettings = loadAnthropicSettings();
+  const hasAnthropicSettings = Boolean(
+    anthropicSettings.apiKey &&
+    anthropicSettings.agentId &&
+    anthropicSettings.envId &&
+    anthropicSettings.vaultId,
+  );
+
+  function pushLog(type: LogEntry['type'], text: string) {
+    setLogs(prev => [...prev, { id: logIdRef.current++, type, text, ts: new Date() }]);
+  }
+
+  async function handleCodeWithAI() {
+    setCodingState('starting');
+    setLogs([]);
+    const ac = new AbortController();
+    abortRef.current = ac;
+
+    let sessionId: string | null = null;
+    // Use a local variable to accumulate detected links — avoids stale closure issues
+    let detectedLinks: AiLinks = { branch: aiLinks.branch, pr: aiLinks.pr };
+
+    try {
+      pushLog('status', '▶ Creating session…');
+
+      sessionId = await createSession(anthropicSettings);
+      pushLog('status', `▶ Session: ${sessionId}`);
+
+      // Open the SSE stream FIRST (GET /stream), then send the task message.
+      // Per the docs: the stream must be open before sending to avoid race conditions.
+      const streamPromise = streamEvents(
+        anthropicSettings.apiKey,
+        sessionId,
+        (event: AgentEvent) => {
+          switch (event.type) {
+            case 'status_running':
+            case 'session.status_running':
+              pushLog('status', '▶ Agent started working…');
+              setCodingState('running');
+              break;
+
+            case 'agent.message':
+            case 'message': {
+              // Extract text from content array or plain string
+              let text = '';
+              if (typeof event.content === 'string') {
+                text = event.content;
+              } else if (Array.isArray(event.content)) {
+                text = (event.content as { type: string; text?: string }[])
+                  .filter(b => b.type === 'text')
+                  .map(b => b.text ?? '')
+                  .join('');
+              }
+              if (text) {
+                pushLog('message', text);
+                const found = extractLinks(text, owner, repo);
+                detectedLinks = {
+                  branch: found.branch ?? detectedLinks.branch,
+                  pr:     found.pr     ?? detectedLinks.pr,
+                };
+                setAiLinks({ ...detectedLinks });
+              }
+              break;
+            }
+
+            case 'agent.mcp_tool_use':
+            case 'tool_use': {
+              const inputStr = event.input
+                ? JSON.stringify(event.input).slice(0, 140)
+                : '';
+              pushLog('tool', `→ ${String(event.name ?? 'tool')}(${inputStr})`);
+              break;
+            }
+
+            case 'agent.mcp_tool_result':
+            case 'tool_result': {
+              let text = '';
+              if (typeof event.content === 'string') {
+                text = event.content.slice(0, 200);
+              } else if (Array.isArray(event.content)) {
+                text = (event.content as { type: string; text?: string }[])
+                  .filter(b => b.type === 'text')
+                  .map(b => b.text ?? '')
+                  .join('')
+                  .slice(0, 200);
+              }
+              if (text) {
+                pushLog('result', `  ↳ ${text}`);
+                const found = extractLinks(text, owner, repo);
+                detectedLinks = {
+                  branch: found.branch ?? detectedLinks.branch,
+                  pr:     found.pr     ?? detectedLinks.pr,
+                };
+                setAiLinks({ ...detectedLinks });
+              }
+              break;
+            }
+
+            case 'status_terminated':
+            case 'session.status_terminated':
+              pushLog('error', '✗ Session terminated (unrecoverable error)');
+              break;
+
+            case 'session.error': {
+              const msg = typeof event.error === 'string'
+                ? event.error
+                : JSON.stringify(event.error);
+              pushLog('error', `✗ ${msg}`);
+              break;
+            }
+
+            case 'status_idle':
+            case 'status_closed':
+            case 'session.status_idle':
+              // Terminal — handled by streamEvents, nothing extra to log here
+              break;
+
+            default:
+              pushLog('result', `[${event.type}]`);
+          }
+        },
+        (raw) => pushLog('result', raw),
+        ac.signal,
+      );
+
+      pushLog('status', '▶ Sending task…');
+      await sendTaskMessage(
+        anthropicSettings.apiKey,
+        sessionId,
+        `implement issue #${issue.number} for ${owner}/${repo}`,
+      );
+
+      await streamPromise;
+
+      // Persist links to the GitHub issue body
+      if (detectedLinks.branch || detectedLinks.pr) {
+        const newBody = encodeAiLinks(bodyRef.current, detectedLinks);
+        updateIssue(issue.number, title, newBody).catch(() => {});
+      }
+
+      setCodingState('done');
+      pushLog('status', '✓ Done');
+    } catch (err) {
+      if ((err as Error)?.name === 'AbortError') return;
+      const msg = err instanceof Error ? err.message : 'Unknown error';
+      pushLog('error', `✗ ${msg}`);
+      setCodingState('error');
+    } finally {
+      if (sessionId) archiveSession(anthropicSettings.apiKey, sessionId).catch(() => {});
+    }
+  }
 
   async function handleGenerate() {
     if (!title.trim()) { setError('Add a title before generating.'); return; }
@@ -65,10 +270,12 @@ export default function EditIssueModal({ issue, onClose }: Props) {
       }
       const newMilestone = milestoneNumber ? Number(milestoneNumber) : null;
       const milestoneChanged = newMilestone !== (issue.milestone?.number ?? null);
+      // Preserve AI links when saving
+      const savedBody = encodeAiLinks(body.trim(), aiLinks);
       await updateIssue(
         issue.number,
         title.trim(),
-        body.trim(),
+        savedBody,
         milestoneChanged ? newMilestone : undefined,
       );
       onClose();
@@ -78,12 +285,15 @@ export default function EditIssueModal({ issue, onClose }: Props) {
     }
   }
 
+  const showLog = codingState !== 'idle' || logs.length > 0;
+
   return (
     <div
       className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4"
       onClick={(e) => e.target === e.currentTarget && onClose()}
     >
-      <div className="bg-white rounded-2xl shadow-xl w-full max-w-2xl">
+      <div className={`bg-white rounded-2xl shadow-xl w-full transition-all duration-200 ${showLog ? 'max-w-3xl' : 'max-w-2xl'}`}>
+        {/* Header */}
         <div className="flex items-center justify-between px-6 pt-5 pb-4 border-b border-gray-100">
           <div>
             <h2 className="font-semibold text-gray-900">Edit Issue</h2>
@@ -95,6 +305,7 @@ export default function EditIssueModal({ issue, onClose }: Props) {
         </div>
 
         <form onSubmit={handleSubmit} className="px-6 py-4 space-y-4">
+          {/* Title */}
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">Title</label>
             <input
@@ -107,6 +318,39 @@ export default function EditIssueModal({ issue, onClose }: Props) {
             />
           </div>
 
+          {/* Branch / PR links (shown once detected) */}
+          {(aiLinks.branch || aiLinks.pr) && (
+            <div className="flex flex-wrap gap-2">
+              {aiLinks.branch && (
+                <a
+                  href={aiLinks.branch}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="flex items-center gap-1.5 text-xs text-blue-600 hover:text-blue-800 bg-blue-50 border border-blue-200 rounded-lg px-3 py-1.5 transition-colors"
+                >
+                  <svg className="w-3.5 h-3.5 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M10 20l4-16m4 4l4 4-4 4M6 16l-4-4 4-4" />
+                  </svg>
+                  Branch ↗
+                </a>
+              )}
+              {aiLinks.pr && (
+                <a
+                  href={aiLinks.pr}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="flex items-center gap-1.5 text-xs text-purple-600 hover:text-purple-800 bg-purple-50 border border-purple-200 rounded-lg px-3 py-1.5 transition-colors"
+                >
+                  <svg className="w-3.5 h-3.5 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
+                  </svg>
+                  Pull Request ↗
+                </a>
+              )}
+            </div>
+          )}
+
+          {/* Description */}
           <div>
             <div className="flex items-center justify-between mb-1">
               <label className="block text-sm font-medium text-gray-700">
@@ -120,13 +364,7 @@ export default function EditIssueModal({ issue, onClose }: Props) {
                   className="flex items-center gap-1.5 px-2.5 py-1 text-xs font-medium text-purple-700 bg-purple-50 border border-purple-200 rounded-lg hover:bg-purple-100 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
                 >
                   {generating ? (
-                    <>
-                      <svg className="w-3 h-3 animate-spin" viewBox="0 0 24 24" fill="none">
-                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
-                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z" />
-                      </svg>
-                      Generating…
-                    </>
+                    <><Spinner />Generating…</>
                   ) : (
                     <>✦ Generate with AI</>
                   )}
@@ -136,11 +374,12 @@ export default function EditIssueModal({ issue, onClose }: Props) {
             <textarea
               value={body}
               onChange={(e) => setBody(e.target.value)}
-              rows={8}
+              rows={showLog ? 5 : 8}
               className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none"
             />
           </div>
 
+          {/* Epic / Wave */}
           <div className="grid grid-cols-2 gap-3">
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">Epic</label>
@@ -171,8 +410,67 @@ export default function EditIssueModal({ issue, onClose }: Props) {
             </div>
           </div>
 
+          {/* Agent log */}
+          {showLog && (
+            <div>
+              <div className="flex items-center justify-between mb-1.5">
+                <span className="text-xs font-medium text-gray-500 uppercase tracking-wide">Agent Log</span>
+                <div className="flex items-center gap-3">
+                  {codingState === 'starting' && (
+                    <span className="flex items-center gap-1 text-xs text-gray-400"><Spinner />Starting…</span>
+                  )}
+                  {codingState === 'running' && (
+                    <span className="flex items-center gap-1.5 text-xs text-green-600">
+                      <span className="w-1.5 h-1.5 rounded-full bg-green-500 animate-pulse" />Running…
+                    </span>
+                  )}
+                  {codingState === 'done' && <span className="text-xs text-green-600 font-medium">✓ Complete</span>}
+                  {codingState === 'error' && <span className="text-xs text-red-500 font-medium">✗ Error</span>}
+                  {logs.length > 0 && (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        const text = logs
+                          .map(e => `[${e.ts.toISOString()}] ${e.text}`)
+                          .join('\n');
+                        navigator.clipboard.writeText(text);
+                      }}
+                      className="text-xs text-gray-500 hover:text-gray-300 transition-colors px-1.5 py-0.5 rounded border border-gray-700 hover:border-gray-500"
+                      title="Copy log to clipboard"
+                    >
+                      Copy
+                    </button>
+                  )}
+                </div>
+              </div>
+              <div className="bg-gray-950 rounded-xl p-3 max-h-64 overflow-y-auto font-mono text-xs select-text">
+                {logs.map((entry) => {
+                  const hh = entry.ts.getHours().toString().padStart(2, '0');
+                  const mm = entry.ts.getMinutes().toString().padStart(2, '0');
+                  const ss = entry.ts.getSeconds().toString().padStart(2, '0');
+                  const ms = entry.ts.getMilliseconds().toString().padStart(3, '0');
+                  const timestamp = `${hh}:${mm}:${ss}.${ms}`;
+                  const textColor =
+                    entry.type === 'status'  ? 'text-green-400' :
+                    entry.type === 'error'   ? 'text-red-400'   :
+                    entry.type === 'tool'    ? 'text-blue-300'  :
+                    entry.type === 'result'  ? 'text-gray-500'  :
+                    'text-gray-200';
+                  return (
+                    <div key={entry.id} className="flex gap-2 leading-5 group">
+                      <span className="text-gray-600 shrink-0 select-none">{timestamp}</span>
+                      <span className={`${textColor} break-all`}>{entry.text}</span>
+                    </div>
+                  );
+                })}
+                <div ref={logEndRef} />
+              </div>
+            </div>
+          )}
+
           {error && <p className="text-red-500 text-sm">{error}</p>}
 
+          {/* Footer */}
           <div className="flex justify-end gap-2 pt-1">
             <button
               type="button"
@@ -181,6 +479,22 @@ export default function EditIssueModal({ issue, onClose }: Props) {
             >
               Cancel
             </button>
+
+            {hasAnthropicSettings && (
+              <button
+                type="button"
+                onClick={handleCodeWithAI}
+                disabled={codingState === 'starting' || codingState === 'running'}
+                className="flex items-center gap-1.5 px-4 py-2 text-sm font-medium text-orange-700 bg-orange-50 border border-orange-200 rounded-lg hover:bg-orange-100 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+              >
+                {(codingState === 'starting' || codingState === 'running') ? (
+                  <><Spinner />Coding…</>
+                ) : (
+                  <>⚡ Code with AI</>
+                )}
+              </button>
+            )}
+
             <button
               type="submit"
               disabled={saving || !title.trim()}
