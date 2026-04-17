@@ -3,6 +3,7 @@ import { useState, useRef, useEffect } from 'react';
 import type { GitHubIssue } from '../types';
 import { useAppStore } from '../store/appStore';
 import EditIssueModal from './EditIssueModal';
+import IssueReadModal from './IssueReadModal';
 
 function truncateMiddle(text: string, max: number): string {
   if (text.length <= max) return text;
@@ -17,9 +18,17 @@ interface Props {
 
 export default function IssueCard({ issue }: Props) {
   const { closeIssue, deleteIssue } = useAppStore();
-  const [showEdit, setShowEdit] = useState(
-    () => window.location.pathname === `/issue/${issue.number}`
+
+  // Read-only view — opens when the card body is clicked or when the URL
+  // already points to this issue (deep-link / page-refresh support).
+  const [showReadModal, setShowReadModal] = useState(
+    () => window.location.pathname === `/issue/${issue.number}`,
   );
+
+  // Direct-edit path — opened via the hover-action Edit button (fast path)
+  // so power-users can skip the read modal entirely.
+  const [showEdit, setShowEdit] = useState(false);
+
   const [busy, setBusy] = useState(false);
   const [hovered, setHovered] = useState(false);
   const [showBadgeTip, setShowBadgeTip] = useState(false);
@@ -27,13 +36,14 @@ export default function IssueCard({ issue }: Props) {
   const cardRef = useRef<HTMLDivElement>(null);
   const calloutTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
+  // Keep the browser URL in sync with the read modal.
   useEffect(() => {
-    if (showEdit) {
+    if (showReadModal) {
       history.pushState({}, '', `/issue/${issue.number}`);
     } else if (window.location.pathname === `/issue/${issue.number}`) {
       history.pushState({}, '', '/');
     }
-  }, [showEdit, issue.number]);
+  }, [showReadModal, issue.number]);
 
   const statusLabel = issue.labels.find(l => l.name.startsWith('s_'));
   const statusName = statusLabel ? statusLabel.name.slice(2) : null;
@@ -86,6 +96,7 @@ export default function IssueCard({ issue }: Props) {
         ref={cardRef}
         onMouseEnter={onCardEnter}
         onMouseLeave={onCardLeave}
+        onClick={() => setShowReadModal(true)}
         className={`relative select-none cursor-pointer text-sm ${hovered ? 'z-20' : ''} ${
           busy ? 'opacity-40 pointer-events-none' :
           issue.state === 'closed' ? 'opacity-60' : ''
@@ -148,6 +159,7 @@ export default function IssueCard({ issue }: Props) {
 
           {/* Action buttons — absolute overlay on the right, visible on hover */}
           <div className={`absolute right-1.5 inset-y-0 flex items-center gap-1 transition-opacity ${hovered ? 'opacity-100' : 'opacity-0 pointer-events-none'}`}>
+            {/* Edit — fast path: bypasses the read modal and opens the edit form directly */}
             <button
               onClick={e => { e.stopPropagation(); setShowEdit(true); }}
               title="Edit issue"
@@ -198,7 +210,15 @@ export default function IssueCard({ issue }: Props) {
         document.body
       )}
 
-      {showEdit && <EditIssueModal issue={issue} onClose={() => setShowEdit(false)} />}
+      {/* Read-only view — opened by clicking the card body */}
+      {showReadModal && (
+        <IssueReadModal issue={issue} onClose={() => setShowReadModal(false)} />
+      )}
+
+      {/* Direct-edit fast path — opened via the hover Edit button */}
+      {showEdit && (
+        <EditIssueModal issue={issue} onClose={() => setShowEdit(false)} />
+      )}
     </>
   );
 }
