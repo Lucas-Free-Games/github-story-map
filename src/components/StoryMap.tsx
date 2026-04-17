@@ -4,7 +4,9 @@ import { useAppStore } from '../store/appStore';
 import type { GitHubIssue, GitHubMilestone, GitHubProject } from '../types';
 import IssueCard from './IssueCard';
 import CreateIssueModal from './CreateIssueModal';
-import { startColumnResize, COLUMN_DEFAULT_WIDTH, COLUMN_MIN_WIDTH } from '../lib/columnResize';
+import ResizeHandle from './ResizeHandle';
+
+const DEFAULT_COL_WIDTH = 200;
 
 function sortedProjects(projects: GitHubProject[], epicOrder: number[]): GitHubProject[] {
   const open = projects.filter((p) => !p.closed);
@@ -118,6 +120,11 @@ export default function StoryMap() {
   const [newWaveTitle, setNewWaveTitle] = useState('');
   const [waveSaving, setWaveSaving] = useState(false);
 
+  /** Returns the stored pixel width for a project column (keyed by project ID). */
+  function getColWidth(projectId: string): number {
+    return columnWidths[`grid:${projectId}`] ?? DEFAULT_COL_WIDTH;
+  }
+
   function showError(msg: string) {
     setMoveError(msg);
     setTimeout(() => setMoveError(null), 4000);
@@ -157,8 +164,8 @@ export default function StoryMap() {
   const orderedMilestones = sortedMilestones(milestones, layout.milestoneOrder);
   const visibleIssues = showClosedIssues ? issues : issues.filter((i) => i.state === 'open');
 
-  // Pre-compute the "No Epic" column width
-  const noEpicWidth = columnWidths['__no_epic__'] ?? COLUMN_DEFAULT_WIDTH;
+  // Width for the special "No Epic" column
+  const noEpicWidth = columnWidths['grid:no-epic'] ?? DEFAULT_COL_WIDTH;
 
   function cellIssues(projectId: string, milestoneNumber: number | null): GitHubIssue[] {
     const inProject = new Set(projectIssues[projectId] ?? []);
@@ -259,48 +266,48 @@ export default function StoryMap() {
               <Droppable droppableId="columns" direction="horizontal" type="COLUMN">
                 {(provided) => (
                   <tr ref={provided.innerRef} {...provided.droppableProps}>
-                    {/* Sticky corner cell (row-label area) — fixed width, not resizable */}
+                    {/* Fixed sticky corner */}
                     <th className="sticky left-0 top-0 z-30 bg-white border border-gray-200 w-[200px] min-w-[200px] max-w-[200px]" />
 
-                    {/* Epic column headers — draggable + resizable */}
-                    {cols.map((project, index) => (
-                      <Draggable key={project.id} draggableId={project.id} index={index}>
-                        {(provided, snapshot) => {
-                          const colWidth = columnWidths[project.id] ?? COLUMN_DEFAULT_WIDTH;
-                          return (
+                    {/* Resizable epic column headers */}
+                    {cols.map((project, index) => {
+                      const colW = getColWidth(project.id);
+                      return (
+                        <Draggable key={project.id} draggableId={project.id} index={index}>
+                          {(provided, snapshot) => (
                             <th
                               ref={provided.innerRef}
                               {...provided.draggableProps}
                               {...provided.dragHandleProps}
-                              className={`sticky top-0 z-20 border border-gray-200 px-4 py-3 text-sm font-semibold text-blue-900 text-center whitespace-nowrap cursor-grab select-none transition-colors ${
-                                snapshot.isDragging ? 'bg-blue-100 shadow-lg z-50' : 'bg-blue-50'
-                              }`}
                               style={{
                                 ...provided.draggableProps.style,
-                                width: colWidth,
-                                minWidth: COLUMN_MIN_WIDTH,
+                                width: colW,
+                                minWidth: colW,
+                                maxWidth: colW,
                               }}
+                              className={`sticky top-0 z-20 border border-gray-200 px-4 py-3 text-sm font-semibold text-blue-900 text-center whitespace-nowrap cursor-grab select-none transition-colors relative ${
+                                snapshot.isDragging ? 'bg-blue-100 shadow-lg z-50' : 'bg-blue-50'
+                              }`}
                             >
-                              <span className="text-blue-300 mr-1.5 text-xs">⠿</span>
+                              <span className="text-blue-300 mr-1.5 text-xs">⠷</span>
                               {project.title}
-                              {/* Resize handle */}
-                              <div
-                                className="absolute right-0 inset-y-0 w-1.5 cursor-col-resize flex items-center justify-center group"
-                                onMouseDown={(e) => startColumnResize(e, colWidth, setColumnWidth, project.id)}
-                              >
-                                <div className="h-4 w-0.5 rounded-full bg-transparent group-hover:bg-blue-300 transition-colors" />
-                              </div>
+                              <ResizeHandle
+                                columnKey={`grid:${project.id}`}
+                                currentWidth={colW}
+                                onResize={setColumnWidth}
+                              />
                             </th>
-                          );
-                        }}
-                      </Draggable>
-                    ))}
+                          )}
+                        </Draggable>
+                      );
+                    })}
+
                     {provided.placeholder}
 
-                    {/* "No Epic" column header — resizable */}
+                    {/* Resizable "No Epic" column header */}
                     <th
-                      className="sticky top-0 z-20 bg-gray-50 border border-gray-200 px-2 py-2 text-sm font-semibold text-gray-500 text-center"
-                      style={{ width: noEpicWidth, minWidth: COLUMN_MIN_WIDTH }}
+                      style={{ width: noEpicWidth, minWidth: noEpicWidth, maxWidth: noEpicWidth }}
+                      className="sticky top-0 z-20 bg-gray-50 border border-gray-200 px-2 py-2 text-sm font-semibold text-gray-500 text-center relative"
                     >
                       {addingEpic ? (
                         <form onSubmit={handleCreateEpic} className="flex items-center gap-1">
@@ -325,13 +332,11 @@ export default function StoryMap() {
                           </button>
                         </div>
                       )}
-                      {/* Resize handle */}
-                      <div
-                        className="absolute right-0 inset-y-0 w-1.5 cursor-col-resize flex items-center justify-center group"
-                        onMouseDown={(e) => startColumnResize(e, noEpicWidth, setColumnWidth, '__no_epic__')}
-                      >
-                        <div className="h-4 w-0.5 rounded-full bg-transparent group-hover:bg-gray-400 transition-colors" />
-                      </div>
+                      <ResizeHandle
+                        columnKey="grid:no-epic"
+                        currentWidth={noEpicWidth}
+                        onResize={setColumnWidth}
+                      />
                     </th>
                   </tr>
                 )}
@@ -350,22 +355,25 @@ export default function StoryMap() {
                           {...provided.draggableProps}
                           style={provided.draggableProps.style}
                         >
+                          {/* Fixed sticky row header */}
                           <th
                             {...provided.dragHandleProps}
                             className={`sticky left-0 z-10 border border-gray-200 px-3 py-2 text-xs font-semibold text-purple-900 text-right align-top pt-3 cursor-grab select-none transition-colors w-[200px] min-w-[200px] max-w-[200px] ${
                               snapshot.isDragging ? 'bg-purple-100' : 'bg-purple-50'
                             }`}
                           >
-                            <span className="text-purple-300 mr-1 text-xs">⠿</span>
+                            <span className="text-purple-300 mr-1 text-xs">⠷</span>
                             <span className="truncate block">{milestone.title}</span>
                           </th>
+
+                          {/* Resizable epic cells */}
                           {cols.map((project) => {
-                            const colWidth = columnWidths[project.id] ?? COLUMN_DEFAULT_WIDTH;
+                            const colW = getColWidth(project.id);
                             return (
                               <td
                                 key={project.id}
+                                style={{ width: colW, minWidth: colW, maxWidth: colW }}
                                 className="border border-gray-200 align-top p-2 bg-white"
-                                style={{ width: colWidth, minWidth: COLUMN_MIN_WIDTH }}
                               >
                                 <CardCell
                                   droppableId={cellId(project.id, milestone.number)}
@@ -375,10 +383,11 @@ export default function StoryMap() {
                               </td>
                             );
                           })}
-                          {/* No Epic cell */}
+
+                          {/* "No Epic" cell */}
                           <td
+                            style={{ width: noEpicWidth, minWidth: noEpicWidth, maxWidth: noEpicWidth }}
                             className="border border-gray-200 align-top p-2 bg-gray-50/50"
-                            style={{ width: noEpicWidth, minWidth: COLUMN_MIN_WIDTH }}
                           >
                             <CardCell
                               droppableId={cellId('', milestone.number)}
@@ -420,13 +429,15 @@ export default function StoryMap() {
                         </div>
                       )}
                     </th>
+
+                    {/* Resizable epic cells in "No Wave" row */}
                     {cols.map((project) => {
-                      const colWidth = columnWidths[project.id] ?? COLUMN_DEFAULT_WIDTH;
+                      const colW = getColWidth(project.id);
                       return (
                         <td
                           key={project.id}
+                          style={{ width: colW, minWidth: colW, maxWidth: colW }}
                           className="border border-gray-200 align-top p-2 bg-white"
-                          style={{ width: colWidth, minWidth: COLUMN_MIN_WIDTH }}
                         >
                           <CardCell
                             droppableId={cellId(project.id, null)}
@@ -436,10 +447,11 @@ export default function StoryMap() {
                         </td>
                       );
                     })}
-                    {/* No Epic / No Wave corner */}
+
+                    {/* "No Epic" / "No Wave" corner */}
                     <td
+                      style={{ width: noEpicWidth, minWidth: noEpicWidth, maxWidth: noEpicWidth }}
                       className="border border-gray-200 align-top p-2 bg-gray-50/50"
-                      style={{ width: noEpicWidth, minWidth: COLUMN_MIN_WIDTH }}
                     >
                       <CardCell
                         droppableId={cellId('', null)}
