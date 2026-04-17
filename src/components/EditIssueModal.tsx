@@ -20,6 +20,8 @@ import type { AiLinks, AgentEvent } from '../lib/anthropic';
 interface Props {
   issue: GitHubIssue;
   onClose: () => void;
+  /** Which tab to show on first render. Defaults to 'description'. */
+  initialTab?: 'description' | 'ai';
 }
 
 interface LogEntry {
@@ -172,7 +174,7 @@ function AiImplementationPanel({
   );
 }
 
-export default function EditIssueModal({ issue, onClose }: Props) {
+export default function EditIssueModal({ issue, onClose, initialTab = 'description' }: Props) {
   const { token, owner, repo, projects, projectIssues, milestones, updateIssue, addIssueToProject, removeIssueFromProject } = useAppStore();
 
   const [title, setTitle] = useState(issue.title);
@@ -422,7 +424,8 @@ export default function EditIssueModal({ issue, onClose }: Props) {
     }
   }
 
-  const [descTab, setDescTab] = useState<'description' | 'ai'>('description');
+  // initialTab controls which tab is active on first render.
+  const [descTab, setDescTab] = useState<'description' | 'ai'>(initialTab);
 
   return (
     <div
