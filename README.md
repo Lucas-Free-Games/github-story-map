@@ -27,7 +27,7 @@ A "No Status" column and "No Wave" swimlane catch any untagged issues.
 All structure comes from GitHub labels with these prefixes:
 
 | Prefix | Example | Purpose |
-|--------|---------|---------|
+|--------|---------|---------| 
 | `e_` | `e_Auth` | Epic — defines Grid columns |
 | `w_` | `w_Q1` | Wave / release — defines Grid rows and Kanban swimlanes |
 | `s_` | `s_Done` | Status — defines Kanban columns |
@@ -44,37 +44,20 @@ Labels are created automatically on GitHub when you add them through the **Epics
 - Create issues with pre-filled epic, wave, and status from any cell
 - Edit, close, and permanently delete issues inline
 - Manage epic, wave, and status labels without leaving the app
-- **Resizable columns** — drag the right edge of any column header to adjust its width in both Grid and Kanban views (see details below)
 - Layout persisted to Firestore (optional — works fully offline)
 - Real-time sync with GitHub Issues API
+- **Resizable columns** in both Grid and Kanban views (widths persisted to `localStorage`)
 
 ## Resizable Columns
 
-Both the **Grid** (epics) and **Kanban** (statuses) views support draggable column resize handles.
+Both the Grid (Epics) view and the Kanban (Statuses) view support user-adjustable column widths:
 
-### How to use
+- **Hover** over the right edge of any column header to reveal the resize cursor (`col-resize`) and a subtle visual indicator.
+- **Click and drag** the handle left or right to resize the column in real-time.
+- **Width constraints** are enforced: minimum **150 px**, maximum **600 px**.
+- **Persistence** — adjusted widths are saved to `localStorage` under the key `gh_column_widths` and automatically restored on page refresh or the next browser session.
 
-1. Hover over the **right edge** of any column header — a resize cursor (`col-resize`) and a thin visual indicator bar will appear.
-2. **Click and drag** left or right to adjust the column width in real-time.
-3. Release the mouse button to confirm the new width.
-
-### Constraints
-
-| Limit | Value |
-|-------|-------|
-| Minimum width | 120 px |
-| Maximum width | 600 px |
-
-### Persistence
-
-Custom column widths are stored in **`localStorage`** under the key `gh_col_widths_{owner}_{repo}`, scoped per repository. The widths are restored automatically when the page is refreshed or the app is reopened. Switching to a different repository loads that repo's own saved widths.
-
-### Implementation notes
-
-- `ResizeHandle` — a lightweight React component (`src/components/ResizeHandle.tsx`) that attaches `mousemove`/`mouseup` listeners to `document` during a drag and calls `onResize(colKey, newWidth)` continuously, enabling real-time feedback.
-- `columnWidths` / `setColumnWidth` — new state and action added to the Zustand store (`src/store/appStore.ts`). Widths are keyed by the epic's GitHub project ID (Grid) or a stable `kanban-status-{label}` string (Kanban).
-- Column `<th>` and all body `<td>` elements in each column receive matching inline `width` / `minWidth` styles so the table layout stays consistent.
-- In the Grid view the resize handle calls `e.stopPropagation()` on `mousedown` so the existing `@hello-pangea/dnd` column-drag behaviour is unaffected.
+Grid column widths are keyed by GitHub Project node ID (unique per epic). Kanban column widths are keyed by status label name (prefixed with `kanban:`).
 
 ## Getting started
 
