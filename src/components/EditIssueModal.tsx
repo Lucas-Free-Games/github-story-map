@@ -3,6 +3,7 @@ import { useAppStore } from '../store/appStore';
 import type { GitHubIssue } from '../types';
 import { generateDescription, loadGeminiSettings } from '../lib/gemini';
 import type { IssueContext } from '../lib/gemini';
+import { fetchIssueImplementation } from '../lib/github';
 import {
   loadAnthropicSettings,
   createSession,
@@ -12,6 +13,7 @@ import {
   parseAiLinks,
   encodeAiLinks,
   extractLinks,
+  branchFromUrl,
 } from '../lib/anthropic';
 import type { AiLinks, AgentEvent } from '../lib/anthropic';
 
@@ -38,16 +40,89 @@ function Spinner() {
   );
 }
 
+function CopyButton({ text, label = 'Copy' }: { text: string; label?: string }) {
+  const [copied, setCopied] = useState(false);
+  function handleCopy() {
+    navigator.clipboard.writeText(text).then(() => {
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    });
+  }
+  return (
+    <button
+      type="button"
+      onClick={handleCopy}
+      className="text-xs px-2 py-0.5 rounded border border-gray-300 hover:border-gray-400 text-gray-500 hover:text-gray-700 transition-colors shrink-0"
+    >
+      {copied ? '✓ Copied' : label}
+    </button>
+  );
+}
+
+function AiImplementationPanel({ links, loading }: { links: AiLinks; loading: boolean }) {
+  const branchName = links.branch ? branchFromUrl(links.branch) : null;
+  const prNum = links.pr?.match(/\/pull\/(\d+)/)?.[1];
+  const checkoutCmd = branchName
+    ? `git fetch origin && git checkout ${branchName} && npm run dev`
+    : null;
+
+  const placeholder = loading
+    ? <span className="flex items-center gap-1 text-xs text-gray-400"><Spinner />Loading…</span>
+    : <span className="text-xs text-gray-300 italic">not yet available</span>;
+
+  return (
+    <div className="rounded-xl border border-orange-200 bg-orange-50 px-4 py-3 space-y-2.5">
+      <div className="flex items-center justify-between gap-3">
+        <span className="text-xs text-gray-500 shrink-0">Branch</span>
+        {branchName ? (
+          <a href={links.branch} target="_blank" rel="noreferrer"
+            className="text-xs text-blue-600 hover:text-blue-800 hover:underline truncate min-w-0">
+            {branchName}
+          </a>
+        ) : placeholder}
+      </div>
+
+      <div className="flex items-center justify-between gap-3">
+        <span className="text-xs text-gray-500 shrink-0">Pull Request</span>
+        {prNum ? (
+          <a href={links.pr} target="_blank" rel="noreferrer"
+            className="text-xs text-purple-600 hover:text-purple-800 hover:underline">
+            #{prNum}
+          </a>
+        ) : placeholder}
+      </div>
+
+      <div className="space-y-1">
+        <span className="text-xs text-gray-500">Run locally</span>
+        <div className="flex items-center gap-2 bg-gray-900 rounded-lg px-3 py-2">
+          {checkoutCmd ? (
+            <>
+              <code className="text-xs text-green-400 font-mono flex-1 select-all break-all">{checkoutCmd}</code>
+              <CopyButton text={checkoutCmd} />
+            </>
+          ) : (
+            <span className="text-xs text-gray-600 italic font-mono">
+              {loading ? 'Loading…' : 'available after branch is created'}
+            </span>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
 export default function EditIssueModal({ issue, onClose }: Props) {
   const { token, owner, repo, projects, projectIssues, milestones, updateIssue, addIssueToProject, removeIssueFromProject } = useAppStore();
 
   const [title, setTitle] = useState(issue.title);
 
-  // Body shown in editor — strip the ai-links block so the user doesn't edit it directly
+  // Body shown in editor — strip the AI section so the user doesn't edit it directly
   const [body, setBody] = useState(() => {
     const b = issue.body ?? '';
-    const idx = b.indexOf('\n\n<!-- ai-links\n');
-    return idx >= 0 ? b.slice(0, idx) : b;
+    const sentinelIdx = b.indexOf('\n\n<!-- ai-section -->');
+    if (sentinelIdx >= 0) return b.slice(0, sentinelIdx);
+    const legacyIdx = b.indexOf('\n\n<!-- ai-links\n');
+    return legacyIdx >= 0 ? b.slice(0, legacyIdx) : b;
   });
 
   const initialProjectId = Object.entries(projectIssues).find(([, nums]) =>
@@ -64,7 +139,8 @@ export default function EditIssueModal({ issue, onClose }: Props) {
   const [generating, setGenerating] = useState(false);
 
   // AI coding
-  const [aiLinks, setAiLinks] = useState<AiLinks>(() => parseAiLinks(issue.body ?? ''));
+  const [aiLinks, setAiLinks] = useState<AiLinks>({});
+  const [aiLinksLoading, setAiLinksLoading] = useState(false);
   const [codingState, setCodingState] = useState<CodingState>('idle');
   const [logs, setLogs] = useState<LogEntry[]>([]);
   const logIdRef = useRef(0);
@@ -286,13 +362,14 @@ export default function EditIssueModal({ issue, onClose }: Props) {
   }
 
   const showLog = codingState !== 'idle' || logs.length > 0;
+  const [descTab, setDescTab] = useState<'description' | 'ai'>('description');
 
   return (
     <div
       className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4"
       onClick={(e) => e.target === e.currentTarget && onClose()}
     >
-      <div className={`bg-white rounded-2xl shadow-xl w-full transition-all duration-200 ${showLog ? 'max-w-3xl' : 'max-w-2xl'}`}>
+      <div className="bg-white rounded-2xl shadow-xl w-full max-w-2xl">
         {/* Header */}
         <div className="flex items-center justify-between px-6 pt-5 pb-4 border-b border-gray-100">
           <div>
@@ -318,65 +395,148 @@ export default function EditIssueModal({ issue, onClose }: Props) {
             />
           </div>
 
-          {/* Branch / PR links (shown once detected) */}
-          {(aiLinks.branch || aiLinks.pr) && (
-            <div className="flex flex-wrap gap-2">
-              {aiLinks.branch && (
-                <a
-                  href={aiLinks.branch}
-                  target="_blank"
-                  rel="noreferrer"
-                  className="flex items-center gap-1.5 text-xs text-blue-600 hover:text-blue-800 bg-blue-50 border border-blue-200 rounded-lg px-3 py-1.5 transition-colors"
-                >
-                  <svg className="w-3.5 h-3.5 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M10 20l4-16m4 4l4 4-4 4M6 16l-4-4 4-4" />
-                  </svg>
-                  Branch ↗
-                </a>
-              )}
-              {aiLinks.pr && (
-                <a
-                  href={aiLinks.pr}
-                  target="_blank"
-                  rel="noreferrer"
-                  className="flex items-center gap-1.5 text-xs text-purple-600 hover:text-purple-800 bg-purple-50 border border-purple-200 rounded-lg px-3 py-1.5 transition-colors"
-                >
-                  <svg className="w-3.5 h-3.5 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
-                  </svg>
-                  Pull Request ↗
-                </a>
-              )}
-            </div>
-          )}
-
-          {/* Description */}
+          {/* Tabbed description / AI section */}
           <div>
-            <div className="flex items-center justify-between mb-1">
-              <label className="block text-sm font-medium text-gray-700">
-                Description <span className="text-gray-400 font-normal">(optional)</span>
-              </label>
-              {hasGeminiKey && (
-                <button
-                  type="button"
-                  onClick={handleGenerate}
-                  disabled={generating || !title.trim()}
-                  className="flex items-center gap-1.5 px-2.5 py-1 text-xs font-medium text-purple-700 bg-purple-50 border border-purple-200 rounded-lg hover:bg-purple-100 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
-                >
-                  {generating ? (
-                    <><Spinner />Generating…</>
-                  ) : (
-                    <>✦ Generate with AI</>
-                  )}
-                </button>
-              )}
+            {/* Tab bar */}
+            <div className="flex items-center gap-1 border-b border-gray-200 mb-3">
+              <button
+                type="button"
+                onClick={() => setDescTab('description')}
+                className={`px-3 py-1.5 text-sm font-medium rounded-t-lg transition-colors ${
+                  descTab === 'description'
+                    ? 'text-blue-600 border-b-2 border-blue-500 -mb-px bg-white'
+                    : 'text-gray-500 hover:text-gray-700'
+                }`}
+              >
+                Description
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  setDescTab('ai');
+                  // Parse body first (fast); if empty, fetch live from GitHub
+                  const parsed = parseAiLinks(issue.body ?? '');
+                  if (parsed.branch || parsed.pr) {
+                    setAiLinks(parsed);
+                    return;
+                  }
+                  setAiLinksLoading(true);
+                  fetchIssueImplementation(token, owner, repo, issue.number)
+                    .then(setAiLinks)
+                    .finally(() => setAiLinksLoading(false));
+                }}
+                className={`flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium rounded-t-lg transition-colors ${
+                  descTab === 'ai'
+                    ? 'text-orange-600 border-b-2 border-orange-500 -mb-px bg-white'
+                    : 'text-gray-500 hover:text-gray-700'
+                }`}
+              >
+                Implementation
+                {(codingState === 'starting' || codingState === 'running') && (
+                  <span className="w-1.5 h-1.5 rounded-full bg-orange-400 animate-pulse" />
+                )}
+              </button>
             </div>
-            <textarea
-              value={body}
-              onChange={(e) => setBody(e.target.value)}
-              rows={showLog ? 5 : 8}
-              className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none"
-            />
+
+            {descTab === 'description' && (
+              <div>
+                <div className="flex justify-end mb-1">
+                  {hasGeminiKey && (
+                    <button
+                      type="button"
+                      onClick={handleGenerate}
+                      disabled={generating || !title.trim()}
+                      className="flex items-center gap-1.5 px-2.5 py-1 text-xs font-medium text-purple-700 bg-purple-50 border border-purple-200 rounded-lg hover:bg-purple-100 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+                    >
+                      {generating ? <><Spinner />Generating…</> : <>✦ Generate with AI</>}
+                    </button>
+                  )}
+                </div>
+                <textarea
+                  value={body}
+                  onChange={(e) => setBody(e.target.value)}
+                  rows={10}
+                  className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none"
+                />
+              </div>
+            )}
+
+            {descTab === 'ai' && (
+              <div className="space-y-4">
+                <AiImplementationPanel links={aiLinks} loading={aiLinksLoading} />
+
+                {hasAnthropicSettings && (
+                  <div className="flex justify-end">
+                    <button
+                      type="button"
+                      onClick={handleCodeWithAI}
+                      disabled={codingState === 'starting' || codingState === 'running'}
+                      className="flex items-center gap-1.5 px-4 py-2 text-sm font-medium text-orange-700 bg-orange-50 border border-orange-200 rounded-lg hover:bg-orange-100 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                    >
+                      {(codingState === 'starting' || codingState === 'running') ? (
+                        <><Spinner />Coding…</>
+                      ) : (
+                        <>⚡ Code with AI</>
+                      )}
+                    </button>
+                  </div>
+                )}
+
+                {showLog && (
+                  <div>
+                    <div className="flex items-center justify-between mb-1.5">
+                      <span className="text-xs font-medium text-gray-500 uppercase tracking-wide">Agent Log</span>
+                      <div className="flex items-center gap-3">
+                        {codingState === 'starting' && (
+                          <span className="flex items-center gap-1 text-xs text-gray-400"><Spinner />Starting…</span>
+                        )}
+                        {codingState === 'running' && (
+                          <span className="flex items-center gap-1.5 text-xs text-green-600">
+                            <span className="w-1.5 h-1.5 rounded-full bg-green-500 animate-pulse" />Running…
+                          </span>
+                        )}
+                        {codingState === 'done' && <span className="text-xs text-green-600 font-medium">✓ Complete</span>}
+                        {codingState === 'error' && <span className="text-xs text-red-500 font-medium">✗ Error</span>}
+                        {logs.length > 0 && (
+                          <button
+                            type="button"
+                            onClick={() => {
+                              const text = logs.map(e => `[${e.ts.toISOString()}] ${e.text}`).join('\n');
+                              navigator.clipboard.writeText(text);
+                            }}
+                            className="text-xs text-gray-500 hover:text-gray-300 transition-colors px-1.5 py-0.5 rounded border border-gray-700 hover:border-gray-500"
+                          >
+                            Copy log
+                          </button>
+                        )}
+                      </div>
+                    </div>
+                    <div className="bg-gray-950 rounded-xl p-3 max-h-72 overflow-y-auto font-mono text-xs select-text">
+                      {logs.map((entry) => {
+                        const hh = entry.ts.getHours().toString().padStart(2, '0');
+                        const mm = entry.ts.getMinutes().toString().padStart(2, '0');
+                        const ss = entry.ts.getSeconds().toString().padStart(2, '0');
+                        const ms = entry.ts.getMilliseconds().toString().padStart(3, '0');
+                        const timestamp = `${hh}:${mm}:${ss}.${ms}`;
+                        const textColor =
+                          entry.type === 'status'  ? 'text-green-400' :
+                          entry.type === 'error'   ? 'text-red-400'   :
+                          entry.type === 'tool'    ? 'text-blue-300'  :
+                          entry.type === 'result'  ? 'text-gray-500'  :
+                          'text-gray-200';
+                        return (
+                          <div key={entry.id} className="flex gap-2 leading-5">
+                            <span className="text-gray-600 shrink-0 select-none">{timestamp}</span>
+                            <span className={`${textColor} break-all`}>{entry.text}</span>
+                          </div>
+                        );
+                      })}
+                      <div ref={logEndRef} />
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
           </div>
 
           {/* Epic / Wave */}
@@ -410,64 +570,6 @@ export default function EditIssueModal({ issue, onClose }: Props) {
             </div>
           </div>
 
-          {/* Agent log */}
-          {showLog && (
-            <div>
-              <div className="flex items-center justify-between mb-1.5">
-                <span className="text-xs font-medium text-gray-500 uppercase tracking-wide">Agent Log</span>
-                <div className="flex items-center gap-3">
-                  {codingState === 'starting' && (
-                    <span className="flex items-center gap-1 text-xs text-gray-400"><Spinner />Starting…</span>
-                  )}
-                  {codingState === 'running' && (
-                    <span className="flex items-center gap-1.5 text-xs text-green-600">
-                      <span className="w-1.5 h-1.5 rounded-full bg-green-500 animate-pulse" />Running…
-                    </span>
-                  )}
-                  {codingState === 'done' && <span className="text-xs text-green-600 font-medium">✓ Complete</span>}
-                  {codingState === 'error' && <span className="text-xs text-red-500 font-medium">✗ Error</span>}
-                  {logs.length > 0 && (
-                    <button
-                      type="button"
-                      onClick={() => {
-                        const text = logs
-                          .map(e => `[${e.ts.toISOString()}] ${e.text}`)
-                          .join('\n');
-                        navigator.clipboard.writeText(text);
-                      }}
-                      className="text-xs text-gray-500 hover:text-gray-300 transition-colors px-1.5 py-0.5 rounded border border-gray-700 hover:border-gray-500"
-                      title="Copy log to clipboard"
-                    >
-                      Copy
-                    </button>
-                  )}
-                </div>
-              </div>
-              <div className="bg-gray-950 rounded-xl p-3 max-h-64 overflow-y-auto font-mono text-xs select-text">
-                {logs.map((entry) => {
-                  const hh = entry.ts.getHours().toString().padStart(2, '0');
-                  const mm = entry.ts.getMinutes().toString().padStart(2, '0');
-                  const ss = entry.ts.getSeconds().toString().padStart(2, '0');
-                  const ms = entry.ts.getMilliseconds().toString().padStart(3, '0');
-                  const timestamp = `${hh}:${mm}:${ss}.${ms}`;
-                  const textColor =
-                    entry.type === 'status'  ? 'text-green-400' :
-                    entry.type === 'error'   ? 'text-red-400'   :
-                    entry.type === 'tool'    ? 'text-blue-300'  :
-                    entry.type === 'result'  ? 'text-gray-500'  :
-                    'text-gray-200';
-                  return (
-                    <div key={entry.id} className="flex gap-2 leading-5 group">
-                      <span className="text-gray-600 shrink-0 select-none">{timestamp}</span>
-                      <span className={`${textColor} break-all`}>{entry.text}</span>
-                    </div>
-                  );
-                })}
-                <div ref={logEndRef} />
-              </div>
-            </div>
-          )}
-
           {error && <p className="text-red-500 text-sm">{error}</p>}
 
           {/* Footer */}
@@ -479,21 +581,6 @@ export default function EditIssueModal({ issue, onClose }: Props) {
             >
               Cancel
             </button>
-
-            {hasAnthropicSettings && (
-              <button
-                type="button"
-                onClick={handleCodeWithAI}
-                disabled={codingState === 'starting' || codingState === 'running'}
-                className="flex items-center gap-1.5 px-4 py-2 text-sm font-medium text-orange-700 bg-orange-50 border border-orange-200 rounded-lg hover:bg-orange-100 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-              >
-                {(codingState === 'starting' || codingState === 'running') ? (
-                  <><Spinner />Coding…</>
-                ) : (
-                  <>⚡ Code with AI</>
-                )}
-              </button>
-            )}
 
             <button
               type="submit"

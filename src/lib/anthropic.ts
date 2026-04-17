@@ -212,6 +212,7 @@ export async function streamEvents(
 
 // --- Issue body helpers ---
 
+const AI_SECTION_SENTINEL = '<!-- ai-section -->';
 const AI_MARKER_START = '<!-- ai-links\n';
 const AI_MARKER_END = '-->';
 
@@ -229,13 +230,24 @@ export function parseAiLinks(body: string): AiLinks {
 }
 
 export function encodeAiLinks(body: string, links: AiLinks): string {
-  const markerIdx = body.indexOf('\n\n' + AI_MARKER_START);
-  const base = (markerIdx >= 0 ? body.slice(0, markerIdx) : body).trimEnd();
+  // Strip any existing AI section (sentinel or legacy ai-links comment)
+  const sentinelIdx = body.indexOf('\n\n' + AI_SECTION_SENTINEL);
+  const legacyIdx   = body.indexOf('\n\n' + AI_MARKER_START);
+  const cutAt = sentinelIdx >= 0 ? sentinelIdx : legacyIdx;
+  const base = (cutAt >= 0 ? body.slice(0, cutAt) : body).trimEnd();
+
   if (!links.branch && !links.pr) return base;
-  const lines: string[] = [];
-  if (links.branch) lines.push(`branch: ${links.branch}`);
-  if (links.pr)     lines.push(`pr: ${links.pr}`);
-  return `${base}\n\n${AI_MARKER_START}${lines.join('\n')}\n${AI_MARKER_END}`;
+
+  const meta: string[] = [];
+  if (links.branch) meta.push(`branch: ${links.branch}`);
+  if (links.pr)     meta.push(`pr: ${links.pr}`);
+
+  return `${base}\n\n${AI_MARKER_START}${meta.join('\n')}\n${AI_MARKER_END}`;
+}
+
+/** Extract branch name from a GitHub tree URL. */
+export function branchFromUrl(url: string): string {
+  return decodeURIComponent(url.replace(/^https:\/\/github\.com\/[^/]+\/[^/]+\/tree\//, ''));
 }
 
 /** Extract GitHub branch and PR URLs from free text. */
