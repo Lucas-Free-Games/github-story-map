@@ -74,8 +74,6 @@ export default function SettingsView() {
   return (
     <div className="flex-1 overflow-y-auto bg-gray-50">
       <div className="max-w-lg mx-auto py-8 px-4 space-y-6">
-        <h2 className="font-semibold text-gray-900 text-lg">Settings</h2>
-
         {/* Gemini API Key */}
         <div>
           <div className="flex items-center justify-between mb-1">

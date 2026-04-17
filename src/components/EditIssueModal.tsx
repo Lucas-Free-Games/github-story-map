@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { useAppStore } from '../store/appStore';
 import type { GitHubIssue } from '../types';
 import { generateDescription, loadGeminiSettings } from '../lib/gemini';
+import type { IssueContext } from '../lib/gemini';
 
 interface Props {
   issue: GitHubIssue;
@@ -35,7 +36,15 @@ export default function EditIssueModal({ issue, onClose }: Props) {
     setGenerating(true);
     setError('');
     try {
-      const result = await generateDescription(token, owner, repo, title.trim(), body.trim());
+      const epic = openProjects.find((p) => p.id === projectId);
+      const wave = milestones.find((m) => m.number === Number(milestoneNumber));
+      const context: IssueContext = {
+        epicName: epic?.title,
+        epicDescription: epic?.shortDescription ?? undefined,
+        waveName: wave?.title,
+        waveDescription: wave?.description ?? undefined,
+      };
+      const result = await generateDescription(token, owner, repo, title.trim(), body.trim(), context);
       setBody(result);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Generation failed');

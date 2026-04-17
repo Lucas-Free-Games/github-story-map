@@ -42,12 +42,20 @@ export async function testGeminiConnection(): Promise<void> {
   }
 }
 
+export interface IssueContext {
+  epicName?: string;
+  epicDescription?: string;
+  waveName?: string;
+  waveDescription?: string;
+}
+
 export async function generateDescription(
   token: string,
   owner: string,
   repo: string,
   title: string,
   existingBody: string,
+  context: IssueContext = {},
 ): Promise<string> {
   const { apiKey, model, exampleIssueNumbers, extraInstructions } = loadGeminiSettings();
   if (!apiKey) throw new Error('No Gemini API key configured. Add one in Settings.');
@@ -95,6 +103,15 @@ export async function generateDescription(
     sections.push(`## Additional Instructions\n${extraInstructions.trim()}`);
   }
 
+  // Epic / Wave context
+  const issueContext: string[] = [];
+  if (context.epicName) {
+    issueContext.push(`Epic: ${context.epicName}${context.epicDescription ? ` — ${context.epicDescription}` : ''}`);
+  }
+  if (context.waveName) {
+    issueContext.push(`Wave: ${context.waveName}${context.waveDescription ? ` — ${context.waveDescription}` : ''}`);
+  }
+
   sections.push(
     [
       '## Task',
@@ -110,7 +127,8 @@ export async function generateDescription(
       '(bulleted list of specific, verifiable conditions)',
       '',
       `Issue title: ${title}`,
-      existingBody ? `\nExisting notes:\n${existingBody}` : '',
+      issueContext.length > 0 ? `\nIssue context:\n${issueContext.join('\n')}` : '',
+      existingBody ? `\nExisting description:\n${existingBody}` : '',
       '',
       'Return only the Markdown. Do not wrap it in a code block.',
     ].join('\n'),
