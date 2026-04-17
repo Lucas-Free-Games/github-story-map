@@ -3,6 +3,20 @@ import { Octokit } from '@octokit/rest';
 import type { GitHubIssue, GitHubMilestone, GitHubProject, StoryMapLayout } from '../types';
 import { loadLayout, saveLayout } from '../lib/firebase';
 
+function loadColumnWidths(owner: string, repo: string): Record<string, number> {
+  try {
+    return JSON.parse(localStorage.getItem(`gh_col_widths_${owner}_${repo}`) ?? '{}') as Record<string, number>;
+  } catch {
+    return {};
+  }
+}
+
+function saveColumnWidths(owner: string, repo: string, widths: Record<string, number>): void {
+  try {
+    localStorage.setItem(`gh_col_widths_${owner}_${repo}`, JSON.stringify(widths));
+  } catch { /* storage full or unavailable */ }
+}
+
 interface AppState {
   token: string;
   owner: string;
@@ -17,6 +31,8 @@ interface AppState {
   showClosedIssues: boolean;
   projects: GitHubProject[];
   projectIssues: Record<string, number[]>; // project node_id → issue numbers
+  /** Custom column widths keyed by epic project-id or status label. */
+  columnWidths: Record<string, number>;
 
   setCredentials: (token: string, owner: string, repo: string) => void;
   fetchIssues: () => Promise<void>;
@@ -67,6 +83,11 @@ interface AppState {
     fromMilestoneNumber: number | null,
     toMilestoneNumber: number | null,
   ) => Promise<void>;
+  /**
+   * Persist a custom width (in px) for a column identified by `key`.
+   * The value is stored in localStorage so it survives page refreshes.
+   */
+  setColumnWidth: (key: string, width: number) => void;
 }
 
 const emptyLayout: StoryMapLayout = { epicOrder: [], milestoneOrder: [], storyOrder: { backlog: [] } };
@@ -104,10 +125,13 @@ async function ensureLabel(
   }
 }
 
+const _initOwner = localStorage.getItem('gh_owner') ?? import.meta.env.VITE_GITHUB_OWNER ?? '';
+const _initRepo = localStorage.getItem('gh_repo') ?? import.meta.env.VITE_GITHUB_REPO ?? '';
+
 export const useAppStore = create<AppState>((set, get) => ({
   token: localStorage.getItem('gh_token') ?? import.meta.env.VITE_GITHUB_TOKEN ?? '',
-  owner: localStorage.getItem('gh_owner') ?? import.meta.env.VITE_GITHUB_OWNER ?? '',
-  repo: localStorage.getItem('gh_repo') ?? import.meta.env.VITE_GITHUB_REPO ?? '',
+  owner: _initOwner,
+  repo: _initRepo,
   issues: [],
   layout: emptyLayout,
   loading: false,
@@ -118,24 +142,44 @@ export const useAppStore = create<AppState>((set, get) => ({
   showClosedIssues: false,
   projects: [],
   projectIssues: {},
+  columnWidths: loadColumnWidths(_initOwner, _initRepo),
 
   setCredentials: (token, owner, repo) => {
     localStorage.setItem('gh_token', token);
     localStorage.setItem('gh_owner', owner);
     localStorage.setItem('gh_repo', repo);
-    set({ token, owner, repo, issues: [], layout: emptyLayout, error: null, milestones: [], statusLabels: [], projects: [], projectIssues: {} });
+    set({
+      token,
+      owner,
+      repo,
+      issues: [],
+      layout: emptyLayout,
+      error: null,
+      milestones: [],
+      statusLabels: [],
+      projects: [],
+      projectIssues: {},
+      columnWidths: loadColumnWidths(owner, repo),
+    });
   },
 
   reset: () => {
     localStorage.removeItem('gh_token');
     localStorage.removeItem('gh_owner');
     localStorage.removeItem('gh_repo');
-    set({ token: '', owner: '', repo: '', issues: [], layout: emptyLayout, error: null, milestones: [], statusLabels: [], projects: [], projectIssues: {} });
+    set({ token: '', owner: '', repo: '', issues: [], layout: emptyLayout, error: null, milestones: [], statusLabels: [], projects: [], projectIssues: {}, columnWidths: {} });
   },
 
   setView: (view) => set({ view }),
 
   toggleShowClosedIssues: () => set((state) => ({ showClosedIssues: !state.showClosedIssues })),
+
+  setColumnWidth: (key, width) => {
+    const { owner, repo, columnWidths } = get();
+    const updated = { ...columnWidths, [key]: width };
+    set({ columnWidths: updated });
+    saveColumnWidths(owner, repo, updated);
+  },
 
   fetchLabels: async () => {
     const { token, owner, repo } = get();
