@@ -17,7 +17,7 @@ interface Props {
 }
 
 export default function IssueCard({ issue }: Props) {
-  const { closeIssue, deleteIssue } = useAppStore();
+  const { closeIssue, deleteIssue, reopenIssue } = useAppStore();
 
   // Read-only view — opens when the card body is clicked or when the URL
   // already points to this issue (deep-link / page-refresh support).
@@ -76,6 +76,14 @@ export default function IssueCard({ issue }: Props) {
     if (!confirm(`Close issue #${issue.number}?`)) return;
     setBusy(true);
     try { await closeIssue(issue.number); } catch { setBusy(false); }
+  }
+
+  async function handleReopen(e: React.MouseEvent) {
+    e.stopPropagation();
+    if (!confirm(`Reopen issue #${issue.number}?`)) return;
+    setBusy(true);
+    try { await reopenIssue(issue.number); } catch { setBusy(false); }
+    setBusy(false);
   }
 
   async function handleDelete(e: React.MouseEvent) {
@@ -169,15 +177,30 @@ export default function IssueCard({ issue }: Props) {
                 <path d="M13.586 3.586a2 2 0 112.828 2.828l-.793.793-2.828-2.828.793-.793zM11.379 5.793L3 14.172V17h2.828l8.38-8.379-2.83-2.828z" />
               </svg>
             </button>
-            <button
-              onClick={handleClose}
-              title="Close issue"
-              className="text-green-600 p-1 rounded-md border border-green-200 bg-green-50 hover:bg-green-100 transition-colors"
-            >
-              <svg xmlns="http://www.w3.org/2000/svg" className="w-3.5 h-3.5" viewBox="0 0 20 20" fill="currentColor">
-                <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
-              </svg>
-            </button>
+
+            {/* Close (open issues) / Reopen (closed issues) */}
+            {issue.state === 'open' ? (
+              <button
+                onClick={handleClose}
+                title="Close issue"
+                className="text-green-600 p-1 rounded-md border border-green-200 bg-green-50 hover:bg-green-100 transition-colors"
+              >
+                <svg xmlns="http://www.w3.org/2000/svg" className="w-3.5 h-3.5" viewBox="0 0 20 20" fill="currentColor">
+                  <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                </svg>
+              </button>
+            ) : (
+              <button
+                onClick={handleReopen}
+                title="Reopen issue"
+                className="text-purple-600 p-1 rounded-md border border-purple-200 bg-purple-50 hover:bg-purple-100 transition-colors"
+              >
+                <svg xmlns="http://www.w3.org/2000/svg" className="w-3.5 h-3.5" viewBox="0 0 20 20" fill="currentColor">
+                  <path fillRule="evenodd" d="M4 2a1 1 0 011 1v2.101a7.002 7.002 0 0111.601 2.566 1 1 0 11-1.885.666A5.002 5.002 0 005.999 7H9a1 1 0 010 2H4a1 1 0 01-1-1V3a1 1 0 011-1zm.008 9.057a1 1 0 011.276.61A5.002 5.002 0 0014.001 13H11a1 1 0 110-2h5a1 1 0 011 1v5a1 1 0 11-2 0v-2.101a7.002 7.002 0 01-11.601-2.566 1 1 0 01.61-1.276z" clipRule="evenodd" />
+                </svg>
+              </button>
+            )}
+
             <button
               onClick={handleDelete}
               title="Delete issue permanently"
