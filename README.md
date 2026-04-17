@@ -27,7 +27,7 @@ A "No Status" column and "No Wave" swimlane catch any untagged issues.
 All structure comes from GitHub labels with these prefixes:
 
 | Prefix | Example | Purpose |
-|--------|---------|---------|
+|--------|---------|---------| 
 | `e_` | `e_Auth` | Epic — defines Grid columns |
 | `w_` | `w_Q1` | Wave / release — defines Grid rows and Kanban swimlanes |
 | `s_` | `s_Done` | Status — defines Kanban columns |
@@ -46,6 +46,18 @@ Labels are created automatically on GitHub when you add them through the **Epics
 - Manage epic, wave, and status labels without leaving the app
 - Layout persisted to Firestore (optional — works fully offline)
 - Real-time sync with GitHub Issues API
+- **Resizable columns** in both Grid and Kanban views (see below)
+
+## Resizable Columns
+
+Both the **Grid** (Epic) and **Kanban** (Status) views support drag-to-resize columns:
+
+- **Hover** over the right edge of any column header to reveal a resize cursor and a subtle visual handle.
+- **Drag** the handle left or right to adjust the column width in real time.
+- Width is constrained between **150 px** (minimum) and **600 px** (maximum) to prevent layout breakage.
+- Custom widths are **persisted to `localStorage`** (key: `gh_column_widths`) so your preferred layout is restored on page refresh or the next session.
+- Column widths are stored by column identifier (project node ID for Epic columns, status label string for Kanban columns), so renaming a wave or status does not reset unrelated column widths.
+- The resize handle stops event propagation, so dragging the handle will never accidentally trigger the existing column **reorder** drag-and-drop.
 
 ## Getting started
 
