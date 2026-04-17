@@ -27,7 +27,7 @@ A "No Status" column and "No Wave" swimlane catch any untagged issues.
 All structure comes from GitHub labels with these prefixes:
 
 | Prefix | Example | Purpose |
-|--------|---------|---------|
+|--------|---------|---------| 
 | `e_` | `e_Auth` | Epic — defines Grid columns |
 | `w_` | `w_Q1` | Wave / release — defines Grid rows and Kanban swimlanes |
 | `s_` | `s_Done` | Status — defines Kanban columns |
@@ -42,13 +42,34 @@ Labels are created automatically on GitHub when you add them through the **Epics
 - Kanban view: status columns with wave swimlanes
 - Grid/Kanban toggle in the toolbar
 - Create issues with pre-filled epic, wave, and status from any cell
+- **Read-only issue view** — clicking an issue card opens a formatted read-only modal (see below)
 - Edit, close, and permanently delete issues inline
 - Manage epic, wave, and status labels without leaving the app
 - Layout persisted to Firestore (optional — works fully offline)
 - Real-time sync with GitHub Issues API
 - Resizable columns in both Grid and Kanban views (see below)
-- Describe with AI uses the epic, the wave, the issue tilte, example issues, the code and additional instructions to create the issue's spec
+- Describe with AI uses the epic, the wave, the issue title, example issues, the code and additional instructions to create the issue's spec
 - Code with AI delegate issue implementation to a Claude Managed Agent (creates branch, writes code, opens PR)
+
+## Read-only issue view
+
+Clicking any issue card in the Grid or Kanban view opens a **read-only modal** that presents the issue in a clean, safe reading environment:
+
+- **Formatted Markdown** — the description is fully rendered with support for headings, bold/italic/strikethrough, fenced code blocks (with syntax highlighting theme), inline code, unordered and ordered lists, task lists (`- [ ]` / `- [x]`), blockquotes, thematic breaks, and Markdown links.
+- **Metadata chips** — wave (milestone), epic (project), status label, and assignee avatars are shown at a glance below the title.
+- **Action toolbar** (top-right corner) — contains the same actions available on issue cards:
+  | Button | Action |
+  |--------|--------|
+  | ✏️ Edit | Opens the edit modal (description tab) |
+  | ✓ Close | Closes the issue on GitHub |
+  | 🗑 Delete | Permanently deletes the issue |
+  | ✦ Describe with AI | Opens the edit modal to generate a description via Gemini (visible when Gemini is configured) |
+  | ⚡ Code with AI | Opens the edit modal on the Implementation tab to start an AI coding session (visible when Anthropic is configured) |
+- **Deep-link support** — the URL updates to `/issue/{number}` when the modal is open; reloading the page reopens the same modal.
+
+### Quick-edit fast path
+
+The hover overlay on each card still exposes **Edit**, **Close**, and **Delete** buttons directly, letting power users skip the read view and jump straight to the edit form.
 
 ## Getting started
 
@@ -111,6 +132,7 @@ All values are stored in `localStorage` only.
 - **Persistence:** Firebase Firestore (optional)
 - **AI — description generation:** Google Gemini API (direct `fetch`)
 - **AI — code implementation:** Anthropic Claude Managed Agents API (direct `fetch`, beta `managed-agents-2026-04-01`)
+- **Markdown rendering:** Built-in lightweight renderer (`src/lib/markdown.ts`) — no extra dependency
 - **Build:** Vite
 
 ## Troubleshooting
