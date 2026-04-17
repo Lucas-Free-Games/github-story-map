@@ -4,6 +4,12 @@ import { useAppStore } from '../store/appStore';
 import type { GitHubIssue, GitHubMilestone } from '../types';
 import IssueCard from './IssueCard';
 import CreateIssueModal from './CreateIssueModal';
+import { ResizeHandle } from './ResizeHandle';
+
+/** Default column width (px) for Kanban / Status columns (matches previous Tailwind w-72 = 288px). */
+const KANBAN_COL_WIDTH = 288;
+/** Sentinel key for the "No Status" catch-all column. */
+const NO_STATUS_KEY = '__no_status__';
 
 function getStatusLabel(issue: GitHubIssue): string | null {
   const label = issue.labels.find((l) => l.name.startsWith('s_'));
@@ -43,7 +49,7 @@ function sortedMilestones(milestones: GitHubMilestone[], milestoneOrder: number[
 }
 
 export default function KanbanView() {
-  const { issues, milestones, statusLabels, layout, showClosedIssues, moveIssueInKanban } = useAppStore();
+  const { issues, milestones, statusLabels, layout, showClosedIssues, moveIssueInKanban, columnWidths } = useAppStore();
   const [createCell, setCreateCell] = useState<CellKey | null>(null);
   const [moveError, setMoveError] = useState<string | null>(null);
 
@@ -53,6 +59,9 @@ export default function KanbanView() {
   const cols = [...statusLabels, ''];
 
   const visibleIssues = showClosedIssues ? issues : issues.filter((i) => i.state === 'open');
+
+  /** Returns the stored width (px) for a status column, falling back to the default. */
+  const statusColWidth = (status: string) => columnWidths[status || NO_STATUS_KEY] ?? KANBAN_COL_WIDTH;
 
   function cellIssues(milestoneNumber: number | null, status: string): GitHubIssue[] {
     return visibleIssues.filter((issue) => {
@@ -87,14 +96,22 @@ export default function KanbanView() {
           <table className="border-collapse">
             <thead>
               <tr>
-                {cols.map((status) => (
-                  <th
-                    key={status || 'no-status'}
-                    className="sticky top-0 z-20 bg-green-50 border border-gray-200 px-4 py-3 text-sm font-semibold text-green-900 text-center w-72 min-w-72 whitespace-nowrap"
-                  >
-                    {status || <span className="text-green-400 font-normal italic">No Status</span>}
-                  </th>
-                ))}
+                {cols.map((status) => {
+                  const colW = statusColWidth(status);
+                  return (
+                    <th
+                      key={status || 'no-status'}
+                      style={{ width: colW, minWidth: colW, maxWidth: colW }}
+                      className="sticky top-0 z-20 bg-green-50 border border-gray-200 px-4 py-3 text-sm font-semibold text-green-900 text-center whitespace-nowrap"
+                    >
+                      {status || <span className="text-green-400 font-normal italic">No Status</span>}
+                      <ResizeHandle
+                        columnKey={status || NO_STATUS_KEY}
+                        defaultWidth={KANBAN_COL_WIDTH}
+                      />
+                    </th>
+                  );
+                })}
               </tr>
             </thead>
             <tbody>
@@ -115,10 +132,12 @@ export default function KanbanView() {
                     {cols.map((status) => {
                       const milestoneNumber = milestone?.number ?? null;
                       const items = cellIssues(milestoneNumber, status);
+                      const colW = statusColWidth(status);
                       return (
                         <td
                           key={status || 'no-status'}
-                          className="border border-gray-200 align-top p-2 bg-white w-72 min-w-72"
+                          style={{ width: colW, minWidth: colW, maxWidth: colW }}
+                          className="border border-gray-200 align-top p-2 bg-white"
                         >
                           <Droppable droppableId={kanbanCellId(status, milestoneNumber)} type="CARD">
                             {(provided, snapshot) => (

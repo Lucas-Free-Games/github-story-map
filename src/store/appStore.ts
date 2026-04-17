@@ -17,6 +17,8 @@ interface AppState {
   showClosedIssues: boolean;
   projects: GitHubProject[];
   projectIssues: Record<string, number[]>; // project node_id → issue numbers
+  /** Column widths in pixels, keyed by column ID (project node_id or status label). */
+  columnWidths: Record<string, number>;
 
   setCredentials: (token: string, owner: string, repo: string) => void;
   fetchIssues: () => Promise<void>;
@@ -67,6 +69,8 @@ interface AppState {
     fromMilestoneNumber: number | null,
     toMilestoneNumber: number | null,
   ) => Promise<void>;
+  /** Persist a custom pixel width for the given column key to the store and localStorage. */
+  setColumnWidth: (key: string, width: number) => void;
 }
 
 const emptyLayout: StoryMapLayout = { epicOrder: [], milestoneOrder: [], storyOrder: { backlog: [] } };
@@ -118,6 +122,7 @@ export const useAppStore = create<AppState>((set, get) => ({
   showClosedIssues: false,
   projects: [],
   projectIssues: {},
+  columnWidths: JSON.parse(localStorage.getItem('gh_column_widths') ?? '{}') as Record<string, number>,
 
   setCredentials: (token, owner, repo) => {
     localStorage.setItem('gh_token', token);
@@ -650,6 +655,12 @@ export const useAppStore = create<AppState>((set, get) => ({
     const newLayout = { ...layout, milestoneOrder };
     set({ layout: newLayout });
     saveLayout(owner, repo, newLayout).catch(() => { /* offline */ });
+  },
+
+  setColumnWidth: (key, width) => {
+    const updated = { ...get().columnWidths, [key]: width };
+    localStorage.setItem('gh_column_widths', JSON.stringify(updated));
+    set({ columnWidths: updated });
   },
 
   moveIssueInGrid: async (issueNumber, fromProjectId, toProjectId, fromMilestoneNumber, toMilestoneNumber) => {
