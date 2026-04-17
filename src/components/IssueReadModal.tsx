@@ -3,8 +3,6 @@ import type { GitHubIssue } from '../types';
 import { useAppStore } from '../store/appStore';
 import EditIssueModal from './EditIssueModal';
 import { parseMarkdownToHTML } from '../lib/markdown';
-import { loadGeminiSettings } from '../lib/gemini';
-import { loadAnthropicSettings } from '../lib/anthropic';
 
 interface Props {
   issue: GitHubIssue;
@@ -21,17 +19,7 @@ export default function IssueReadModal({ issue, onClose }: Props) {
   const { closeIssue, deleteIssue, projects, projectIssues } = useAppStore();
 
   const [showEdit, setShowEdit] = useState(false);
-  const [editInitialTab, setEditInitialTab] = useState<'description' | 'ai'>('description');
   const [busy, setBusy] = useState(false);
-
-  const hasGeminiKey = Boolean(loadGeminiSettings().apiKey);
-  const anthropicSettings = loadAnthropicSettings();
-  const hasAnthropicSettings = Boolean(
-    anthropicSettings.apiKey &&
-    anthropicSettings.agentId &&
-    anthropicSettings.envId &&
-    anthropicSettings.vaultId,
-  );
 
   // Find the epic (project) this issue belongs to
   const epic = projects.find((p) => (projectIssues[p.id] ?? []).includes(issue.number));
@@ -74,8 +62,7 @@ export default function IssueReadModal({ issue, onClose }: Props) {
     }
   }
 
-  function openEdit(tab: 'description' | 'ai' = 'description') {
-    setEditInitialTab(tab);
+  function openEdit() {
     setShowEdit(true);
   }
 
@@ -173,7 +160,7 @@ export default function IssueReadModal({ issue, onClose }: Props) {
           <div className="flex items-center gap-1 shrink-0 pt-0.5">
             {/* Edit */}
             <button
-              onClick={() => openEdit('description')}
+              onClick={() => openEdit()}
               title="Edit issue"
               className="p-1.5 text-blue-500 rounded-lg border border-blue-200 bg-blue-50 hover:bg-blue-100 transition-colors"
             >
@@ -205,28 +192,6 @@ export default function IssueReadModal({ issue, onClose }: Props) {
                 <path fillRule="evenodd" d="M9 2a1 1 0 00-.894.553L7.382 4H4a1 1 0 000 2v10a2 2 0 002 2h8a2 2 0 002-2V6a1 1 0 100-2h-3.382l-.724-1.447A1 1 0 0011 2H9zM7 8a1 1 0 012 0v6a1 1 0 11-2 0V8zm5-1a1 1 0 00-1 1v6a1 1 0 102 0V8a1 1 0 00-1-1z" clipRule="evenodd" />
               </svg>
             </button>
-
-            {/* Describe with AI (requires Gemini key) */}
-            {hasGeminiKey && (
-              <button
-                onClick={() => openEdit('description')}
-                title="Describe with AI"
-                className="p-1.5 text-purple-600 rounded-lg border border-purple-200 bg-purple-50 hover:bg-purple-100 transition-colors text-sm font-bold leading-none"
-              >
-                ✦
-              </button>
-            )}
-
-            {/* Code with AI (requires Anthropic settings) */}
-            {hasAnthropicSettings && (
-              <button
-                onClick={() => openEdit('ai')}
-                title="Code with AI"
-                className="p-1.5 text-orange-600 rounded-lg border border-orange-200 bg-orange-50 hover:bg-orange-100 transition-colors text-sm leading-none"
-              >
-                ⚡
-              </button>
-            )}
 
             {/* Dismiss modal */}
             <button
@@ -260,7 +225,7 @@ export default function IssueReadModal({ issue, onClose }: Props) {
       {showEdit && (
         <EditIssueModal
           issue={issue}
-          initialTab={editInitialTab}
+          initialTab="description"
           onClose={() => setShowEdit(false)}
         />
       )}
