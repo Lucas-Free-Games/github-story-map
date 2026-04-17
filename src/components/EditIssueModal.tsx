@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect } from 'react';
+import { useState, useRef, useEffect, type RefObject } from 'react';
 import { useAppStore } from '../store/appStore';
 import type { GitHubIssue } from '../types';
 import { generateDescription, loadGeminiSettings } from '../lib/gemini';
@@ -59,7 +59,15 @@ function CopyButton({ text, label = 'Copy' }: { text: string; label?: string }) 
   );
 }
 
-function AiImplementationPanel({ links, loading }: { links: AiLinks; loading: boolean }) {
+function AiImplementationPanel({
+  links, loading, logs, codingState, logEndRef,
+}: {
+  links: AiLinks;
+  loading: boolean;
+  logs: LogEntry[];
+  codingState: CodingState;
+  logEndRef: RefObject<HTMLDivElement>;
+}) {
   const branchName = links.branch ? branchFromUrl(links.branch) : null;
   const prNum = links.pr?.match(/\/pull\/(\d+)/)?.[1];
   const checkoutCmd = branchName
@@ -71,7 +79,7 @@ function AiImplementationPanel({ links, loading }: { links: AiLinks; loading: bo
     : <span className="text-xs text-gray-300 italic">not yet available</span>;
 
   return (
-    <div className="rounded-xl border border-orange-200 bg-orange-50 px-4 py-3 space-y-2.5">
+    <div className="flex-1 flex flex-col rounded-xl border border-orange-200 bg-orange-50 px-4 py-3 gap-2.5 overflow-hidden">
       <div className="flex items-center justify-between gap-3">
         <span className="text-xs text-gray-500 shrink-0">Branch</span>
         {branchName ? (
@@ -97,7 +105,7 @@ function AiImplementationPanel({ links, loading }: { links: AiLinks; loading: bo
         <div className="flex items-center gap-2 bg-gray-900 rounded-lg px-3 py-2">
           {checkoutCmd ? (
             <>
-              <code className="text-xs text-green-400 font-mono flex-1 select-all break-all">{checkoutCmd}</code>
+              <code className="text-xs text-white font-mono flex-1 select-all break-all">{checkoutCmd}</code>
               <CopyButton text={checkoutCmd} />
             </>
           ) : (
@@ -107,6 +115,59 @@ function AiImplementationPanel({ links, loading }: { links: AiLinks; loading: bo
           )}
         </div>
       </div>
+
+      <div className="flex-1 flex flex-col min-h-0 mt-1">
+          <div className="flex items-center justify-between mb-1.5">
+            <span className="text-xs font-medium text-gray-500">agent log</span>
+            <div className="flex items-center gap-3">
+              {codingState === 'starting' && (
+                <span className="flex items-center gap-1 text-xs text-gray-400"><Spinner />Starting…</span>
+              )}
+              {codingState === 'running' && (
+                <span className="flex items-center gap-1.5 text-xs text-green-600">
+                  <span className="w-1.5 h-1.5 rounded-full bg-green-500 animate-pulse" />Running…
+                </span>
+              )}
+              {codingState === 'done' && <span className="text-xs text-green-600 font-medium">✓ Complete</span>}
+              {codingState === 'error' && <span className="text-xs text-red-500 font-medium">✗ Error</span>}
+              {logs.length > 0 && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    const text = logs.map(e => `[${e.ts.toISOString()}] ${e.text}`).join('\n');
+                    navigator.clipboard.writeText(text);
+                  }}
+                  className="text-xs text-gray-500 hover:text-gray-700 transition-colors px-1.5 py-0.5 rounded border border-gray-300 hover:border-gray-400"
+                >
+                  Copy log
+                </button>
+              )}
+            </div>
+          </div>
+          <div className="flex-1 overflow-y-auto bg-gray-950 rounded-xl p-3 font-mono text-xs select-text min-h-0">
+            {logs.length === 0 ? (
+              <span className="text-gray-600 italic">ready…</span>
+            ) : logs.map((entry) => {
+              const hh = entry.ts.getHours().toString().padStart(2, '0');
+              const mm = entry.ts.getMinutes().toString().padStart(2, '0');
+              const ss = entry.ts.getSeconds().toString().padStart(2, '0');
+              const ms = entry.ts.getMilliseconds().toString().padStart(3, '0');
+              const textColor =
+                entry.type === 'status'  ? 'text-green-400' :
+                entry.type === 'error'   ? 'text-red-400'   :
+                entry.type === 'tool'    ? 'text-blue-300'  :
+                entry.type === 'result'  ? 'text-gray-500'  :
+                'text-gray-200';
+              return (
+                <div key={entry.id} className="flex gap-2 leading-5">
+                  <span className="text-gray-600 shrink-0 select-none">{`${hh}:${mm}:${ss}.${ms}`}</span>
+                  <span className={`${textColor} break-all`}>{entry.text}</span>
+                </div>
+              );
+            })}
+            <div ref={logEndRef} />
+          </div>
+        </div>
     </div>
   );
 }
@@ -361,7 +422,6 @@ export default function EditIssueModal({ issue, onClose }: Props) {
     }
   }
 
-  const showLog = codingState !== 'idle' || logs.length > 0;
   const [descTab, setDescTab] = useState<'description' | 'ai'>('description');
 
   return (
@@ -369,7 +429,7 @@ export default function EditIssueModal({ issue, onClose }: Props) {
       className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4"
       onClick={(e) => e.target === e.currentTarget && onClose()}
     >
-      <div className="bg-white rounded-2xl shadow-xl w-full max-w-2xl">
+      <div className="bg-white rounded-2xl shadow-xl w-full max-w-2xl flex flex-col h-[90vh]">
         {/* Header */}
         <div className="flex items-center justify-between px-6 pt-5 pb-4 border-b border-gray-100">
           <div>
@@ -381,9 +441,9 @@ export default function EditIssueModal({ issue, onClose }: Props) {
           </button>
         </div>
 
-        <form onSubmit={handleSubmit} className="px-6 py-4 space-y-4">
+        <form onSubmit={handleSubmit} className="flex-1 flex flex-col min-h-0 px-6 py-4 gap-4 overflow-hidden">
           {/* Title */}
-          <div>
+          <div className="shrink-0">
             <label className="block text-sm font-medium text-gray-700 mb-1">Title</label>
             <input
               autoFocus
@@ -396,7 +456,7 @@ export default function EditIssueModal({ issue, onClose }: Props) {
           </div>
 
           {/* Tabbed description / AI section */}
-          <div>
+          <div className="flex-1 flex flex-col min-h-0">
             {/* Tab bar */}
             <div className="flex items-center gap-1 border-b border-gray-200 mb-3">
               <button
@@ -438,15 +498,16 @@ export default function EditIssueModal({ issue, onClose }: Props) {
               </button>
             </div>
 
+            <div className="flex-1 min-h-0 overflow-hidden">
             {descTab === 'description' && (
-              <div>
+              <div className="h-full flex flex-col">
                 <div className="flex justify-end mb-1">
                   {hasGeminiKey && (
                     <button
                       type="button"
                       onClick={handleGenerate}
                       disabled={generating || !title.trim()}
-                      className="flex items-center gap-1.5 px-2.5 py-1 text-xs font-medium text-purple-700 bg-purple-50 border border-purple-200 rounded-lg hover:bg-purple-100 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+                      className="flex items-center justify-center gap-1.5 w-36 px-2.5 py-1 text-xs font-medium text-purple-700 bg-purple-50 border border-purple-200 rounded-lg hover:bg-purple-100 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
                     >
                       {generating ? <><Spinner />Generating…</> : <>✦ Generate with AI</>}
                     </button>
@@ -455,23 +516,48 @@ export default function EditIssueModal({ issue, onClose }: Props) {
                 <textarea
                   value={body}
                   onChange={(e) => setBody(e.target.value)}
-                  rows={10}
-                  className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none"
+                  className="w-full flex-1 border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none"
                 />
+                <div className="grid grid-cols-2 gap-3 shrink-0">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Epic</label>
+                    <select
+                      value={projectId}
+                      onChange={(e) => setProjectId(e.target.value)}
+                      className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white"
+                    >
+                      <option value="">— none —</option>
+                      {openProjects.map((p) => (
+                        <option key={p.id} value={p.id}>{p.title}</option>
+                      ))}
+                    </select>
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Wave</label>
+                    <select
+                      value={milestoneNumber}
+                      onChange={(e) => setMilestoneNumber(e.target.value)}
+                      className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-purple-500 bg-white"
+                    >
+                      <option value="">— none —</option>
+                      {milestones.map((m) => (
+                        <option key={m.number} value={m.number}>{m.title}</option>
+                      ))}
+                    </select>
+                  </div>
+                </div>
               </div>
             )}
 
             {descTab === 'ai' && (
-              <div className="space-y-4">
-                <AiImplementationPanel links={aiLinks} loading={aiLinksLoading} />
-
-                {hasAnthropicSettings && (
-                  <div className="flex justify-end">
+              <div className="h-full flex flex-col">
+                <div className="flex justify-end mb-1">
+                  {hasAnthropicSettings && (
                     <button
                       type="button"
                       onClick={handleCodeWithAI}
                       disabled={codingState === 'starting' || codingState === 'running'}
-                      className="flex items-center gap-1.5 px-4 py-2 text-sm font-medium text-orange-700 bg-orange-50 border border-orange-200 rounded-lg hover:bg-orange-100 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                      className="flex items-center justify-center gap-1.5 w-36 px-2.5 py-1 text-xs font-medium text-orange-700 bg-orange-50 border border-orange-200 rounded-lg hover:bg-orange-100 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
                     >
                       {(codingState === 'starting' || codingState === 'running') ? (
                         <><Spinner />Coding…</>
@@ -479,101 +565,25 @@ export default function EditIssueModal({ issue, onClose }: Props) {
                         <>⚡ Code with AI</>
                       )}
                     </button>
-                  </div>
-                )}
+                  )}
+                </div>
 
-                {showLog && (
-                  <div>
-                    <div className="flex items-center justify-between mb-1.5">
-                      <span className="text-xs font-medium text-gray-500 uppercase tracking-wide">Agent Log</span>
-                      <div className="flex items-center gap-3">
-                        {codingState === 'starting' && (
-                          <span className="flex items-center gap-1 text-xs text-gray-400"><Spinner />Starting…</span>
-                        )}
-                        {codingState === 'running' && (
-                          <span className="flex items-center gap-1.5 text-xs text-green-600">
-                            <span className="w-1.5 h-1.5 rounded-full bg-green-500 animate-pulse" />Running…
-                          </span>
-                        )}
-                        {codingState === 'done' && <span className="text-xs text-green-600 font-medium">✓ Complete</span>}
-                        {codingState === 'error' && <span className="text-xs text-red-500 font-medium">✗ Error</span>}
-                        {logs.length > 0 && (
-                          <button
-                            type="button"
-                            onClick={() => {
-                              const text = logs.map(e => `[${e.ts.toISOString()}] ${e.text}`).join('\n');
-                              navigator.clipboard.writeText(text);
-                            }}
-                            className="text-xs text-gray-500 hover:text-gray-300 transition-colors px-1.5 py-0.5 rounded border border-gray-700 hover:border-gray-500"
-                          >
-                            Copy log
-                          </button>
-                        )}
-                      </div>
-                    </div>
-                    <div className="bg-gray-950 rounded-xl p-3 max-h-72 overflow-y-auto font-mono text-xs select-text">
-                      {logs.map((entry) => {
-                        const hh = entry.ts.getHours().toString().padStart(2, '0');
-                        const mm = entry.ts.getMinutes().toString().padStart(2, '0');
-                        const ss = entry.ts.getSeconds().toString().padStart(2, '0');
-                        const ms = entry.ts.getMilliseconds().toString().padStart(3, '0');
-                        const timestamp = `${hh}:${mm}:${ss}.${ms}`;
-                        const textColor =
-                          entry.type === 'status'  ? 'text-green-400' :
-                          entry.type === 'error'   ? 'text-red-400'   :
-                          entry.type === 'tool'    ? 'text-blue-300'  :
-                          entry.type === 'result'  ? 'text-gray-500'  :
-                          'text-gray-200';
-                        return (
-                          <div key={entry.id} className="flex gap-2 leading-5">
-                            <span className="text-gray-600 shrink-0 select-none">{timestamp}</span>
-                            <span className={`${textColor} break-all`}>{entry.text}</span>
-                          </div>
-                        );
-                      })}
-                      <div ref={logEndRef} />
-                    </div>
-                  </div>
-                )}
+                <AiImplementationPanel
+                  links={aiLinks}
+                  loading={aiLinksLoading}
+                  logs={logs}
+                  codingState={codingState}
+                  logEndRef={logEndRef}
+                />
               </div>
             )}
+            </div>{/* end fixed-height tab panel */}
           </div>
 
-          {/* Epic / Wave */}
-          <div className="grid grid-cols-2 gap-3">
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Epic</label>
-              <select
-                value={projectId}
-                onChange={(e) => setProjectId(e.target.value)}
-                className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white"
-              >
-                <option value="">— none —</option>
-                {openProjects.map((p) => (
-                  <option key={p.id} value={p.id}>{p.title}</option>
-                ))}
-              </select>
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Wave</label>
-              <select
-                value={milestoneNumber}
-                onChange={(e) => setMilestoneNumber(e.target.value)}
-                className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-purple-500 bg-white"
-              >
-                <option value="">— none —</option>
-                {milestones.map((m) => (
-                  <option key={m.number} value={m.number}>{m.title}</option>
-                ))}
-              </select>
-            </div>
-          </div>
-
-          {error && <p className="text-red-500 text-sm">{error}</p>}
+          {error && <p className="text-red-500 text-sm shrink-0">{error}</p>}
 
           {/* Footer */}
-          <div className="flex justify-end gap-2 pt-1">
+          <div className="flex justify-end gap-2 pt-1 shrink-0">
             <button
               type="button"
               onClick={onClose}
