@@ -44,3 +44,15 @@ export interface GitHubProject {
   url: string;
   closed: boolean;
 }
+
+export interface ProjectV2StatusOption {
+  id: string;
+  name: string;
+  color: string;
+}
+
+export interface ProjectV2StatusField {
+  id: string;
+  name: string;
+  options: ProjectV2StatusOption[];
+}

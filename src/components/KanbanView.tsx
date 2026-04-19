@@ -11,8 +11,6 @@ function getStatusLabel(issue: GitHubIssue): string | null {
   return label ? label.name.slice(2) : null;
 }
 
-// Encode/decode cell droppable IDs for the kanban.
-// Format: "k:{status|none}:{milestoneNumber|none}"
 function kanbanCellId(status: string, milestoneNumber: number | null): string {
   return `k:${status || 'none'}:${milestoneNumber ?? 'none'}`;
 }
@@ -43,36 +41,54 @@ function sortedMilestones(milestones: GitHubMilestone[], milestoneOrder: number[
   });
 }
 
-/**
- * Returns the localStorage key used for a given Kanban status column.
- * Empty string ("No Status") maps to the sentinel '__no_status__'.
- */
 function kanbanColKey(status: string): string {
   return status === '' ? '__no_status__' : status;
 }
 
 export default function KanbanView() {
-  const { issues, milestones, statusLabels, layout, showClosedIssues, moveIssueInKanban, columnWidths, setColumnWidth } = useAppStore();
+  const {
+    issues, milestones, statusLabels, layout, showClosedIssues,
+    moveIssueInKanban, moveIssueInKanbanNative, columnWidths, setColumnWidth,
+    projects, projectIssues,
+    kanbanProjectId, kanbanStatusField, kanbanIssueStatuses, setKanbanProject,
+    loading,
+  } = useAppStore();
   const [createCell, setCreateCell] = useState<CellKey | null>(null);
   const [moveError, setMoveError] = useState<string | null>(null);
+  const [projectLoading, setProjectLoading] = useState(false);
 
-  // null sentinel = "No Milestone" swimlane — always last
+  const isProjectMode = kanbanProjectId !== null;
+  const openProjects = projects.filter((p) => !p.closed);
+
+  // In project mode, columns come from the project's Status field options.
+  // In label mode, columns come from s_* labels.
+  const cols: string[] = isProjectMode && kanbanStatusField
+    ? [...kanbanStatusField.options.map((o) => o.name), '']
+    : [...statusLabels, ''];
+
   const groups: (GitHubMilestone | null)[] = [...sortedMilestones(milestones, layout.milestoneOrder), null];
-  // '' sentinel = "No Status" column
-  const cols = [...statusLabels, ''];
 
-  /** Returns the stored (or default) width for a given status column. */
   const colK = (status: string) => columnWidths[kanbanColKey(status)] ?? KANBAN_DEFAULT_WIDTH;
 
-  const visibleIssues = showClosedIssues ? issues : issues.filter((i) => i.state === 'open');
+  const allVisible = showClosedIssues ? issues : issues.filter((i) => i.state === 'open');
+
+  // In project mode, only show issues that belong to the selected project.
+  const visibleIssues = isProjectMode
+    ? allVisible.filter((i) => (projectIssues[kanbanProjectId] ?? []).includes(i.number))
+    : allVisible;
 
   function cellIssues(milestoneNumber: number | null, status: string): GitHubIssue[] {
     return visibleIssues.filter((issue) => {
       const mMatch = milestoneNumber === null
         ? issue.milestone === null
         : issue.milestone?.number === milestoneNumber;
-      const sLabel = getStatusLabel(issue);
-      const statusMatch = status === '' ? sLabel === null : sLabel === status;
+      const statusMatch = isProjectMode
+        ? status === ''
+          ? !kanbanIssueStatuses[issue.number]
+          : kanbanIssueStatuses[issue.number] === status
+        : status === ''
+          ? getStatusLabel(issue) === null
+          : getStatusLabel(issue) === status;
       return mMatch && statusMatch;
     });
   }
@@ -85,15 +101,52 @@ export default function KanbanView() {
     const issueNumber = Number(draggableId.slice(2));
     const src = parseKanbanCell(source.droppableId);
     const dst = parseKanbanCell(destination.droppableId);
-    moveIssueInKanban(issueNumber, src.status, dst.status, src.milestoneNumber, dst.milestoneNumber)
-      .catch((err) => {
-        setMoveError(err instanceof Error ? err.message : 'Failed to move issue');
-        setTimeout(() => setMoveError(null), 4000);
-      });
+
+    const action = isProjectMode
+      ? moveIssueInKanbanNative(issueNumber, src.status, dst.status, src.milestoneNumber, dst.milestoneNumber)
+      : moveIssueInKanban(issueNumber, src.status, dst.status, src.milestoneNumber, dst.milestoneNumber);
+
+    action.catch((err) => {
+      setMoveError(err instanceof Error ? err.message : 'Failed to move issue');
+      setTimeout(() => setMoveError(null), 4000);
+    });
+  }
+
+  async function handleProjectChange(projectId: string) {
+    setProjectLoading(true);
+    try {
+      await setKanbanProject(projectId || null);
+    } catch (err) {
+      setMoveError(err instanceof Error ? err.message : 'Failed to load project');
+      setTimeout(() => setMoveError(null), 4000);
+    } finally {
+      setProjectLoading(false);
+    }
   }
 
   return (
     <>
+      <div className="flex items-center gap-3 px-4 py-2 border-b border-gray-100 bg-white">
+        <span className="text-xs font-medium text-gray-500 whitespace-nowrap">Project</span>
+        <select
+          value={kanbanProjectId ?? ''}
+          onChange={(e) => handleProjectChange(e.target.value)}
+          disabled={loading || projectLoading}
+          className="text-sm border border-gray-200 rounded-md px-2 py-1 bg-white text-gray-700 focus:outline-none focus:ring-2 focus:ring-green-400 min-w-48 disabled:opacity-50"
+        >
+          <option value="">Label-based (s_ labels)</option>
+          {openProjects.map((p) => (
+            <option key={p.id} value={p.id}>{p.title}</option>
+          ))}
+        </select>
+        {projectLoading && (
+          <span className="text-xs text-gray-400">Loading…</span>
+        )}
+        {isProjectMode && !kanbanStatusField && !projectLoading && (
+          <span className="text-xs text-amber-600">This project has no Status field — showing all issues as unstatused.</span>
+        )}
+      </div>
+
       <DragDropContext onDragEnd={handleDragEnd}>
         <div className="flex-1 overflow-auto h-full">
           <table className="border-collapse">
