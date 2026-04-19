@@ -3,10 +3,8 @@ import { useAppStore } from '../store/appStore';
 import CreateIssueModal from './CreateIssueModal';
 
 export default function Header() {
-  const { owner, repo, fetchIssues, fetchProjects, fetchMilestones, reset, loading, view, setView, showClosedIssues, toggleShowClosedIssues, projects, kanbanProjectId, setKanbanProject } = useAppStore();
+  const { owner, repo, fetchIssues, fetchProjects, fetchMilestones, reset, loading, view, setView, showClosedIssues, toggleShowClosedIssues, milestones, kanbanMilestoneNumber, setKanbanMilestone } = useAppStore();
   const [showCreate, setShowCreate] = useState(false);
-
-  const openProjects = projects.filter((p) => !p.closed);
 
   return (
     <>
@@ -32,17 +30,17 @@ export default function Header() {
             ))}
           </div>
 
-          {/* Kanban project selector */}
-          {view === 'kanban' && openProjects.length > 0 && (
+          {/* Kanban wave selector */}
+          {view === 'kanban' && milestones.length > 0 && (
             <select
-              value={kanbanProjectId ?? ''}
-              onChange={(e) => setKanbanProject(e.target.value || null)}
+              value={kanbanMilestoneNumber ?? ''}
+              onChange={(e) => setKanbanMilestone(e.target.value ? Number(e.target.value) : null)}
               disabled={loading}
               className="ml-3 text-sm border border-gray-200 rounded-md px-2 py-1 bg-white text-gray-700 focus:outline-none focus:ring-2 focus:ring-green-400 disabled:opacity-50"
             >
-              <option value="" disabled>Select project…</option>
-              {openProjects.map((p) => (
-                <option key={p.id} value={p.id}>{p.title}</option>
+              <option value="">All Waves</option>
+              {milestones.map((m) => (
+                <option key={m.number} value={m.number}>{m.title}</option>
               ))}
             </select>
           )}

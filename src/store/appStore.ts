@@ -1,6 +1,6 @@
 import { create } from 'zustand';
 import { Octokit } from '@octokit/rest';
-import type { GitHubIssue, GitHubMilestone, GitHubProject, ProjectV2StatusField, StoryMapLayout } from '../types';
+import type { GitHubIssue, GitHubMilestone, GitHubProject, StoryMapLayout } from '../types';
 import { loadLayout, saveLayout } from '../lib/firebase';
 
 interface AppState {
@@ -19,14 +19,8 @@ interface AppState {
   projectIssues: Record<string, number[]>; // project node_id → issue numbers
   /** Column resize widths in pixels, keyed by column identifier (project ID or status string). */
   columnWidths: Record<string, number>;
-  /** Selected GitHub Project for native Kanban mode (null = label mode). */
-  kanbanProjectId: string | null;
-  /** Status single-select field for the selected project. */
-  kanbanStatusField: ProjectV2StatusField | null;
-  /** issue number → status option name within the selected project. */
-  kanbanIssueStatuses: Record<number, string>;
-  /** issue number → ProjectV2Item node ID within the selected project. */
-  kanbanItemIds: Record<number, string>;
+  /** Selected milestone number for the Kanban wave filter (null = all waves). */
+  kanbanMilestoneNumber: number | null;
 
   setCredentials: (token: string, owner: string, repo: string) => void;
   fetchIssues: () => Promise<void>;
@@ -80,15 +74,15 @@ interface AppState {
   ) => Promise<void>;
   /** Persist a resized column width to state and localStorage. */
   setColumnWidth: (key: string, width: number) => void;
-  /** Select a GitHub Project for native Kanban mode (null clears selection). */
-  setKanbanProject: (projectId: string | null) => Promise<void>;
-  /** Move an issue in project-native Kanban (updates ProjectV2 field value + milestone). */
-  moveIssueInKanbanNative: (
+  /** Set the wave/milestone filter for the Kanban board. */
+  setKanbanMilestone: (milestoneNumber: number | null) => void;
+  /** Move an issue in Kanban: updates status label and/or project membership. */
+  moveIssueInKanbanByProject: (
     issueNumber: number,
     fromStatus: string | null,
     toStatus: string | null,
-    fromMilestoneNumber: number | null,
-    toMilestoneNumber: number | null,
+    fromProjectId: string | null,
+    toProjectId: string | null,
   ) => Promise<void>;
 }
 
@@ -142,23 +136,20 @@ export const useAppStore = create<AppState>((set, get) => ({
   projects: [],
   projectIssues: {},
   columnWidths: JSON.parse(localStorage.getItem('gh_column_widths') ?? '{}') as Record<string, number>,
-  kanbanProjectId: null,
-  kanbanStatusField: null,
-  kanbanIssueStatuses: {},
-  kanbanItemIds: {},
+  kanbanMilestoneNumber: null,
 
   setCredentials: (token, owner, repo) => {
     localStorage.setItem('gh_token', token);
     localStorage.setItem('gh_owner', owner);
     localStorage.setItem('gh_repo', repo);
-    set({ token, owner, repo, issues: [], layout: emptyLayout, error: null, milestones: [], statusLabels: [], projects: [], projectIssues: {}, kanbanProjectId: null, kanbanStatusField: null, kanbanIssueStatuses: {}, kanbanItemIds: {} });
+    set({ token, owner, repo, issues: [], layout: emptyLayout, error: null, milestones: [], statusLabels: [], projects: [], projectIssues: {}, kanbanMilestoneNumber: null });
   },
 
   reset: () => {
     localStorage.removeItem('gh_token');
     localStorage.removeItem('gh_owner');
     localStorage.removeItem('gh_repo');
-    set({ token: '', owner: '', repo: '', issues: [], layout: emptyLayout, error: null, milestones: [], statusLabels: [], projects: [], projectIssues: {}, kanbanProjectId: null, kanbanStatusField: null, kanbanIssueStatuses: {}, kanbanItemIds: {} });
+    set({ token: '', owner: '', repo: '', issues: [], layout: emptyLayout, error: null, milestones: [], statusLabels: [], projects: [], projectIssues: {}, kanbanMilestoneNumber: null });
   },
 
   setView: (view) => set({ view }),
@@ -837,128 +828,83 @@ export const useAppStore = create<AppState>((set, get) => ({
     set({ columnWidths: newWidths });
   },
 
-  setKanbanProject: async (projectId) => {
-    if (!projectId) {
-      set({ kanbanProjectId: null, kanbanStatusField: null, kanbanIssueStatuses: {}, kanbanItemIds: {} });
-      return;
-    }
-    const { token } = get();
-    set({ kanbanProjectId: projectId, loading: true });
-    try {
-      type FieldNode = { id?: string; name?: string; options?: { id: string; name: string; color: string }[] };
-      type ItemNode = {
-        id: string;
-        content: { number: number } | null;
-        fieldValues: { nodes: Array<{ field?: { name: string }; optionId?: string; name?: string }> };
-      };
-      const data = await gql<{
-        node: { fields: { nodes: FieldNode[] }; items: { nodes: ItemNode[] } } | null;
-      }>(token, `
-        query($projectId: ID!) {
-          node(id: $projectId) {
-            ... on ProjectV2 {
-              fields(first: 20) {
-                nodes {
-                  ... on ProjectV2SingleSelectField {
-                    id name
-                    options { id name color }
-                  }
-                }
-              }
-              items(first: 100) {
-                nodes {
-                  id
-                  content { ... on Issue { number } }
-                  fieldValues(first: 20) {
-                    nodes {
-                      ... on ProjectV2ItemFieldSingleSelectValue {
-                        field { ... on ProjectV2SingleSelectField { name } }
-                        optionId
-                        name
-                      }
-                    }
-                  }
-                }
-              }
-            }
-          }
-        }
-      `, { projectId });
+  setKanbanMilestone: (milestoneNumber) => set({ kanbanMilestoneNumber: milestoneNumber }),
 
-      const statusField = (data.node?.fields.nodes ?? []).find(
-        (f): f is { id: string; name: string; options: { id: string; name: string; color: string }[] } =>
-          !!f.id && f.name === 'Status' && Array.isArray(f.options),
-      ) ?? null;
-
-      const issueStatuses: Record<number, string> = {};
-      const itemIds: Record<number, string> = {};
-      for (const item of data.node?.items.nodes ?? []) {
-        const num = item.content?.number;
-        if (!num) continue;
-        itemIds[num] = item.id;
-        const sv = item.fieldValues.nodes.find(
-          (fv): fv is { field: { name: string }; optionId: string; name: string } =>
-            !!fv.field && fv.field.name === 'Status' && !!fv.name,
-        );
-        if (sv) issueStatuses[num] = sv.name;
-      }
-
-      set({ kanbanStatusField: statusField, kanbanIssueStatuses: issueStatuses, kanbanItemIds: itemIds, loading: false });
-    } catch (err) {
-      set({ loading: false, kanbanProjectId: null });
-      throw err;
-    }
-  },
-
-  moveIssueInKanbanNative: async (issueNumber, _fromStatus, toStatus, fromMilestoneNumber, toMilestoneNumber) => {
-    const { token, owner, repo, kanbanProjectId, kanbanStatusField, kanbanItemIds, kanbanIssueStatuses, issues, milestones } = get();
-    if (!kanbanProjectId || !kanbanStatusField) return;
+  moveIssueInKanbanByProject: async (issueNumber, fromStatus, toStatus, fromProjectId, toProjectId) => {
+    const { token, owner, repo, issues, projectIssues } = get();
     const issue = issues.find((i) => i.number === issueNumber);
     if (!issue) return;
 
-    const itemId = kanbanItemIds[issueNumber];
-    const option = toStatus ? kanbanStatusField.options.find((o) => o.name === toStatus) : null;
-    const newMilestone = toMilestoneNumber === null
-      ? null
-      : milestones.find((m) => m.number === toMilestoneNumber) ?? null;
-
-    const snapStatuses = kanbanIssueStatuses;
     const snapIssues = issues;
+    const snapProjectIssues = projectIssues;
+
+    const baseLabels = issue.labels.filter((l) => !l.name.startsWith('s_'));
+    const newLabels = toStatus
+      ? [...baseLabels, { id: 0, name: `s_${toStatus}`, color: '0e8a16' }]
+      : baseLabels;
+
+    let updatedProjectIssues = { ...projectIssues };
+    if (fromProjectId !== toProjectId) {
+      if (fromProjectId) {
+        updatedProjectIssues = {
+          ...updatedProjectIssues,
+          [fromProjectId]: (updatedProjectIssues[fromProjectId] ?? []).filter((n) => n !== issueNumber),
+        };
+      }
+      if (toProjectId) {
+        updatedProjectIssues = {
+          ...updatedProjectIssues,
+          [toProjectId]: [issueNumber, ...(updatedProjectIssues[toProjectId] ?? [])],
+        };
+      }
+    }
 
     set({
-      kanbanIssueStatuses: toStatus
-        ? { ...kanbanIssueStatuses, [issueNumber]: toStatus }
-        : Object.fromEntries(Object.entries(kanbanIssueStatuses).filter(([k]) => Number(k) !== issueNumber)),
-      issues: issues.map((i) => i.number === issueNumber ? { ...i, milestone: newMilestone } : i),
+      issues: issues.map((i) => i.number === issueNumber ? { ...i, labels: newLabels } : i),
+      projectIssues: updatedProjectIssues,
     });
 
     try {
-      if (itemId) {
-        if (option) {
-          await gql(token, `
-            mutation($projectId: ID!, $itemId: ID!, $fieldId: ID!, $optionId: String!) {
-              updateProjectV2ItemFieldValue(input: {
-                projectId: $projectId itemId: $itemId fieldId: $fieldId
-                value: { singleSelectOptionId: $optionId }
-              }) { projectV2Item { id } }
+      const octokit = new Octokit({ auth: token });
+      if (fromStatus !== toStatus) {
+        if (toStatus) await ensureLabel(octokit, owner, repo, `s_${toStatus}`, '0e8a16');
+        await octokit.rest.issues.setLabels({
+          owner, repo, issue_number: issueNumber,
+          labels: newLabels.map((l) => l.name),
+        });
+      }
+      if (fromProjectId !== toProjectId) {
+        if (fromProjectId) {
+          const data = await gql<{
+            node: { items: { nodes: Array<{ id: string; content: { id: string } | null }> } } | null;
+          }>(token, `
+            query($projectId: ID!) {
+              node(id: $projectId) {
+                ... on ProjectV2 {
+                  items(first: 100) { nodes { id content { ... on Issue { id } } } }
+                }
+              }
             }
-          `, { projectId: kanbanProjectId, itemId, fieldId: kanbanStatusField.id, optionId: option.id });
-        } else {
+          `, { projectId: fromProjectId });
+          const item = data.node?.items.nodes.find((n) => n.content?.id === issue.node_id);
+          if (item) {
+            await gql(token, `
+              mutation($projectId: ID!, $itemId: ID!) {
+                deleteProjectV2Item(input: { projectId: $projectId, itemId: $itemId }) { deletedItemId }
+              }
+            `, { projectId: fromProjectId, itemId: item.id });
+          }
+        }
+        if (toProjectId) {
           await gql(token, `
-            mutation($projectId: ID!, $itemId: ID!, $fieldId: ID!) {
-              clearProjectV2ItemFieldValue(input: {
-                projectId: $projectId itemId: $itemId fieldId: $fieldId
-              }) { projectV2Item { id } }
+            mutation($projectId: ID!, $contentId: ID!) {
+              addProjectV2ItemById(input: { projectId: $projectId, contentId: $contentId }) { item { id } }
             }
-          `, { projectId: kanbanProjectId, itemId, fieldId: kanbanStatusField.id });
+          `, { projectId: toProjectId, contentId: issue.node_id });
         }
       }
-      if (fromMilestoneNumber !== toMilestoneNumber) {
-        const octokit = new Octokit({ auth: token });
-        await octokit.rest.issues.update({ owner, repo, issue_number: issueNumber, milestone: toMilestoneNumber });
-      }
     } catch (err) {
-      set({ kanbanIssueStatuses: snapStatuses, issues: snapIssues });
+      set({ issues: snapIssues, projectIssues: snapProjectIssues });
       throw err;
     }
   },
