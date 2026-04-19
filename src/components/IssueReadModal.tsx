@@ -12,11 +12,11 @@ interface Props {
 /**
  * Read-only view of a GitHub issue.
  * Renders the description as formatted Markdown and exposes an action
- * toolbar (Edit, Close, Delete, Describe with AI, Code with AI) in the
+ * toolbar (Edit, Close/Reopen, Delete, Describe with AI, Code with AI) in the
  * top-right corner.
  */
 export default function IssueReadModal({ issue, onClose }: Props) {
-  const { closeIssue, deleteIssue, projects, projectIssues } = useAppStore();
+  const { closeIssue, deleteIssue, reopenIssue, projects, projectIssues } = useAppStore();
 
   const [showEdit, setShowEdit] = useState(false);
   const [busy, setBusy] = useState(false);
@@ -43,6 +43,18 @@ export default function IssueReadModal({ issue, onClose }: Props) {
     setBusy(true);
     try {
       await closeIssue(issue.number);
+      onClose();
+    } catch {
+      setBusy(false);
+    }
+  }
+
+  async function handleReopen(e: React.MouseEvent) {
+    e.stopPropagation();
+    if (!confirm(`Reopen issue #${issue.number}?`)) return;
+    setBusy(true);
+    try {
+      await reopenIssue(issue.number);
       onClose();
     } catch {
       setBusy(false);
@@ -178,6 +190,19 @@ export default function IssueReadModal({ issue, onClose }: Props) {
               >
                 <svg xmlns="http://www.w3.org/2000/svg" className="w-4 h-4" viewBox="0 0 20 20" fill="currentColor">
                   <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                </svg>
+              </button>
+            )}
+
+            {/* Reopen issue (only when closed) */}
+            {issue.state === 'closed' && (
+              <button
+                onClick={handleReopen}
+                title="Reopen issue"
+                className="p-1.5 text-purple-600 rounded-lg border border-purple-200 bg-purple-50 hover:bg-purple-100 transition-colors"
+              >
+                <svg xmlns="http://www.w3.org/2000/svg" className="w-4 h-4" viewBox="0 0 20 20" fill="currentColor">
+                  <path fillRule="evenodd" d="M4 2a1 1 0 011 1v2.101a7.002 7.002 0 0111.601 2.566 1 1 0 11-1.885.666A5.002 5.002 0 005.999 7H9a1 1 0 010 2H4a1 1 0 01-1-1V3a1 1 0 011-1zm.008 9.057a1 1 0 011.276.61A5.002 5.002 0 0014.001 13H11a1 1 0 110-2h5a1 1 0 011 1v5a1 1 0 11-2 0v-2.101a7.002 7.002 0 01-11.601-2.566 1 1 0 01.61-1.276z" clipRule="evenodd" />
                 </svg>
               </button>
             )}

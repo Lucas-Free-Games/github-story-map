@@ -46,6 +46,7 @@ interface AppState {
   ) => Promise<void>;
   updateIssue: (number: number, title: string, body: string, milestoneNumber?: number | null) => Promise<void>;
   closeIssue: (number: number) => Promise<void>;
+  reopenIssue: (number: number) => Promise<void>;
   deleteIssue: (number: number, nodeId: string) => Promise<void>;
   fetchProjects: () => Promise<void>;
   createProject: (title: string, description: string) => Promise<void>;
@@ -406,6 +407,34 @@ export const useAppStore = create<AppState>((set, get) => ({
 
     set({ issues: issues.filter((i) => i.number !== number), layout: newLayout });
     saveLayout(owner, repo, newLayout).catch(() => { /* offline */ });
+  },
+
+  reopenIssue: async (number) => {
+    const { token, owner, repo, issues, layout } = get();
+    const octokit = new Octokit({ auth: token });
+    await octokit.rest.issues.update({ owner, repo, issue_number: number, state: 'open' });
+
+    // Update the issue's state to open in the local cache
+    const updatedIssues = issues.map((i) =>
+      i.number === number ? { ...i, state: 'open' as const } : i,
+    );
+
+    // If the issue was removed from the layout when it was closed inline,
+    // add it back to the backlog so it reappears on the board
+    const allInLayout = new Set(Object.values(layout.storyOrder).flat());
+    let newLayout = layout;
+    if (!allInLayout.has(number)) {
+      newLayout = {
+        ...layout,
+        storyOrder: {
+          ...layout.storyOrder,
+          backlog: [...(layout.storyOrder.backlog ?? []), number],
+        },
+      };
+      saveLayout(owner, repo, newLayout).catch(() => { /* offline */ });
+    }
+
+    set({ issues: updatedIssues, layout: newLayout });
   },
 
   deleteIssue: async (number, nodeId) => {
