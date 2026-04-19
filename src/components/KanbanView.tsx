@@ -49,16 +49,13 @@ export default function KanbanView() {
   const {
     issues, milestones, statusLabels, layout, showClosedIssues,
     moveIssueInKanban, moveIssueInKanbanNative, columnWidths, setColumnWidth,
-    projects, projectIssues,
-    kanbanProjectId, kanbanStatusField, kanbanIssueStatuses, setKanbanProject,
-    loading,
+    projectIssues,
+    kanbanProjectId, kanbanStatusField, kanbanIssueStatuses,
   } = useAppStore();
   const [createCell, setCreateCell] = useState<CellKey | null>(null);
   const [moveError, setMoveError] = useState<string | null>(null);
-  const [projectLoading, setProjectLoading] = useState(false);
 
   const isProjectMode = kanbanProjectId !== null;
-  const openProjects = projects.filter((p) => !p.closed);
 
   // In project mode, columns come from the project's Status field options.
   // In label mode, columns come from s_* labels.
@@ -112,41 +109,8 @@ export default function KanbanView() {
     });
   }
 
-  async function handleProjectChange(projectId: string) {
-    setProjectLoading(true);
-    try {
-      await setKanbanProject(projectId || null);
-    } catch (err) {
-      setMoveError(err instanceof Error ? err.message : 'Failed to load project');
-      setTimeout(() => setMoveError(null), 4000);
-    } finally {
-      setProjectLoading(false);
-    }
-  }
-
   return (
     <>
-      <div className="flex items-center gap-3 px-4 py-2 border-b border-gray-100 bg-white">
-        <span className="text-xs font-medium text-gray-500 whitespace-nowrap">Project</span>
-        <select
-          value={kanbanProjectId ?? ''}
-          onChange={(e) => handleProjectChange(e.target.value)}
-          disabled={loading || projectLoading}
-          className="text-sm border border-gray-200 rounded-md px-2 py-1 bg-white text-gray-700 focus:outline-none focus:ring-2 focus:ring-green-400 min-w-48 disabled:opacity-50"
-        >
-          <option value="">Label-based (s_ labels)</option>
-          {openProjects.map((p) => (
-            <option key={p.id} value={p.id}>{p.title}</option>
-          ))}
-        </select>
-        {projectLoading && (
-          <span className="text-xs text-gray-400">Loading…</span>
-        )}
-        {isProjectMode && !kanbanStatusField && !projectLoading && (
-          <span className="text-xs text-amber-600">This project has no Status field — showing all issues as unstatused.</span>
-        )}
-      </div>
-
       <DragDropContext onDragEnd={handleDragEnd}>
         <div className="flex-1 overflow-auto h-full">
           <table className="border-collapse">
