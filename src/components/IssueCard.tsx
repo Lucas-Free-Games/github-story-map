@@ -61,9 +61,9 @@ export default function IssueCard({ issue }: Props) {
   }, [showReadModal, issue.number]);
 
   const nativeStatus = kanbanIssueStatuses[issue.number] ?? (issue.state === 'open' ? 'Todo' : null);
-  const badgeStyle = issue.state === 'closed'
-    ? ghStyle('GREEN')
-    : ghStyle(nativeStatus ? (kanbanStatusColors[nativeStatus] ?? 'GRAY') : 'GRAY');
+  const badgeStyle = nativeStatus
+    ? ghStyle(kanbanStatusColors[nativeStatus] ?? 'GRAY')
+    : ghStyle(issue.state === 'closed' ? 'GREEN' : 'GRAY');
 
   function onCardEnter() {
     setHovered(true);

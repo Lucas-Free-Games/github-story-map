@@ -51,8 +51,8 @@ export default function IssueReadModal({ issue, onClose }: Props) {
   const renderedBody = displayBody.trim() ? parseMarkdownToHTML(displayBody) : null;
 
   const nativeStatus = kanbanIssueStatuses[issue.number] ?? (issue.state === 'open' ? 'Todo' : null);
-  const statusDisplayLabel = issue.state === 'closed' ? 'Closed' : (nativeStatus ?? 'Todo');
-  const statusColor = issue.state === 'closed' ? 'GREEN' : (nativeStatus ? (kanbanStatusColors[nativeStatus] ?? 'GRAY') : 'GRAY');
+  const statusDisplayLabel = nativeStatus ?? (issue.state === 'closed' ? 'Closed' : 'Todo');
+  const statusColor = nativeStatus ? (kanbanStatusColors[nativeStatus] ?? 'GRAY') : (issue.state === 'closed' ? 'GREEN' : 'GRAY');
 
   async function handleClose(e: React.MouseEvent) {
     e.stopPropagation();
