@@ -51,7 +51,7 @@ export default function Header() {
             <div className="relative group">
               <button
                 onClick={toggleShowClosedIssues}
-                className="p-2 rounded-lg bg-green-600 text-white hover:bg-green-700 transition-colors"
+                className="p-2 rounded-lg bg-purple-600 text-white hover:bg-purple-700 transition-colors"
               >
                 {showClosedIssues ? (
                   <svg xmlns="http://www.w3.org/2000/svg" className="w-4 h-4" viewBox="0 0 20 20" fill="currentColor">
