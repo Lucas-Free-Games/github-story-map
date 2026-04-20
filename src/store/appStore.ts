@@ -26,9 +26,11 @@ interface AppState {
   /** issue number → status option name (from whichever project the issue belongs to). */
   kanbanIssueStatuses: Record<number, string>;
   /** projectId → { fieldId, options } for the Status single-select field. */
-  kanbanProjectStatusFields: Record<string, { fieldId: string; options: { id: string; name: string }[] }>;
+  kanbanProjectStatusFields: Record<string, { fieldId: string; options: { id: string; name: string; color?: string }[] }>;
   /** issue number → ProjectV2Item node ID (needed to update field values). */
   kanbanItemIds: Record<number, string>;
+  /** status option name → GitHub color enum string (e.g. "YELLOW", "GREEN"). */
+  kanbanStatusColors: Record<string, string>;
 
   setCredentials: (token: string, owner: string, repo: string) => void;
   fetchIssues: () => Promise<void>;
@@ -151,19 +153,20 @@ export const useAppStore = create<AppState>((set, get) => ({
   kanbanIssueStatuses: {},
   kanbanProjectStatusFields: {},
   kanbanItemIds: {},
+  kanbanStatusColors: {},
 
   setCredentials: (token, owner, repo) => {
     localStorage.setItem('gh_token', token);
     localStorage.setItem('gh_owner', owner);
     localStorage.setItem('gh_repo', repo);
-    set({ token, owner, repo, issues: [], layout: emptyLayout, error: null, milestones: [], statusLabels: [], projects: [], projectIssues: {}, kanbanMilestoneNumber: null, kanbanStatusColumns: [], kanbanIssueStatuses: {}, kanbanProjectStatusFields: {}, kanbanItemIds: {} });
+    set({ token, owner, repo, issues: [], layout: emptyLayout, error: null, milestones: [], statusLabels: [], projects: [], projectIssues: {}, kanbanMilestoneNumber: null, kanbanStatusColumns: [], kanbanIssueStatuses: {}, kanbanProjectStatusFields: {}, kanbanItemIds: {}, kanbanStatusColors: {} });
   },
 
   reset: () => {
     localStorage.removeItem('gh_token');
     localStorage.removeItem('gh_owner');
     localStorage.removeItem('gh_repo');
-    set({ token: '', owner: '', repo: '', issues: [], layout: emptyLayout, error: null, milestones: [], statusLabels: [], projects: [], projectIssues: {}, kanbanMilestoneNumber: null, kanbanStatusColumns: [], kanbanIssueStatuses: {}, kanbanProjectStatusFields: {}, kanbanItemIds: {} });
+    set({ token: '', owner: '', repo: '', issues: [], layout: emptyLayout, error: null, milestones: [], statusLabels: [], projects: [], projectIssues: {}, kanbanMilestoneNumber: null, kanbanStatusColumns: [], kanbanIssueStatuses: {}, kanbanProjectStatusFields: {}, kanbanItemIds: {}, kanbanStatusColors: {} });
   },
 
   setView: (view) => set({ view }),
@@ -850,7 +853,7 @@ export const useAppStore = create<AppState>((set, get) => ({
     const openProjects = projects.filter((p) => !p.closed);
     if (openProjects.length === 0) return;
 
-    type FieldNode = { id?: string; name?: string; options?: { id: string; name: string }[] };
+    type FieldNode = { id?: string; name?: string; options?: { id: string; name: string; color?: string }[] };
     type ItemNode = {
       id: string;
       content: { number: number } | null;
@@ -866,7 +869,7 @@ export const useAppStore = create<AppState>((set, get) => ({
               ... on ProjectV2 {
                 fields(first: 20) {
                   nodes {
-                    ... on ProjectV2SingleSelectField { id name options { id name } }
+                    ... on ProjectV2SingleSelectField { id name options { id name color } }
                   }
                 }
                 items(first: 100) {
@@ -890,10 +893,11 @@ export const useAppStore = create<AppState>((set, get) => ({
       ),
     );
 
-    const statusFields: Record<string, { fieldId: string; options: { id: string; name: string }[] }> = {};
+    const statusFields: Record<string, { fieldId: string; options: { id: string; name: string; color?: string }[] }> = {};
     const issueStatuses: Record<number, string> = {};
     const itemIds: Record<number, string> = {};
     const columnOrder: string[] = [];
+    const statusColors: Record<string, string> = {};
     const seen = new Set<string>();
 
     for (const result of results) {
@@ -903,13 +907,14 @@ export const useAppStore = create<AppState>((set, get) => ({
       if (!node) continue;
 
       const statusField = node.fields.nodes.find(
-        (f): f is { id: string; name: string; options: { id: string; name: string }[] } =>
+        (f): f is { id: string; name: string; options: { id: string; name: string; color?: string }[] } =>
           !!f.id && f.name === 'Status' && Array.isArray(f.options),
       );
       if (statusField) {
         statusFields[projectId] = { fieldId: statusField.id, options: statusField.options };
         for (const opt of statusField.options) {
           if (!seen.has(opt.name)) { seen.add(opt.name); columnOrder.push(opt.name); }
+          if (opt.color && !statusColors[opt.name]) statusColors[opt.name] = opt.color;
         }
       }
 
@@ -929,6 +934,7 @@ export const useAppStore = create<AppState>((set, get) => ({
       kanbanIssueStatuses: issueStatuses,
       kanbanProjectStatusFields: statusFields,
       kanbanItemIds: itemIds,
+      kanbanStatusColors: statusColors,
     });
   },
 

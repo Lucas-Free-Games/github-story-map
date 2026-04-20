@@ -16,8 +16,23 @@ interface Props {
   showStatus?: boolean;
 }
 
+const GH_COLOR_STYLE: Record<string, [string, string, string]> = {
+  GRAY:   ['#f9fafb', '#6b7280', '#e5e7eb'],
+  BLUE:   ['#eff6ff', '#2563eb', '#bfdbfe'],
+  GREEN:  ['#f0fdf4', '#16a34a', '#bbf7d0'],
+  YELLOW: ['#fefce8', '#854d0e', '#fde047'],
+  ORANGE: ['#fff7ed', '#c2410c', '#fed7aa'],
+  RED:    ['#fef2f2', '#dc2626', '#fecaca'],
+  PINK:   ['#fdf2f8', '#be185d', '#fbcfe8'],
+  PURPLE: ['#faf5ff', '#7e22ce', '#e9d5ff'],
+};
+function ghStyle(color: string): React.CSSProperties {
+  const [bg, text, border] = GH_COLOR_STYLE[color] ?? GH_COLOR_STYLE.GRAY;
+  return { backgroundColor: bg, color: text, border: `1px solid ${border}` };
+}
+
 export default function IssueCard({ issue }: Props) {
-  const { closeIssue, deleteIssue, reopenIssue } = useAppStore();
+  const { closeIssue, deleteIssue, reopenIssue, kanbanIssueStatuses, kanbanStatusColors } = useAppStore();
 
   // Read-only view — opens when the card body is clicked or when the URL
   // already points to this issue (deep-link / page-refresh support).
@@ -45,12 +60,10 @@ export default function IssueCard({ issue }: Props) {
     }
   }, [showReadModal, issue.number]);
 
-  const statusLabel = issue.labels.find(l => l.name.startsWith('s_'));
-  const statusName = statusLabel ? statusLabel.name.slice(2) : null;
-
-  const badgeStyle: React.CSSProperties = issue.state === 'open'
-    ? { backgroundColor: '#eff6ff', color: '#2563eb', border: '1px solid #bfdbfe' }
-    : { backgroundColor: '#f0fdf4', color: '#16a34a', border: '1px solid #bbf7d0' };
+  const nativeStatus = kanbanIssueStatuses[issue.number] ?? (issue.state === 'open' ? 'Todo' : null);
+  const badgeStyle = issue.state === 'closed'
+    ? ghStyle('GREEN')
+    : ghStyle(nativeStatus ? (kanbanStatusColors[nativeStatus] ?? 'GRAY') : 'GRAY');
 
   function onCardEnter() {
     setHovered(true);
@@ -136,7 +149,7 @@ export default function IssueCard({ issue }: Props) {
 
               {showBadgeTip && (
                 <div className="absolute bottom-full left-0 mb-1.5 z-30 bg-gray-900 text-white text-xs rounded-md px-2.5 py-2 shadow-lg whitespace-nowrap min-w-max">
-                  {statusName && <div className="font-semibold mb-1">{statusName}</div>}
+                  {nativeStatus && <div className="font-semibold mb-1">{nativeStatus}</div>}
                   <a
                     href={issue.html_url}
                     target="_blank"

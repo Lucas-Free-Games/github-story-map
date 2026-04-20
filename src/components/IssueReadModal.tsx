@@ -15,8 +15,23 @@ interface Props {
  * toolbar (Edit, Close/Reopen, Delete, Describe with AI, Code with AI) in the
  * top-right corner.
  */
+const GH_COLOR_STYLE: Record<string, [string, string, string]> = {
+  GRAY:   ['#f9fafb', '#6b7280', '#e5e7eb'],
+  BLUE:   ['#eff6ff', '#2563eb', '#bfdbfe'],
+  GREEN:  ['#f0fdf4', '#16a34a', '#bbf7d0'],
+  YELLOW: ['#fefce8', '#854d0e', '#fde047'],
+  ORANGE: ['#fff7ed', '#c2410c', '#fed7aa'],
+  RED:    ['#fef2f2', '#dc2626', '#fecaca'],
+  PINK:   ['#fdf2f8', '#be185d', '#fbcfe8'],
+  PURPLE: ['#faf5ff', '#7e22ce', '#e9d5ff'],
+};
+function ghStyle(color: string): React.CSSProperties {
+  const [bg, text, border] = GH_COLOR_STYLE[color] ?? GH_COLOR_STYLE.GRAY;
+  return { backgroundColor: bg, color: text, border: `1px solid ${border}` };
+}
+
 export default function IssueReadModal({ issue, onClose }: Props) {
-  const { closeIssue, deleteIssue, reopenIssue, projects, projectIssues } = useAppStore();
+  const { closeIssue, deleteIssue, reopenIssue, projects, projectIssues, kanbanIssueStatuses, kanbanStatusColors } = useAppStore();
 
   const [showEdit, setShowEdit] = useState(false);
   const [busy, setBusy] = useState(false);
@@ -35,7 +50,9 @@ export default function IssueReadModal({ issue, onClose }: Props) {
 
   const renderedBody = displayBody.trim() ? parseMarkdownToHTML(displayBody) : null;
 
-  const statusLabel = issue.labels.find((l) => l.name.startsWith('s_'));
+  const nativeStatus = kanbanIssueStatuses[issue.number] ?? (issue.state === 'open' ? 'Todo' : null);
+  const statusDisplayLabel = issue.state === 'closed' ? 'Closed' : (nativeStatus ?? 'Todo');
+  const statusColor = issue.state === 'closed' ? 'GREEN' : (nativeStatus ? (kanbanStatusColors[nativeStatus] ?? 'GRAY') : 'GRAY');
 
   async function handleClose(e: React.MouseEvent) {
     e.stopPropagation();
@@ -93,24 +110,15 @@ export default function IssueReadModal({ issue, onClose }: Props) {
           {/* Left: status, number, title, metadata */}
           <div className="flex-1 min-w-0">
             <div className="flex items-center gap-2 flex-wrap">
-              {/* Open / Closed badge */}
+              {/* Native project status badge */}
               <span
-                className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium border ${
-                  issue.state === 'open'
-                    ? 'bg-blue-50 text-blue-700 border-blue-200'
-                    : 'bg-green-50 text-green-700 border-green-200'
-                }`}
+                className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium"
+                style={ghStyle(statusColor)}
               >
-                {issue.state === 'open' ? (
-                  <svg className="w-2 h-2" fill="currentColor" viewBox="0 0 8 8">
-                    <circle cx="4" cy="4" r="4" />
-                  </svg>
-                ) : (
-                  <svg xmlns="http://www.w3.org/2000/svg" className="w-3 h-3" viewBox="0 0 20 20" fill="currentColor">
-                    <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
-                  </svg>
-                )}
-                {issue.state === 'open' ? 'Open' : 'Closed'}
+                <svg className="w-2 h-2" fill="currentColor" viewBox="0 0 8 8">
+                  <circle cx="4" cy="4" r="4" />
+                </svg>
+                {statusDisplayLabel}
               </span>
 
               {/* Issue number → GitHub link */}
@@ -140,11 +148,6 @@ export default function IssueReadModal({ issue, onClose }: Props) {
               {epic && (
                 <span className="text-xs text-blue-700 bg-blue-50 px-2 py-0.5 rounded-full border border-blue-200">
                   ⬡ {epic.title}
-                </span>
-              )}
-              {statusLabel && (
-                <span className="text-xs text-green-700 bg-green-50 px-2 py-0.5 rounded-full border border-green-200">
-                  ◆ {statusLabel.name.slice(2)}
                 </span>
               )}
               {issue.assignees.length > 0 && (
