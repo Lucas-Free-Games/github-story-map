@@ -3,7 +3,7 @@ import { useAppStore } from '../store/appStore';
 import CreateIssueModal from './CreateIssueModal';
 
 export default function Header() {
-  const { owner, repo, fetchIssues, fetchProjects, fetchMilestones, reset, loading, view, setView, showClosedIssues, toggleShowClosedIssues, milestones, kanbanMilestoneNumber, setKanbanMilestone } = useAppStore();
+  const { owner, repo, fetchIssues, fetchProjects, fetchMilestones, fetchAllProjectStatuses, reset, loading, view, setView, showClosedIssues, toggleShowClosedIssues, milestones, kanbanMilestoneNumber, setKanbanMilestone } = useAppStore();
   const [showCreate, setShowCreate] = useState(false);
 
   return (
@@ -88,7 +88,7 @@ export default function Header() {
             {/* Sync */}
             <div className="relative group">
               <button
-                onClick={() => { fetchIssues(); fetchProjects(); fetchMilestones(); }}
+                onClick={() => { fetchIssues(); fetchProjects().then(() => fetchAllProjectStatuses()); fetchMilestones(); }}
                 disabled={loading}
                 className="p-2 rounded-lg bg-orange-500 text-white hover:bg-orange-600 disabled:opacity-40 transition-colors"
               >

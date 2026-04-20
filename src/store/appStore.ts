@@ -21,6 +21,14 @@ interface AppState {
   columnWidths: Record<string, number>;
   /** Selected milestone number for the Kanban wave filter (null = all waves). */
   kanbanMilestoneNumber: number | null;
+  /** Ordered union of status option names across all open projects (Kanban columns). */
+  kanbanStatusColumns: string[];
+  /** issue number → status option name (from whichever project the issue belongs to). */
+  kanbanIssueStatuses: Record<number, string>;
+  /** projectId → { fieldId, options } for the Status single-select field. */
+  kanbanProjectStatusFields: Record<string, { fieldId: string; options: { id: string; name: string }[] }>;
+  /** issue number → ProjectV2Item node ID (needed to update field values). */
+  kanbanItemIds: Record<number, string>;
 
   setCredentials: (token: string, owner: string, repo: string) => void;
   fetchIssues: () => Promise<void>;
@@ -76,7 +84,9 @@ interface AppState {
   setColumnWidth: (key: string, width: number) => void;
   /** Set the wave/milestone filter for the Kanban board. */
   setKanbanMilestone: (milestoneNumber: number | null) => void;
-  /** Move an issue in Kanban: updates status label and/or project membership. */
+  /** Fetch native status field options + item statuses for all open projects. */
+  fetchAllProjectStatuses: () => Promise<void>;
+  /** Move an issue in Kanban: updates native status field and/or project membership. */
   moveIssueInKanbanByProject: (
     issueNumber: number,
     fromStatus: string | null,
@@ -137,19 +147,23 @@ export const useAppStore = create<AppState>((set, get) => ({
   projectIssues: {},
   columnWidths: JSON.parse(localStorage.getItem('gh_column_widths') ?? '{}') as Record<string, number>,
   kanbanMilestoneNumber: null,
+  kanbanStatusColumns: [],
+  kanbanIssueStatuses: {},
+  kanbanProjectStatusFields: {},
+  kanbanItemIds: {},
 
   setCredentials: (token, owner, repo) => {
     localStorage.setItem('gh_token', token);
     localStorage.setItem('gh_owner', owner);
     localStorage.setItem('gh_repo', repo);
-    set({ token, owner, repo, issues: [], layout: emptyLayout, error: null, milestones: [], statusLabels: [], projects: [], projectIssues: {}, kanbanMilestoneNumber: null });
+    set({ token, owner, repo, issues: [], layout: emptyLayout, error: null, milestones: [], statusLabels: [], projects: [], projectIssues: {}, kanbanMilestoneNumber: null, kanbanStatusColumns: [], kanbanIssueStatuses: {}, kanbanProjectStatusFields: {}, kanbanItemIds: {} });
   },
 
   reset: () => {
     localStorage.removeItem('gh_token');
     localStorage.removeItem('gh_owner');
     localStorage.removeItem('gh_repo');
-    set({ token: '', owner: '', repo: '', issues: [], layout: emptyLayout, error: null, milestones: [], statusLabels: [], projects: [], projectIssues: {}, kanbanMilestoneNumber: null });
+    set({ token: '', owner: '', repo: '', issues: [], layout: emptyLayout, error: null, milestones: [], statusLabels: [], projects: [], projectIssues: {}, kanbanMilestoneNumber: null, kanbanStatusColumns: [], kanbanIssueStatuses: {}, kanbanProjectStatusFields: {}, kanbanItemIds: {} });
   },
 
   setView: (view) => set({ view }),
@@ -830,18 +844,101 @@ export const useAppStore = create<AppState>((set, get) => ({
 
   setKanbanMilestone: (milestoneNumber) => set({ kanbanMilestoneNumber: milestoneNumber }),
 
+  fetchAllProjectStatuses: async () => {
+    const { token, projects } = get();
+    if (!token) return;
+    const openProjects = projects.filter((p) => !p.closed);
+    if (openProjects.length === 0) return;
+
+    type FieldNode = { id?: string; name?: string; options?: { id: string; name: string }[] };
+    type ItemNode = {
+      id: string;
+      content: { number: number } | null;
+      fieldValues: { nodes: Array<{ field?: { name: string }; name?: string }> };
+    };
+    type ProjectData = { node: { fields: { nodes: FieldNode[] }; items: { nodes: ItemNode[] } } | null };
+
+    const results = await Promise.all(
+      openProjects.map((p) =>
+        gql<ProjectData>(token, `
+          query($projectId: ID!) {
+            node(id: $projectId) {
+              ... on ProjectV2 {
+                fields(first: 20) {
+                  nodes {
+                    ... on ProjectV2SingleSelectField { id name options { id name } }
+                  }
+                }
+                items(first: 100) {
+                  nodes {
+                    id
+                    content { ... on Issue { number } }
+                    fieldValues(first: 10) {
+                      nodes {
+                        ... on ProjectV2ItemFieldSingleSelectValue {
+                          field { ... on ProjectV2SingleSelectField { name } }
+                          name
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        `, { projectId: p.id }).then((d) => ({ projectId: p.id, data: d })).catch(() => null),
+      ),
+    );
+
+    const statusFields: Record<string, { fieldId: string; options: { id: string; name: string }[] }> = {};
+    const issueStatuses: Record<number, string> = {};
+    const itemIds: Record<number, string> = {};
+    const columnOrder: string[] = [];
+    const seen = new Set<string>();
+
+    for (const result of results) {
+      if (!result) continue;
+      const { projectId, data } = result;
+      const node = data.node;
+      if (!node) continue;
+
+      const statusField = node.fields.nodes.find(
+        (f): f is { id: string; name: string; options: { id: string; name: string }[] } =>
+          !!f.id && f.name === 'Status' && Array.isArray(f.options),
+      );
+      if (statusField) {
+        statusFields[projectId] = { fieldId: statusField.id, options: statusField.options };
+        for (const opt of statusField.options) {
+          if (!seen.has(opt.name)) { seen.add(opt.name); columnOrder.push(opt.name); }
+        }
+      }
+
+      for (const item of node.items.nodes) {
+        const num = item.content?.number;
+        if (!num) continue;
+        itemIds[num] = item.id;
+        const sv = item.fieldValues.nodes.find(
+          (fv): fv is { field: { name: string }; name: string } => !!fv.field && fv.field.name === 'Status' && !!fv.name,
+        );
+        if (sv) issueStatuses[num] = sv.name;
+      }
+    }
+
+    set({
+      kanbanStatusColumns: columnOrder,
+      kanbanIssueStatuses: issueStatuses,
+      kanbanProjectStatusFields: statusFields,
+      kanbanItemIds: itemIds,
+    });
+  },
+
   moveIssueInKanbanByProject: async (issueNumber, fromStatus, toStatus, fromProjectId, toProjectId) => {
-    const { token, owner, repo, issues, projectIssues } = get();
+    const { token, issues, projectIssues, kanbanIssueStatuses, kanbanProjectStatusFields, kanbanItemIds } = get();
     const issue = issues.find((i) => i.number === issueNumber);
     if (!issue) return;
 
-    const snapIssues = issues;
     const snapProjectIssues = projectIssues;
-
-    const baseLabels = issue.labels.filter((l) => !l.name.startsWith('s_'));
-    const newLabels = toStatus
-      ? [...baseLabels, { id: 0, name: `s_${toStatus}`, color: '0e8a16' }]
-      : baseLabels;
+    const snapStatuses = kanbanIssueStatuses;
 
     let updatedProjectIssues = { ...projectIssues };
     if (fromProjectId !== toProjectId) {
@@ -859,20 +956,13 @@ export const useAppStore = create<AppState>((set, get) => ({
       }
     }
 
-    set({
-      issues: issues.map((i) => i.number === issueNumber ? { ...i, labels: newLabels } : i),
-      projectIssues: updatedProjectIssues,
-    });
+    const newStatuses = toStatus
+      ? { ...kanbanIssueStatuses, [issueNumber]: toStatus }
+      : Object.fromEntries(Object.entries(kanbanIssueStatuses).filter(([k]) => Number(k) !== issueNumber));
+
+    set({ projectIssues: updatedProjectIssues, kanbanIssueStatuses: newStatuses });
 
     try {
-      const octokit = new Octokit({ auth: token });
-      if (fromStatus !== toStatus) {
-        if (toStatus) await ensureLabel(octokit, owner, repo, `s_${toStatus}`, '0e8a16');
-        await octokit.rest.issues.setLabels({
-          owner, repo, issue_number: issueNumber,
-          labels: newLabels.map((l) => l.name),
-        });
-      }
       if (fromProjectId !== toProjectId) {
         if (fromProjectId) {
           const data = await gql<{
@@ -896,15 +986,58 @@ export const useAppStore = create<AppState>((set, get) => ({
           }
         }
         if (toProjectId) {
-          await gql(token, `
+          const addResult = await gql<{ addProjectV2ItemById: { item: { id: string } } }>(token, `
             mutation($projectId: ID!, $contentId: ID!) {
               addProjectV2ItemById(input: { projectId: $projectId, contentId: $contentId }) { item { id } }
             }
           `, { projectId: toProjectId, contentId: issue.node_id });
+          const newItemId = addResult.addProjectV2ItemById.item.id;
+          set({ kanbanItemIds: { ...get().kanbanItemIds, [issueNumber]: newItemId } });
+
+          if (toStatus) {
+            const field = kanbanProjectStatusFields[toProjectId];
+            const option = field?.options.find((o) => o.name === toStatus);
+            if (field && option) {
+              await gql(token, `
+                mutation($projectId: ID!, $itemId: ID!, $fieldId: ID!, $optionId: String!) {
+                  updateProjectV2ItemFieldValue(input: {
+                    projectId: $projectId itemId: $itemId fieldId: $fieldId
+                    value: { singleSelectOptionId: $optionId }
+                  }) { projectV2Item { id } }
+                }
+              `, { projectId: toProjectId, itemId: newItemId, fieldId: field.fieldId, optionId: option.id });
+            }
+          }
+        }
+      } else if (fromStatus !== toStatus && toProjectId) {
+        const itemId = kanbanItemIds[issueNumber];
+        const field = kanbanProjectStatusFields[toProjectId];
+        if (itemId && field) {
+          if (toStatus) {
+            const option = field.options.find((o) => o.name === toStatus);
+            if (option) {
+              await gql(token, `
+                mutation($projectId: ID!, $itemId: ID!, $fieldId: ID!, $optionId: String!) {
+                  updateProjectV2ItemFieldValue(input: {
+                    projectId: $projectId itemId: $itemId fieldId: $fieldId
+                    value: { singleSelectOptionId: $optionId }
+                  }) { projectV2Item { id } }
+                }
+              `, { projectId: toProjectId, itemId, fieldId: field.fieldId, optionId: option.id });
+            }
+          } else {
+            await gql(token, `
+              mutation($projectId: ID!, $itemId: ID!, $fieldId: ID!) {
+                clearProjectV2ItemFieldValue(input: {
+                  projectId: $projectId itemId: $itemId fieldId: $fieldId
+                }) { projectV2Item { id } }
+              }
+            `, { projectId: toProjectId, itemId, fieldId: field.fieldId });
+          }
         }
       }
     } catch (err) {
-      set({ issues: snapIssues, projectIssues: snapProjectIssues });
+      set({ projectIssues: snapProjectIssues, kanbanIssueStatuses: snapStatuses });
       throw err;
     }
   },

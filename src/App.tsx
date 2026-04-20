@@ -9,7 +9,7 @@ import EpicsView from './components/EpicsView';
 import SettingsView from './components/SettingsView';
 
 export default function App() {
-  const { token, owner, repo, issues, loading, error, fetchIssues, fetchLabels, fetchProjects, fetchMilestones, view } = useAppStore();
+  const { token, owner, repo, issues, loading, error, fetchIssues, fetchLabels, fetchProjects, fetchMilestones, fetchAllProjectStatuses, view } = useAppStore();
 
   const isConfigured = Boolean(token && owner && repo);
 
@@ -17,7 +17,7 @@ export default function App() {
     if (isConfigured && issues.length === 0) {
       fetchIssues();
       fetchLabels();
-      fetchProjects();
+      fetchProjects().then(() => fetchAllProjectStatuses());
       fetchMilestones();
     }
   }, []); // eslint-disable-line react-hooks/exhaustive-deps

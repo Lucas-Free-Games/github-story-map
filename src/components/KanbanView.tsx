@@ -6,11 +6,6 @@ import IssueCard from './IssueCard';
 import CreateIssueModal from './CreateIssueModal';
 import ResizableHeader, { KANBAN_DEFAULT_WIDTH } from './ResizableHeader';
 
-function getStatusLabel(issue: GitHubIssue): string | null {
-  const label = issue.labels.find((l) => l.name.startsWith('s_'));
-  return label ? label.name.slice(2) : null;
-}
-
 // Format: "k:{status|none}:{projectId|__no_epic__}"
 // GitHub node IDs are base64 and never contain colons, so lastIndexOf(':') is safe.
 function kanbanCellId(status: string, projectId: string | null): string {
@@ -49,14 +44,15 @@ function kanbanColKey(status: string): string {
 
 export default function KanbanView() {
   const {
-    issues, statusLabels, layout, showClosedIssues,
+    issues, layout, showClosedIssues,
     moveIssueInKanbanByProject, columnWidths, setColumnWidth,
     projects, projectIssues, kanbanMilestoneNumber,
+    kanbanStatusColumns, kanbanIssueStatuses,
   } = useAppStore();
   const [createCell, setCreateCell] = useState<CellKey | null>(null);
   const [moveError, setMoveError] = useState<string | null>(null);
 
-  const cols = [...statusLabels, ''];
+  const cols = [...kanbanStatusColumns, ''];
   const colK = (status: string) => columnWidths[kanbanColKey(status)] ?? KANBAN_DEFAULT_WIDTH;
 
   const openProjects = projects.filter((p) => !p.closed);
@@ -75,8 +71,8 @@ export default function KanbanView() {
       const pMatch = projectId === null
         ? !allProjectIssueNumbers.has(issue.number)
         : (projectIssues[projectId] ?? []).includes(issue.number);
-      const sLabel = getStatusLabel(issue);
-      const statusMatch = status === '' ? sLabel === null : sLabel === status;
+      const issueStatus = kanbanIssueStatuses[issue.number] ?? null;
+      const statusMatch = status === '' ? issueStatus === null : issueStatus === status;
       return pMatch && statusMatch;
     });
   }
