@@ -186,11 +186,27 @@ export default function StoryMap() {
     const { draggableId, source, destination } = result;
 
     if (source.droppableId === 'columns') {
-      if (source.index !== destination.index) reorderProjects(source.index, destination.index);
+      if (source.index !== destination.index) {
+        const from = cols[source.index];
+        const to = cols[destination.index];
+        if (from && to) {
+          const fi = layout.epicOrder.indexOf(from.number);
+          const ti = layout.epicOrder.indexOf(to.number);
+          if (fi !== -1 && ti !== -1) reorderProjects(fi, ti);
+        }
+      }
       return;
     }
     if (source.droppableId === 'rows') {
-      if (source.index !== destination.index) reorderMilestones(source.index, destination.index);
+      if (source.index !== destination.index) {
+        const from = orderedMilestones[source.index];
+        const to = orderedMilestones[destination.index];
+        if (from && to) {
+          const fi = (layout.milestoneOrder ?? []).indexOf(from.number);
+          const ti = (layout.milestoneOrder ?? []).indexOf(to.number);
+          if (fi !== -1 && ti !== -1) reorderMilestones(fi, ti);
+        }
+      }
       return;
     }
 

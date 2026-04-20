@@ -44,3 +44,4 @@ export interface GitHubProject {
   url: string;
   closed: boolean;
 }
+

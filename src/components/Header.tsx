@@ -3,7 +3,7 @@ import { useAppStore } from '../store/appStore';
 import CreateIssueModal from './CreateIssueModal';
 
 export default function Header() {
-  const { owner, repo, fetchIssues, fetchProjects, fetchMilestones, reset, loading, view, setView, showClosedIssues, toggleShowClosedIssues } = useAppStore();
+  const { owner, repo, fetchIssues, fetchProjects, fetchMilestones, fetchAllProjectStatuses, reset, loading, view, setView, showClosedIssues, toggleShowClosedIssues, milestones, kanbanMilestoneNumber, setKanbanMilestone } = useAppStore();
   const [showCreate, setShowCreate] = useState(false);
 
   return (
@@ -30,13 +30,28 @@ export default function Header() {
             ))}
           </div>
 
+          {/* Kanban wave selector */}
+          {view === 'kanban' && milestones.length > 0 && (
+            <select
+              value={kanbanMilestoneNumber ?? ''}
+              onChange={(e) => setKanbanMilestone(e.target.value ? Number(e.target.value) : null)}
+              disabled={loading}
+              className="ml-3 text-sm border border-gray-200 rounded-md px-2 py-1 bg-white text-gray-700 focus:outline-none focus:ring-2 focus:ring-green-400 disabled:opacity-50"
+            >
+              <option value="">All Waves</option>
+              {milestones.map((m) => (
+                <option key={m.number} value={m.number}>{m.title}</option>
+              ))}
+            </select>
+          )}
+
           {/* Action buttons */}
           <div className="flex items-center gap-1">
             {/* Show/hide closed */}
             <div className="relative group">
               <button
                 onClick={toggleShowClosedIssues}
-                className="p-2 rounded-lg bg-green-600 text-white hover:bg-green-700 transition-colors"
+                className="p-2 rounded-lg bg-purple-600 text-white hover:bg-purple-700 transition-colors"
               >
                 {showClosedIssues ? (
                   <svg xmlns="http://www.w3.org/2000/svg" className="w-4 h-4" viewBox="0 0 20 20" fill="currentColor">
@@ -73,7 +88,7 @@ export default function Header() {
             {/* Sync */}
             <div className="relative group">
               <button
-                onClick={() => { fetchIssues(); fetchProjects(); fetchMilestones(); }}
+                onClick={() => { fetchIssues(); fetchProjects().then(() => fetchAllProjectStatuses()); fetchMilestones(); }}
                 disabled={loading}
                 className="p-2 rounded-lg bg-orange-500 text-white hover:bg-orange-600 disabled:opacity-40 transition-colors"
               >
