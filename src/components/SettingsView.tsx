@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { useAppStore } from '../store/appStore';
 import { loadGeminiSettings, saveGeminiSettings, testGeminiConnection, DEFAULT_GEMINI_MODEL } from '../lib/gemini';
-import { loadAnthropicSettings, saveAnthropicSettings } from '../lib/anthropic';
+import { loadAnthropicSettings, saveAnthropicSettings, testAnthropicConnection } from '../lib/anthropic';
 
 type Tab = 'general' | 'describing' | 'coding';
 type LedState = 'idle' | 'testing' | 'success' | 'error';
@@ -84,6 +84,8 @@ export default function SettingsView() {
   const [agentId, setAgentId] = useState(savedAnthropic.agentId);
   const [envId, setEnvId] = useState(savedAnthropic.envId);
   const [vaultId, setVaultId] = useState(savedAnthropic.vaultId);
+  const [anthropicLedState, setAnthropicLedState] = useState<LedState>('idle');
+  const [anthropicError, setAnthropicError] = useState<string | null>(null);
 
   const [saved_, setSaved_] = useState(false);
 
@@ -96,6 +98,19 @@ export default function SettingsView() {
       setLedState('success');
     } catch {
       setLedState('error');
+    }
+  }
+
+  async function handleAnthropicTest() {
+    if (!anthropicKey.trim()) return;
+    setAnthropicLedState('testing');
+    setAnthropicError(null);
+    try {
+      await testAnthropicConnection(anthropicKey.trim());
+      setAnthropicLedState('success');
+    } catch (e) {
+      setAnthropicLedState('error');
+      setAnthropicError(e instanceof Error ? e.message : 'Unknown error');
     }
   }
 
@@ -366,16 +381,22 @@ export default function SettingsView() {
 
               <div className="space-y-4">
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Anthropic API Key
-                  </label>
+                  <div className="flex items-center justify-between mb-1">
+                    <label className="block text-sm font-medium text-gray-700">
+                      Anthropic API Key
+                    </label>
+                    <Led state={anthropicLedState} onClick={handleAnthropicTest} />
+                  </div>
                   <input
                     type="password"
                     value={anthropicKey}
-                    onChange={(e) => setAnthropicKey(e.target.value)}
+                    onChange={(e) => { setAnthropicKey(e.target.value); setAnthropicLedState('idle'); setAnthropicError(null); }}
                     placeholder="sk-ant-…"
                     className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-orange-400 font-mono"
                   />
+                  {anthropicError && (
+                    <p className="text-xs text-red-600 mt-1 break-words">{anthropicError}</p>
+                  )}
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">Agent ID</label>
