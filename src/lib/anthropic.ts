@@ -42,6 +42,28 @@ function jsonHeaders(apiKey: string, beta = BETA_SESSIONS): Record<string, strin
   };
 }
 
+// --- Connection test ---
+
+export async function testAnthropicConnection(apiKey: string): Promise<void> {
+  const res = await fetch(`${BASE}/messages`, {
+    method: 'POST',
+    headers: {
+      'x-api-key': apiKey,
+      'anthropic-version': VERSION,
+      'content-type': 'application/json',
+    },
+    body: JSON.stringify({
+      model: 'claude-haiku-4-5-20251001',
+      max_tokens: 1,
+      messages: [{ role: 'user', content: 'Hi' }],
+    }),
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({})) as { error?: { message?: string } };
+    throw new Error(err?.error?.message ?? `Anthropic API error ${res.status}`);
+  }
+}
+
 // --- Session lifecycle ---
 
 export async function createSession(
