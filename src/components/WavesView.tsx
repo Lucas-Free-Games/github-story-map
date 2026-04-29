@@ -29,18 +29,18 @@ function SidebarItem({
         <span className={`text-sm truncate ${selected ? 'font-medium text-purple-800' : 'text-gray-700'}`}>
           {milestone.title}
         </span>
-        <span className="shrink-0 text-xs text-gray-400 font-mono">#{milestone.number}</span>
       </div>
       <div className="flex items-center gap-1.5 mt-0.5">
         <span className="text-xs text-green-600">{openCount} open</span>
         <span className="text-xs text-gray-300">·</span>
         <span className="text-xs text-gray-400">{closedCount} closed</span>
+        <span className="ml-auto shrink-0 text-xs text-gray-400 font-mono">#{milestone.number}</span>
         <a
           href={`https://github.com/${owner}/${repo}/milestone/${milestone.number}`}
           target="_blank"
           rel="noopener noreferrer"
           onClick={(e) => e.stopPropagation()}
-          className="ml-auto shrink-0 text-gray-400 hover:text-blue-600 transition-colors"
+          className="shrink-0 text-gray-400 hover:text-blue-600 transition-colors"
           title="View on GitHub"
         >
           <svg xmlns="http://www.w3.org/2000/svg" className="w-3 h-3" viewBox="0 0 20 20" fill="currentColor">

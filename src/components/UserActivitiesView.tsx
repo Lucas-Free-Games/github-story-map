@@ -25,7 +25,6 @@ function SidebarItem({
         <span className={`text-sm truncate ${selected ? 'font-medium text-blue-800' : 'text-gray-700'}`}>
           {project.title}
         </span>
-        <span className="shrink-0 text-xs text-gray-400 font-mono">#{project.number}</span>
         {project.closed && (
           <span className="shrink-0 px-1 py-0.5 rounded text-xs bg-gray-100 text-gray-400">closed</span>
         )}
@@ -34,12 +33,13 @@ function SidebarItem({
         <span className="text-xs text-green-600">{openCount} open</span>
         <span className="text-xs text-gray-300">·</span>
         <span className="text-xs text-gray-400">{closedCount} closed</span>
+        <span className="ml-auto shrink-0 text-xs text-gray-400 font-mono">#{project.number}</span>
         <a
           href={project.url}
           target="_blank"
           rel="noopener noreferrer"
           onClick={(e) => e.stopPropagation()}
-          className="ml-auto shrink-0 text-gray-400 hover:text-blue-600 transition-colors"
+          className="shrink-0 text-gray-400 hover:text-blue-600 transition-colors"
           title="View on GitHub"
         >
           <svg xmlns="http://www.w3.org/2000/svg" className="w-3 h-3" viewBox="0 0 20 20" fill="currentColor">
