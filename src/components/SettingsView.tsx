@@ -216,7 +216,7 @@ export default function SettingsView() {
               <div className="border-t border-gray-200 pt-6">
                 <h2 className="text-base font-semibold text-gray-900 mb-2">Firestore Sync</h2>
                 <p className="text-sm text-gray-500">
-                  Layout data (epic order, wave order, story positions) is automatically synced to
+                  Layout data (user activity order, wave order, story positions) is automatically synced to
                   Firestore when available. No configuration required.
                 </p>
               </div>

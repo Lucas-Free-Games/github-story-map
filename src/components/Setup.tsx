@@ -61,7 +61,7 @@ export default function Setup() {
       <div className="bg-white rounded-2xl shadow-sm border border-gray-200 w-full max-w-md p-8">
         <h1 className="text-2xl font-bold text-gray-900 mb-1">GitHub Story Map</h1>
         <p className="text-gray-500 text-sm mb-6">
-          Visualize your GitHub issues as epics, stories, and tasks.
+          Visualize your GitHub issues as user activities, stories, and tasks.
         </p>
 
         <div className="space-y-4">
@@ -143,7 +143,7 @@ export default function Setup() {
         </div>
 
         <p className="text-xs text-gray-400 mt-6">
-          GitHub Projects become Epic columns. Milestones become rows. Drag issues between cells to organise your story map.
+          GitHub Projects become User Activity columns. Milestones become rows. Drag issues between cells to organise your story map.
         </p>
       </div>
     </div>

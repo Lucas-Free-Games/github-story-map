@@ -30,11 +30,11 @@ export default function CreateIssueModal({ defaultProjectId, defaultMilestoneNum
     setGenerating(true);
     setError('');
     try {
-      const epic = openProjects.find((p) => p.id === projectId);
+      const userActivity = openProjects.find((p) => p.id === projectId);
       const wave = milestones.find((m) => m.number === Number(milestoneNumber));
       const context: IssueContext = {
-        epicName: epic?.title,
-        epicDescription: epic?.shortDescription ?? undefined,
+        userActivityName: userActivity?.title,
+        userActivityDescription: userActivity?.shortDescription ?? undefined,
         waveName: wave?.title,
         waveDescription: wave?.description ?? undefined,
       };
@@ -134,7 +134,7 @@ export default function CreateIssueModal({ defaultProjectId, defaultMilestoneNum
 
           <div className="grid grid-cols-2 gap-3">
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Epic</label>
+              <label className="block text-sm font-medium text-gray-700 mb-1">User Activity</label>
               <select
                 value={projectId}
                 onChange={(e) => setProjectId(e.target.value)}

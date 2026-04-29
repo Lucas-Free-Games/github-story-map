@@ -6,11 +6,11 @@ import IssueCard from './IssueCard';
 import CreateIssueModal from './CreateIssueModal';
 import ResizableHeader, { GRID_DEFAULT_WIDTH } from './ResizableHeader';
 
-function sortedProjects(projects: GitHubProject[], epicOrder: number[]): GitHubProject[] {
+function sortedProjects(projects: GitHubProject[], userActivityOrder: number[]): GitHubProject[] {
   const open = projects.filter((p) => !p.closed);
   return [...open].sort((a, b) => {
-    const ai = epicOrder.indexOf(a.number);
-    const bi = epicOrder.indexOf(b.number);
+    const ai = userActivityOrder.indexOf(a.number);
+    const bi = userActivityOrder.indexOf(b.number);
     if (ai === -1 && bi === -1) return 0;
     if (ai === -1) return 1;
     if (bi === -1) return -1;
@@ -110,9 +110,9 @@ export default function StoryMap() {
   const [createCell, setCreateCell] = useState<CellKey | null>(null);
   const [moveError, setMoveError] = useState<string | null>(null);
 
-  const [addingEpic, setAddingEpic] = useState(false);
-  const [newEpicTitle, setNewEpicTitle] = useState('');
-  const [epicSaving, setEpicSaving] = useState(false);
+  const [addingUserActivity, setAddingUserActivity] = useState(false);
+  const [newUserActivityTitle, setNewUserActivityTitle] = useState('');
+  const [userActivitySaving, setUserActivitySaving] = useState(false);
 
   const [addingWave, setAddingWave] = useState(false);
   const [newWaveTitle, setNewWaveTitle] = useState('');
@@ -126,18 +126,18 @@ export default function StoryMap() {
     setTimeout(() => setMoveError(null), 4000);
   }
 
-  async function handleCreateEpic(e: React.FormEvent) {
+  async function handleCreateUserActivity(e: React.FormEvent) {
     e.preventDefault();
-    if (!newEpicTitle.trim()) return;
-    setEpicSaving(true);
+    if (!newUserActivityTitle.trim()) return;
+    setUserActivitySaving(true);
     try {
-      await createProject(newEpicTitle.trim(), '');
-      setNewEpicTitle('');
-      setAddingEpic(false);
+      await createProject(newUserActivityTitle.trim(), '');
+      setNewUserActivityTitle('');
+      setAddingUserActivity(false);
     } catch (err) {
-      showError(err instanceof Error ? err.message : 'Failed to create epic');
+      showError(err instanceof Error ? err.message : 'Failed to create user activity');
     } finally {
-      setEpicSaving(false);
+      setUserActivitySaving(false);
     }
   }
 
@@ -156,7 +156,7 @@ export default function StoryMap() {
     }
   }
 
-  const cols = sortedProjects(projects, layout.epicOrder);
+  const cols = sortedProjects(projects, layout.userActivityOrder);
   const orderedMilestones = sortedMilestones(milestones, layout.milestoneOrder);
   const visibleIssues = showClosedIssues ? issues : issues.filter((i) => i.state === 'open');
 
@@ -190,8 +190,8 @@ export default function StoryMap() {
         const from = cols[source.index];
         const to = cols[destination.index];
         if (from && to) {
-          const fi = layout.epicOrder.indexOf(from.number);
-          const ti = layout.epicOrder.indexOf(to.number);
+          const fi = layout.userActivityOrder.indexOf(from.number);
+          const ti = layout.userActivityOrder.indexOf(to.number);
           if (fi !== -1 && ti !== -1) reorderProjects(fi, ti);
         }
       }
@@ -225,26 +225,26 @@ export default function StoryMap() {
   if (cols.length === 0) {
     return (
       <div className="flex flex-col items-center justify-center h-full gap-3">
-        <p className="text-gray-400 text-sm">No epics yet.</p>
-        {addingEpic ? (
-          <form onSubmit={handleCreateEpic} className="flex items-center gap-2">
+        <p className="text-gray-400 text-sm">No user activities yet.</p>
+        {addingUserActivity ? (
+          <form onSubmit={handleCreateUserActivity} className="flex items-center gap-2">
             <input
               autoFocus
-              value={newEpicTitle}
-              onChange={(e) => setNewEpicTitle(e.target.value)}
-              placeholder="Epic name\u2026"
+              value={newUserActivityTitle}
+              onChange={(e) => setNewUserActivityTitle(e.target.value)}
+              placeholder="User activity name\u2026"
               className="border border-blue-300 rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-400"
             />
             <button
               type="submit"
-              disabled={epicSaving || !newEpicTitle.trim()}
+              disabled={userActivitySaving || !newUserActivityTitle.trim()}
               className="px-3 py-1.5 text-sm font-medium bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 transition-colors"
             >
-              {epicSaving ? 'Creating\u2026' : 'Create'}
+              {userActivitySaving ? 'Creating\u2026' : 'Create'}
             </button>
             <button
               type="button"
-              onClick={() => { setAddingEpic(false); setNewEpicTitle(''); }}
+              onClick={() => { setAddingUserActivity(false); setNewUserActivityTitle(''); }}
               className="px-3 py-1.5 text-sm text-gray-500 hover:text-gray-700 rounded-lg hover:bg-gray-100 transition-colors"
             >
               Cancel
@@ -252,10 +252,10 @@ export default function StoryMap() {
           </form>
         ) : (
           <button
-            onClick={() => setAddingEpic(true)}
+            onClick={() => setAddingUserActivity(true)}
             className="text-sm text-blue-600 hover:text-blue-800 px-4 py-2 border border-blue-200 rounded-lg hover:bg-blue-50 transition-colors"
           >
-            + New Epic
+            + New User Activity
           </button>
         )}
         {moveError && (
@@ -278,7 +278,7 @@ export default function StoryMap() {
                     {/* Sticky corner — row-label placeholder, not resizable */}
                     <th className="sticky left-0 top-0 z-30 bg-white border border-gray-200 w-[200px] min-w-[200px] max-w-[200px]" />
 
-                    {/* Draggable + resizable epic column headers */}
+                    {/* Draggable + resizable user activity column headers */}
                     {cols.map((project, index) => (
                       <Draggable key={project.id} draggableId={project.id} index={index}>
                         {(provided, snapshot) => (
@@ -301,33 +301,33 @@ export default function StoryMap() {
                     ))}
                     {provided.placeholder}
 
-                    {/* Resizable "No Epic" column header */}
+                    {/* Resizable "No User Activity" column header */}
                     <ResizableHeader
-                      columnKey="__no_epic__"
-                      width={colW('__no_epic__')}
+                      columnKey="__no_user_activity__"
+                      width={colW('__no_user_activity__')}
                       onResize={setColumnWidth}
                       className="sticky top-0 z-20 bg-gray-50 border border-gray-200 px-2 py-2 text-sm font-semibold text-gray-500 text-center"
                     >
-                      {addingEpic ? (
-                        <form onSubmit={handleCreateEpic} className="flex items-center gap-1">
+                      {addingUserActivity ? (
+                        <form onSubmit={handleCreateUserActivity} className="flex items-center gap-1">
                           <input
                             autoFocus
-                            value={newEpicTitle}
-                            onChange={(e) => setNewEpicTitle(e.target.value)}
-                            placeholder="Epic name\u2026"
+                            value={newUserActivityTitle}
+                            onChange={(e) => setNewUserActivityTitle(e.target.value)}
+                            placeholder="User activity name\u2026"
                             className="flex-1 min-w-0 border border-blue-300 rounded px-2 py-1 text-xs focus:outline-none focus:ring-1 focus:ring-blue-400"
                           />
-                          <button type="submit" disabled={epicSaving || !newEpicTitle.trim()} className="text-blue-600 hover:text-blue-800 disabled:opacity-40 px-1 text-base leading-none">&#x2713;</button>
-                          <button type="button" onClick={() => { setAddingEpic(false); setNewEpicTitle(''); }} className="text-gray-400 hover:text-gray-600 px-1 text-base leading-none">&#x2715;</button>
+                          <button type="submit" disabled={userActivitySaving || !newUserActivityTitle.trim()} className="text-blue-600 hover:text-blue-800 disabled:opacity-40 px-1 text-base leading-none">&#x2713;</button>
+                          <button type="button" onClick={() => { setAddingUserActivity(false); setNewUserActivityTitle(''); }} className="text-gray-400 hover:text-gray-600 px-1 text-base leading-none">&#x2715;</button>
                         </form>
                       ) : (
                         <div className="flex items-center justify-between px-2">
-                          <span className="text-gray-500">No Epic</span>
+                          <span className="text-gray-500">No User Activity</span>
                           <button
-                            onClick={() => setAddingEpic(true)}
+                            onClick={() => setAddingUserActivity(true)}
                             className="text-xs text-blue-400 hover:text-blue-600 hover:bg-blue-100 rounded px-1.5 py-0.5 transition-colors"
                           >
-                            + New Epic
+                            + New User Activity
                           </button>
                         </div>
                       )}
@@ -360,7 +360,7 @@ export default function StoryMap() {
                             <span className="truncate block">{milestone.title}</span>
                           </th>
 
-                          {/* Epic column cells — width follows header */}
+                          {/* User activity column cells — width follows header */}
                           {cols.map((project) => (
                             <td
                               key={project.id}
@@ -375,10 +375,10 @@ export default function StoryMap() {
                             </td>
                           ))}
 
-                          {/* No Epic cell */}
+                          {/* No User Activity cell */}
                           <td
                             className="border border-gray-200 align-top p-2 bg-gray-50/50"
-                            style={{ width: colW('__no_epic__'), minWidth: colW('__no_epic__') }}
+                            style={{ width: colW('__no_user_activity__'), minWidth: colW('__no_user_activity__') }}
                           >
                             <CardCell
                               droppableId={cellId('', milestone.number)}
@@ -421,7 +421,7 @@ export default function StoryMap() {
                       )}
                     </th>
 
-                    {/* Epic column cells — width follows header */}
+                    {/* User activity column cells — width follows header */}
                     {cols.map((project) => (
                       <td
                         key={project.id}
@@ -436,10 +436,10 @@ export default function StoryMap() {
                       </td>
                     ))}
 
-                    {/* No Epic / No Wave corner */}
+                    {/* No User Activity / No Wave corner */}
                     <td
                       className="border border-gray-200 align-top p-2 bg-gray-50/50"
-                      style={{ width: colW('__no_epic__'), minWidth: colW('__no_epic__') }}
+                      style={{ width: colW('__no_user_activity__'), minWidth: colW('__no_user_activity__') }}
                     >
                       <CardCell
                         droppableId={cellId('', null)}

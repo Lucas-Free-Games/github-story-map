@@ -43,8 +43,8 @@ export async function testGeminiConnection(): Promise<void> {
 }
 
 export interface IssueContext {
-  epicName?: string;
-  epicDescription?: string;
+  userActivityName?: string;
+  userActivityDescription?: string;
   waveName?: string;
   waveDescription?: string;
 }
@@ -103,10 +103,10 @@ export async function generateDescription(
     sections.push(`## Additional Instructions\n${extraInstructions.trim()}`);
   }
 
-  // Epic / Wave context
+  // User Activity / Wave context
   const issueContext: string[] = [];
-  if (context.epicName) {
-    issueContext.push(`Epic: ${context.epicName}${context.epicDescription ? ` — ${context.epicDescription}` : ''}`);
+  if (context.userActivityName) {
+    issueContext.push(`User Activity: ${context.userActivityName}${context.userActivityDescription ? ` — ${context.userActivityDescription}` : ''}`);
   }
   if (context.waveName) {
     issueContext.push(`Wave: ${context.waveName}${context.waveDescription ? ` — ${context.waveDescription}` : ''}`);

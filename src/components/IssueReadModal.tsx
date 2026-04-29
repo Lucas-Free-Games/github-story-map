@@ -36,8 +36,8 @@ export default function IssueReadModal({ issue, onClose }: Props) {
   const [showEdit, setShowEdit] = useState(false);
   const [busy, setBusy] = useState(false);
 
-  // Find the epic (project) this issue belongs to
-  const epic = projects.find((p) => (projectIssues[p.id] ?? []).includes(issue.number));
+  // Find the user activity (project) this issue belongs to
+  const userActivity = projects.find((p) => (projectIssues[p.id] ?? []).includes(issue.number));
 
   // Strip the AI section from the body before rendering
   const displayBody = (() => {
@@ -145,9 +145,9 @@ export default function IssueReadModal({ issue, onClose }: Props) {
                   🌊 {issue.milestone.title}
                 </span>
               )}
-              {epic && (
+              {userActivity && (
                 <span className="text-xs text-blue-700 bg-blue-50 px-2 py-0.5 rounded-full border border-blue-200">
-                  ⬡ {epic.title}
+                  ⬡ {userActivity.title}
                 </span>
               )}
               {issue.assignees.length > 0 && (

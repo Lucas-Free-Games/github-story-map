@@ -13,7 +13,7 @@ interface AppState {
   error: string | null;
   milestones: GitHubMilestone[];
   statusLabels: string[]; // values without prefix, e.g. ["Todo", "In Progress", "Done"]
-  view: 'grid' | 'kanban' | 'waves' | 'epics' | 'settings';
+  view: 'grid' | 'kanban' | 'waves' | 'user-activities' | 'settings';
   showClosedIssues: boolean;
   projects: GitHubProject[];
   projectIssues: Record<string, number[]>; // project node_id → issue numbers
@@ -41,7 +41,7 @@ interface AppState {
   updateMilestone: (number: number, title: string, description: string) => Promise<void>;
   deleteMilestone: (number: number) => Promise<void>;
   addStatusLabel: (name: string) => Promise<void>;
-  setView: (view: 'grid' | 'kanban' | 'waves' | 'epics' | 'settings') => void;
+  setView: (view: 'grid' | 'kanban' | 'waves' | 'user-activities' | 'settings') => void;
   moveStory: (
     storyNumber: number,
     fromKey: string,
@@ -98,7 +98,7 @@ interface AppState {
   ) => Promise<void>;
 }
 
-const emptyLayout: StoryMapLayout = { epicOrder: [], milestoneOrder: [], storyOrder: { backlog: [] } };
+const emptyLayout: StoryMapLayout = { userActivityOrder: [], milestoneOrder: [], storyOrder: { backlog: [] } };
 
 async function gql<T>(
   token: string,
@@ -313,7 +313,7 @@ export const useAppStore = create<AppState>((set, get) => ({
       let layout: StoryMapLayout;
       if (!savedLayout) {
         layout = {
-          epicOrder: [],
+          userActivityOrder: [],
           milestoneOrder: [],
           storyOrder: { backlog: allItems.map((i) => i.number) },
         };
@@ -430,7 +430,7 @@ export const useAppStore = create<AppState>((set, get) => ({
       Object.entries(layout.storyOrder).map(([key, nums]) => [key, nums.filter((n) => n !== number)]),
     );
     const newLayout: StoryMapLayout = {
-      epicOrder: layout.epicOrder.filter((n) => n !== number),
+      userActivityOrder: layout.userActivityOrder.filter((n) => n !== number),
       milestoneOrder: layout.milestoneOrder ?? [],
       storyOrder: newStoryOrder,
     };
@@ -485,7 +485,7 @@ export const useAppStore = create<AppState>((set, get) => ({
       Object.entries(layout.storyOrder).map(([key, nums]) => [key, nums.filter((n) => n !== number)]),
     );
     const newLayout: StoryMapLayout = {
-      epicOrder: layout.epicOrder.filter((n) => n !== number),
+      userActivityOrder: layout.userActivityOrder.filter((n) => n !== number),
       milestoneOrder: layout.milestoneOrder ?? [],
       storyOrder: newStoryOrder,
     };
@@ -536,16 +536,16 @@ export const useAppStore = create<AppState>((set, get) => ({
         .filter((n): n is number => n !== undefined);
     }
 
-    // Sync epicOrder with current project numbers (preserving saved order, appending new)
+    // Sync userActivityOrder with current project numbers (preserving saved order, appending new)
     const projectNumbers = projects.map((p) => p.number);
-    const preserved = layout.epicOrder.filter((n) => projectNumbers.includes(n));
+    const preserved = layout.userActivityOrder.filter((n) => projectNumbers.includes(n));
     const added = projectNumbers.filter((n) => !preserved.includes(n));
-    const newEpicOrder = [...preserved, ...added];
-    const orderChanged = newEpicOrder.some((n, i) => n !== layout.epicOrder[i]) ||
-      newEpicOrder.length !== layout.epicOrder.length;
+    const newUserActivityOrder = [...preserved, ...added];
+    const orderChanged = newUserActivityOrder.some((n, i) => n !== layout.userActivityOrder[i]) ||
+      newUserActivityOrder.length !== layout.userActivityOrder.length;
 
     if (orderChanged) {
-      const newLayout = { ...layout, epicOrder: newEpicOrder };
+      const newLayout = { ...layout, userActivityOrder: newUserActivityOrder };
       set({ projects, projectIssues, layout: newLayout });
       saveLayout(owner, repo, newLayout).catch(() => { /* offline */ });
     } else {
@@ -698,10 +698,10 @@ export const useAppStore = create<AppState>((set, get) => ({
 
   reorderProjects: (fromIndex, toIndex) => {
     const { layout, owner, repo } = get();
-    const epicOrder = [...layout.epicOrder];
-    const [moved] = epicOrder.splice(fromIndex, 1);
-    epicOrder.splice(toIndex, 0, moved);
-    const newLayout = { ...layout, epicOrder };
+    const userActivityOrder = [...layout.userActivityOrder];
+    const [moved] = userActivityOrder.splice(fromIndex, 1);
+    userActivityOrder.splice(toIndex, 0, moved);
+    const newLayout = { ...layout, userActivityOrder };
     set({ layout: newLayout });
     saveLayout(owner, repo, newLayout).catch(() => { /* offline */ });
   },

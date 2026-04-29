@@ -5,7 +5,7 @@ import Header from './components/Header';
 import StoryMap from './components/StoryMap';
 import KanbanView from './components/KanbanView';
 import WavesView from './components/WavesView';
-import EpicsView from './components/EpicsView';
+import UserActivitiesView from './components/UserActivitiesView';
 import SettingsView from './components/SettingsView';
 
 export default function App() {
@@ -48,7 +48,7 @@ export default function App() {
           {view === 'grid' && <StoryMap />}
           {view === 'kanban' && <KanbanView />}
           {view === 'waves' && <WavesView />}
-          {view === 'epics' && <EpicsView />}
+          {view === 'user-activities' && <UserActivitiesView />}
           {view === 'settings' && <SettingsView />}
         </div>
       )}

@@ -9,7 +9,7 @@ Analyze GitHub issues that only have titles or sparse descriptions and rewrite t
 - **Project**: GitHub Story Map (React + TypeScript + Tailwind + Octokit).
 - **Core Concepts**: 
     - **Waves**: Represented by GitHub Milestones or `w_` labels.
-    - **Epics**: Represented by GitHub Projects (V2) or `e_` labels.
+    - **User Activities**: Represented by GitHub Projects (V2) or `e_` labels.
     - **Status**: Represented by `s_` labels (Todo, In Progress, Done).
 - **Tech Stack**: Uses Zustand for state, Firestore for optional persistence, and Octokit for GitHub integration.
 

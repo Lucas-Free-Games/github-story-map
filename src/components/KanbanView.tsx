@@ -6,10 +6,10 @@ import IssueCard from './IssueCard';
 import CreateIssueModal from './CreateIssueModal';
 import ResizableHeader, { KANBAN_DEFAULT_WIDTH } from './ResizableHeader';
 
-// Format: "k:{status|none}:{projectId|__no_epic__}"
+// Format: "k:{status|none}:{projectId|__no_user_activity__}"
 // GitHub node IDs are base64 and never contain colons, so lastIndexOf(':') is safe.
 function kanbanCellId(status: string, projectId: string | null): string {
-  return `k:${status || 'none'}:${projectId ?? '__no_epic__'}`;
+  return `k:${status || 'none'}:${projectId ?? '__no_user_activity__'}`;
 }
 function parseKanbanCell(id: string): { status: string | null; projectId: string | null } {
   const first = id.indexOf(':');
@@ -18,7 +18,7 @@ function parseKanbanCell(id: string): { status: string | null; projectId: string
   const projectPart = id.slice(last + 1);
   return {
     status: statusPart === 'none' ? null : statusPart,
-    projectId: projectPart === '__no_epic__' ? null : projectPart,
+    projectId: projectPart === '__no_user_activity__' ? null : projectPart,
   };
 }
 
@@ -27,10 +27,10 @@ interface CellKey {
   statusLabel: string;
 }
 
-function sortedProjects(projects: GitHubProject[], epicOrder: number[]): GitHubProject[] {
+function sortedProjects(projects: GitHubProject[], userActivityOrder: number[]): GitHubProject[] {
   return [...projects].sort((a, b) => {
-    const ai = epicOrder.indexOf(a.number);
-    const bi = epicOrder.indexOf(b.number);
+    const ai = userActivityOrder.indexOf(a.number);
+    const bi = userActivityOrder.indexOf(b.number);
     if (ai === -1 && bi === -1) return 0;
     if (ai === -1) return 1;
     if (bi === -1) return -1;
@@ -56,8 +56,8 @@ export default function KanbanView() {
   const colK = (status: string) => columnWidths[kanbanColKey(status)] ?? KANBAN_DEFAULT_WIDTH;
 
   const openProjects = projects.filter((p) => !p.closed);
-  // null sentinel = "No Epic" row — always last
-  const groups: (GitHubProject | null)[] = [...sortedProjects(openProjects, layout.epicOrder), null];
+  // null sentinel = "No User Activity" row — always last
+  const groups: (GitHubProject | null)[] = [...sortedProjects(openProjects, layout.userActivityOrder), null];
 
   const allProjectIssueNumbers = new Set(Object.values(projectIssues).flat());
 
@@ -117,18 +117,18 @@ export default function KanbanView() {
             <tbody>
               {groups.map((project) => (
                 <>
-                  <tr key={`${project?.id ?? 'no-epic'}-header`}>
+                  <tr key={`${project?.id ?? 'no-user-activity'}-header`}>
                     <td
                       colSpan={cols.length}
                       className="sticky left-0 bg-purple-50 border border-gray-200 px-4 py-2 text-xs font-semibold text-purple-900 uppercase tracking-wide"
                     >
                       {project
                         ? project.title
-                        : <span className="text-purple-400 font-normal italic normal-case tracking-normal">No Epic</span>}
+                        : <span className="text-purple-400 font-normal italic normal-case tracking-normal">No User Activity</span>}
                     </td>
                   </tr>
 
-                  <tr key={`${project?.id ?? 'no-epic'}-cards`}>
+                  <tr key={`${project?.id ?? 'no-user-activity'}-cards`}>
                     {cols.map((status) => {
                       const projectId = project?.id ?? null;
                       const items = cellIssues(projectId, status);
