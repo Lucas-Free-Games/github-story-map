@@ -9,12 +9,20 @@ function SidebarItem({
   onSelect,
   onUpdate,
   onDelete,
+  openCount,
+  closedCount,
+  owner,
+  repo,
 }: {
   milestone: GitHubMilestone;
   selected: boolean;
   onSelect: () => void;
   onUpdate: (number: number, title: string, description: string) => Promise<void>;
   onDelete: (number: number) => Promise<void>;
+  openCount: number;
+  closedCount: number;
+  owner: string;
+  repo: string;
 }) {
   const [editing, setEditing] = useState(false);
   const [title, setTitle] = useState(milestone.title);
@@ -92,12 +100,30 @@ function SidebarItem({
         onClick={onSelect}
         className="flex-1 text-left px-3 py-2.5 min-w-0"
       >
-        <span className={`block text-sm truncate ${selected ? 'font-medium text-purple-800' : 'text-gray-700'}`}>
-          {milestone.title}
-        </span>
-        {milestone.description && (
-          <span className="block text-xs text-gray-400 truncate mt-0.5">{milestone.description}</span>
-        )}
+        <div className="flex items-center gap-1.5">
+          <span className={`block text-sm truncate ${selected ? 'font-medium text-purple-800' : 'text-gray-700'}`}>
+            {milestone.title}
+          </span>
+          <span className="shrink-0 text-xs text-gray-400 font-mono">#{milestone.number}</span>
+        </div>
+        <div className="flex items-center gap-1.5 mt-0.5">
+          <span className="text-xs text-green-600">{openCount} open</span>
+          <span className="text-xs text-gray-300">·</span>
+          <span className="text-xs text-gray-400">{closedCount} closed</span>
+          <a
+            href={`https://github.com/${owner}/${repo}/milestone/${milestone.number}`}
+            target="_blank"
+            rel="noopener noreferrer"
+            onClick={(e) => e.stopPropagation()}
+            className="ml-auto shrink-0 text-gray-400 hover:text-blue-600 transition-colors"
+            title="View on GitHub"
+          >
+            <svg xmlns="http://www.w3.org/2000/svg" className="w-3 h-3" viewBox="0 0 20 20" fill="currentColor">
+              <path d="M11 3a1 1 0 100 2h2.586l-6.293 6.293a1 1 0 101.414 1.414L15 6.414V9a1 1 0 102 0V4a1 1 0 00-1-1h-5z" />
+              <path d="M5 5a2 2 0 00-2 2v8a2 2 0 002 2h8a2 2 0 002-2v-3a1 1 0 10-2 0v3H5V7h3a1 1 0 000-2H5z" />
+            </svg>
+          </a>
+        </div>
       </button>
       <div className="flex items-center gap-0.5 pr-2 shrink-0 opacity-0 group-hover:opacity-100 transition-opacity">
         <button
@@ -129,6 +155,14 @@ export default function WavesView() {
   const [newDescription, setNewDescription] = useState('');
   const [creating, setCreating] = useState(false);
   const [createError, setCreateError] = useState('');
+
+  const issueCounts = issues.reduce<Record<number, { open: number; closed: number }>>((acc, i) => {
+    if (!i.milestone) return acc;
+    const n = i.milestone.number;
+    if (!acc[n]) acc[n] = { open: 0, closed: 0 };
+    acc[n][i.state]++;
+    return acc;
+  }, {});
 
   const selected = milestones.find((m) => m.number === selectedNumber) ?? milestones[0] ?? null;
 
@@ -176,6 +210,10 @@ export default function WavesView() {
                 onSelect={() => setSelectedNumber(m.number)}
                 onUpdate={updateMilestone}
                 onDelete={deleteMilestone}
+                openCount={issueCounts[m.number]?.open ?? 0}
+                closedCount={issueCounts[m.number]?.closed ?? 0}
+                owner={owner}
+                repo={repo}
               />
             ))
           )}
