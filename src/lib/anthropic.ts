@@ -45,12 +45,13 @@ function jsonHeaders(apiKey: string, beta = BETA_SESSIONS): Record<string, strin
 // --- Connection test ---
 
 export async function testAnthropicConnection(apiKey: string): Promise<void> {
-  const res = await fetch(`${BASE}/messages`, {
+  const res = await fetch('https://api.anthropic.com/v1/messages', {
     method: 'POST',
     headers: {
       'x-api-key': apiKey,
       'anthropic-version': VERSION,
       'content-type': 'application/json',
+      'anthropic-dangerous-direct-browser-access': 'true',
     },
     body: JSON.stringify({
       model: 'claude-3-5-haiku-20241022',
