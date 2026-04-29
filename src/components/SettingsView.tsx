@@ -85,6 +85,7 @@ export default function SettingsView() {
   const [envId, setEnvId] = useState(savedAnthropic.envId);
   const [vaultId, setVaultId] = useState(savedAnthropic.vaultId);
   const [anthropicLedState, setAnthropicLedState] = useState<LedState>('idle');
+  const [anthropicError, setAnthropicError] = useState<string | null>(null);
 
   const [saved_, setSaved_] = useState(false);
 
@@ -103,11 +104,13 @@ export default function SettingsView() {
   async function handleAnthropicTest() {
     if (!anthropicKey.trim()) return;
     setAnthropicLedState('testing');
+    setAnthropicError(null);
     try {
       await testAnthropicConnection(anthropicKey.trim());
       setAnthropicLedState('success');
-    } catch {
+    } catch (e) {
       setAnthropicLedState('error');
+      setAnthropicError(e instanceof Error ? e.message : 'Unknown error');
     }
   }
 
@@ -387,10 +390,13 @@ export default function SettingsView() {
                   <input
                     type="password"
                     value={anthropicKey}
-                    onChange={(e) => { setAnthropicKey(e.target.value); setAnthropicLedState('idle'); }}
+                    onChange={(e) => { setAnthropicKey(e.target.value); setAnthropicLedState('idle'); setAnthropicError(null); }}
                     placeholder="sk-ant-…"
                     className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-orange-400 font-mono"
                   />
+                  {anthropicError && (
+                    <p className="text-xs text-red-600 mt-1 break-words">{anthropicError}</p>
+                  )}
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">Agent ID</label>
