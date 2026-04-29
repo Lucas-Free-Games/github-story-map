@@ -52,7 +52,7 @@ export default function KanbanView() {
   const [createCell, setCreateCell] = useState<CellKey | null>(null);
   const [moveError, setMoveError] = useState<string | null>(null);
 
-  const cols = [...kanbanStatusColumns, ''];
+  const cols = [...kanbanStatusColumns];
   const colK = (status: string) => columnWidths[kanbanColKey(status)] ?? KANBAN_DEFAULT_WIDTH;
 
   const openProjects = projects.filter((p) => !p.closed);
@@ -162,13 +162,15 @@ export default function KanbanView() {
                                   </Draggable>
                                 ))}
                                 {provided.placeholder}
-                                <button
-                                  onClick={() => setCreateCell({ projectId, statusLabel: status })}
-                                  className="mt-auto w-full text-xs text-gray-400 hover:text-green-600 hover:bg-green-50 rounded-lg py-1.5 border border-dashed border-gray-200 hover:border-green-300 transition-colors flex items-center justify-center gap-1"
-                                >
-                                  <span className="text-sm font-medium leading-none">+</span>
-                                  New Issue
-                                </button>
+                                {status !== '' && (
+                                  <button
+                                    onClick={() => setCreateCell({ projectId, statusLabel: status })}
+                                    className="mt-auto w-full text-xs text-gray-400 hover:text-green-600 hover:bg-green-50 rounded-lg py-1.5 border border-dashed border-gray-200 hover:border-green-300 transition-colors flex items-center justify-center gap-1"
+                                  >
+                                    <span className="text-sm font-medium leading-none">+</span>
+                                    New Issue
+                                  </button>
+                                )}
                               </div>
                             )}
                           </Droppable>
