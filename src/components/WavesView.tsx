@@ -8,7 +8,6 @@ function SidebarItem({
   selected,
   onSelect,
   onUpdate,
-  onDelete,
   openCount,
   closedCount,
   owner,
@@ -18,7 +17,6 @@ function SidebarItem({
   selected: boolean;
   onSelect: () => void;
   onUpdate: (number: number, title: string, description: string) => Promise<void>;
-  onDelete: (number: number) => Promise<void>;
   openCount: number;
   closedCount: number;
   owner: string;
@@ -28,7 +26,6 @@ function SidebarItem({
   const [title, setTitle] = useState(milestone.title);
   const [description, setDescription] = useState(milestone.description ?? '');
   const [saving, setSaving] = useState(false);
-  const [deleting, setDeleting] = useState(false);
   const [error, setError] = useState('');
 
   async function handleSave() {
@@ -42,17 +39,6 @@ function SidebarItem({
       setError(err instanceof Error ? err.message : 'Failed to update');
     } finally {
       setSaving(false);
-    }
-  }
-
-  async function handleDelete() {
-    setDeleting(true);
-    setError('');
-    try {
-      await onDelete(milestone.number);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to delete');
-      setDeleting(false);
     }
   }
 
@@ -95,52 +81,39 @@ function SidebarItem({
   }
 
   return (
-    <div className={`group flex items-center border-b border-gray-100 ${selected ? 'bg-purple-50 border-r-2 border-r-purple-500' : 'hover:bg-gray-50'}`}>
-      <button
-        onClick={onSelect}
-        className="flex-1 text-left px-3 py-2.5 min-w-0"
-      >
-        <div className="flex items-center gap-1.5">
-          <span className={`block text-sm truncate ${selected ? 'font-medium text-purple-800' : 'text-gray-700'}`}>
-            {milestone.title}
-          </span>
-          <span className="shrink-0 text-xs text-gray-400 font-mono">#{milestone.number}</span>
-        </div>
-        <div className="flex items-center gap-1.5 mt-0.5">
-          <span className="text-xs text-green-600">{openCount} open</span>
-          <span className="text-xs text-gray-300">·</span>
-          <span className="text-xs text-gray-400">{closedCount} closed</span>
-          <a
-            href={`https://github.com/${owner}/${repo}/milestone/${milestone.number}`}
-            target="_blank"
-            rel="noopener noreferrer"
-            onClick={(e) => e.stopPropagation()}
-            className="ml-auto shrink-0 text-gray-400 hover:text-blue-600 transition-colors"
-            title="View on GitHub"
-          >
-            <svg xmlns="http://www.w3.org/2000/svg" className="w-3 h-3" viewBox="0 0 20 20" fill="currentColor">
-              <path d="M11 3a1 1 0 100 2h2.586l-6.293 6.293a1 1 0 101.414 1.414L15 6.414V9a1 1 0 102 0V4a1 1 0 00-1-1h-5z" />
-              <path d="M5 5a2 2 0 00-2 2v8a2 2 0 002 2h8a2 2 0 002-2v-3a1 1 0 10-2 0v3H5V7h3a1 1 0 000-2H5z" />
-            </svg>
-          </a>
-        </div>
-      </button>
-      <div className="flex items-center gap-0.5 pr-2 shrink-0 opacity-0 group-hover:opacity-100 transition-opacity">
-        <button
-          onClick={() => setEditing(true)}
-          className="p-1 text-gray-400 hover:text-gray-700 rounded hover:bg-gray-200 transition-colors text-xs"
+    <div
+      onClick={onSelect}
+      className={`flex flex-col border-b border-gray-100 px-3 py-2.5 cursor-pointer ${selected ? 'bg-purple-50 border-r-2 border-r-purple-500' : 'hover:bg-gray-50'}`}
+    >
+      <div className="flex items-center gap-1.5">
+        <span
+          onClick={(e) => { e.stopPropagation(); onSelect(); setEditing(true); }}
+          className={`text-sm truncate cursor-text hover:underline ${selected ? 'font-medium text-purple-800' : 'text-gray-700'}`}
+          title="Click to edit"
         >
-          Edit
-        </button>
-        <button
-          onClick={handleDelete}
-          disabled={deleting}
-          className="p-1 text-gray-400 hover:text-red-600 rounded hover:bg-red-50 disabled:opacity-40 transition-colors text-xs"
-        >
-          {deleting ? '…' : 'Del'}
-        </button>
+          {milestone.title}
+        </span>
+        <span className="shrink-0 text-xs text-gray-400 font-mono">#{milestone.number}</span>
       </div>
-      {error && <p className="text-red-500 text-xs px-3 pb-1">{error}</p>}
+      <div className="flex items-center gap-1.5 mt-0.5">
+        <span className="text-xs text-green-600">{openCount} open</span>
+        <span className="text-xs text-gray-300">·</span>
+        <span className="text-xs text-gray-400">{closedCount} closed</span>
+        <a
+          href={`https://github.com/${owner}/${repo}/milestone/${milestone.number}`}
+          target="_blank"
+          rel="noopener noreferrer"
+          onClick={(e) => e.stopPropagation()}
+          className="ml-auto shrink-0 text-gray-400 hover:text-blue-600 transition-colors"
+          title="View on GitHub"
+        >
+          <svg xmlns="http://www.w3.org/2000/svg" className="w-3 h-3" viewBox="0 0 20 20" fill="currentColor">
+            <path d="M11 3a1 1 0 100 2h2.586l-6.293 6.293a1 1 0 101.414 1.414L15 6.414V9a1 1 0 102 0V4a1 1 0 00-1-1h-5z" />
+            <path d="M5 5a2 2 0 00-2 2v8a2 2 0 002 2h8a2 2 0 002-2v-3a1 1 0 10-2 0v3H5V7h3a1 1 0 000-2H5z" />
+          </svg>
+        </a>
+      </div>
+      {error && <p className="text-red-500 text-xs mt-1">{error}</p>}
     </div>
   );
 }
@@ -155,6 +128,8 @@ export default function WavesView() {
   const [newDescription, setNewDescription] = useState('');
   const [creating, setCreating] = useState(false);
   const [createError, setCreateError] = useState('');
+  const [deleting, setDeleting] = useState(false);
+  const [deleteError, setDeleteError] = useState('');
 
   const issueCounts = issues.reduce<Record<number, { open: number; closed: number }>>((acc, i) => {
     if (!i.milestone) return acc;
@@ -173,6 +148,20 @@ export default function WavesView() {
         return true;
       })
     : [];
+
+  async function handleDelete() {
+    if (!selected) return;
+    setDeleting(true);
+    setDeleteError('');
+    try {
+      await deleteMilestone(selected.number);
+      setSelectedNumber(null);
+    } catch (err) {
+      setDeleteError(err instanceof Error ? err.message : 'Failed to delete');
+    } finally {
+      setDeleting(false);
+    }
+  }
 
   async function handleCreate() {
     if (!newTitle.trim()) return;
@@ -209,7 +198,6 @@ export default function WavesView() {
                 selected={m.number === selected?.number}
                 onSelect={() => setSelectedNumber(m.number)}
                 onUpdate={updateMilestone}
-                onDelete={deleteMilestone}
                 openCount={issueCounts[m.number]?.open ?? 0}
                 closedCount={issueCounts[m.number]?.closed ?? 0}
                 owner={owner}
@@ -273,7 +261,17 @@ export default function WavesView() {
         ) : (
           <div>
             <div className="mb-6">
-              <h1 className="text-2xl font-bold text-gray-900 mb-1">{selected.title}</h1>
+              <div className="flex items-start justify-between gap-4 mb-1">
+                <h1 className="text-2xl font-bold text-gray-900">{selected.title}</h1>
+                <button
+                  onClick={handleDelete}
+                  disabled={deleting}
+                  className="shrink-0 text-sm text-red-500 hover:text-red-700 disabled:opacity-40 transition-colors mt-1"
+                >
+                  {deleting ? 'Deleting…' : 'Delete wave'}
+                </button>
+              </div>
+              {deleteError && <p className="text-xs text-red-600 mb-2">{deleteError}</p>}
               {selected.description && (
                 <p className="text-sm text-gray-500 mb-2">{selected.description}</p>
               )}
