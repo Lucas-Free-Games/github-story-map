@@ -126,12 +126,10 @@ export default function SettingsView() {
     });
   }
 
-  const filtered = issues
-    .filter((i) => i.state === 'open')
-    .filter(
-      (i) =>
-        i.title.toLowerCase().includes(search.toLowerCase()) || String(i.number).includes(search),
-    );
+  const filtered = issues.filter(
+    (i) =>
+      i.title.toLowerCase().includes(search.toLowerCase()) || String(i.number).includes(search),
+  );
 
   return (
     <div className="flex-1 overflow-hidden flex">
@@ -257,11 +255,18 @@ export default function SettingsView() {
                   <div className="flex flex-wrap gap-1.5 mb-2">
                     {exampleNumbers.map((num) => {
                       const issue = issues.find((i) => i.number === num);
+                      const isClosed = issue?.state === 'closed';
                       return (
                         <span
                           key={num}
                           className="flex items-center gap-1 px-2 py-1 bg-blue-50 text-blue-700 text-xs rounded-full border border-blue-200"
                         >
+                          {isClosed && (
+                            <svg className="w-3 h-3 text-purple-600 shrink-0" viewBox="0 0 16 16" fill="currentColor" aria-label="Closed">
+                              <path d="M11.28 6.78a.75.75 0 0 0-1.06-1.06L7.25 8.69 5.78 7.22a.75.75 0 0 0-1.06 1.06l2 2a.75.75 0 0 0 1.06 0l3.5-3.5Z"/>
+                              <path d="M16 8A8 8 0 1 1 0 8a8 8 0 0 1 16 0Zm-1.5 0a6.5 6.5 0 1 0-13 0 6.5 6.5 0 0 0 13 0Z"/>
+                            </svg>
+                          )}
                           #{num}
                           {issue ? ` · ${issue.title.slice(0, 28)}…` : ''}
                           <button
@@ -288,6 +293,7 @@ export default function SettingsView() {
                   {filtered.slice(0, 50).map((issue) => {
                     const selected = exampleNumbers.includes(issue.number);
                     const disabled = !selected && exampleNumbers.length >= 3;
+                    const isClosed = issue.state === 'closed';
                     return (
                       <li key={issue.number}>
                         <button
@@ -301,6 +307,17 @@ export default function SettingsView() {
                               : 'hover:bg-gray-50 text-gray-700'
                           }`}
                         >
+                          {isClosed ? (
+                            <svg className="w-3.5 h-3.5 text-purple-600 shrink-0" viewBox="0 0 16 16" fill="currentColor" aria-label="Closed">
+                              <path d="M11.28 6.78a.75.75 0 0 0-1.06-1.06L7.25 8.69 5.78 7.22a.75.75 0 0 0-1.06 1.06l2 2a.75.75 0 0 0 1.06 0l3.5-3.5Z"/>
+                              <path d="M16 8A8 8 0 1 1 0 8a8 8 0 0 1 16 0Zm-1.5 0a6.5 6.5 0 1 0-13 0 6.5 6.5 0 0 0 13 0Z"/>
+                            </svg>
+                          ) : (
+                            <svg className="w-3.5 h-3.5 text-green-600 shrink-0" viewBox="0 0 16 16" fill="currentColor" aria-label="Open">
+                              <path d="M8 9.5a1.5 1.5 0 1 0 0-3 1.5 1.5 0 0 0 0 3Z"/>
+                              <path d="M8 0a8 8 0 1 1 0 16A8 8 0 0 1 8 0ZM1.5 8a6.5 6.5 0 1 0 13 0 6.5 6.5 0 0 0-13 0Z"/>
+                            </svg>
+                          )}
                           <span className="text-gray-400 tabular-nums shrink-0 text-xs">
                             #{issue.number}
                           </span>
