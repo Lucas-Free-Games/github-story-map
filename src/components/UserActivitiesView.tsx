@@ -7,86 +7,22 @@ function SidebarItem({
   project,
   selected,
   onSelect,
-  onUpdate,
   openCount,
   closedCount,
 }: {
   project: GitHubProject;
   selected: boolean;
   onSelect: () => void;
-  onUpdate: (id: string, title: string, description: string) => Promise<void>;
   openCount: number;
   closedCount: number;
 }) {
-  const [editing, setEditing] = useState(false);
-  const [title, setTitle] = useState(project.title);
-  const [description, setDescription] = useState(project.shortDescription ?? '');
-  const [saving, setSaving] = useState(false);
-  const [error, setError] = useState('');
-
-  async function handleSave() {
-    if (!title.trim()) return;
-    setSaving(true);
-    setError('');
-    try {
-      await onUpdate(project.id, title.trim(), description);
-      setEditing(false);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to update');
-    } finally {
-      setSaving(false);
-    }
-  }
-
-  if (editing) {
-    return (
-      <div className="px-3 py-2 space-y-1.5 border-b border-gray-100">
-        <input
-          autoFocus
-          type="text"
-          value={title}
-          onChange={(e) => setTitle(e.target.value)}
-          placeholder="User activity title"
-          className="w-full border border-gray-300 rounded px-2 py-1 text-xs focus:outline-none focus:ring-2 focus:ring-blue-500"
-        />
-        <input
-          type="text"
-          value={description}
-          onChange={(e) => setDescription(e.target.value)}
-          placeholder="Description (optional)"
-          className="w-full border border-gray-300 rounded px-2 py-1 text-xs focus:outline-none focus:ring-2 focus:ring-blue-500"
-        />
-        {error && <p className="text-red-500 text-xs">{error}</p>}
-        <div className="flex gap-1 justify-end">
-          <button
-            onClick={() => { setEditing(false); setTitle(project.title); setDescription(project.shortDescription ?? ''); }}
-            className="px-2 py-0.5 text-xs text-gray-600 hover:text-gray-900 rounded hover:bg-gray-100 transition-colors"
-          >
-            Cancel
-          </button>
-          <button
-            onClick={handleSave}
-            disabled={saving || !title.trim()}
-            className="px-2 py-0.5 text-xs font-medium bg-gray-900 text-white rounded hover:bg-gray-700 disabled:opacity-40 transition-colors"
-          >
-            {saving ? '…' : 'Save'}
-          </button>
-        </div>
-      </div>
-    );
-  }
-
   return (
     <div
       onClick={onSelect}
       className={`flex flex-col border-b border-gray-100 px-3 py-2.5 cursor-pointer ${selected ? 'bg-blue-50 border-r-2 border-r-blue-500' : 'hover:bg-gray-50'}`}
     >
       <div className="flex items-center gap-1.5">
-        <span
-          onClick={(e) => { e.stopPropagation(); onSelect(); setEditing(true); }}
-          className={`text-sm truncate cursor-text hover:underline ${selected ? 'font-medium text-blue-800' : 'text-gray-700'}`}
-          title="Click to edit"
-        >
+        <span className={`text-sm truncate ${selected ? 'font-medium text-blue-800' : 'text-gray-700'}`}>
           {project.title}
         </span>
         <span className="shrink-0 text-xs text-gray-400 font-mono">#{project.number}</span>
@@ -112,7 +48,6 @@ function SidebarItem({
           </svg>
         </a>
       </div>
-      {error && <p className="text-red-500 text-xs mt-1">{error}</p>}
     </div>
   );
 }
@@ -229,7 +164,6 @@ export default function UserActivitiesView() {
                 project={p}
                 selected={p.id === selected?.id}
                 onSelect={() => selectProject(p.id)}
-                onUpdate={updateProject}
                 openCount={issueCounts[p.id]?.open ?? 0}
                 closedCount={issueCounts[p.id]?.closed ?? 0}
               />
