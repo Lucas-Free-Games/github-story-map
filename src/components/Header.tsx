@@ -12,9 +12,14 @@ export default function Header() {
         <div className="flex items-center justify-between">
           {/* Pill + Tabs */}
           <div className="flex items-center gap-1">
-            <span className="mr-2 px-2.5 py-1 text-xs font-medium bg-green-100 text-green-700 border border-green-200 rounded-full shrink-0">
+            <a
+              href={`https://github.com/${owner}/${repo}`}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="mr-2 px-2.5 py-1 text-xs font-medium bg-green-100 text-green-700 border border-green-200 rounded-full shrink-0 cursor-pointer hover:brightness-95 transition-[filter]"
+            >
               {owner}/{repo}
-            </span>
+            </a>
             {(['grid', 'kanban', 'waves', 'epics', 'settings'] as const).map((v) => (
               <button
                 key={v}
