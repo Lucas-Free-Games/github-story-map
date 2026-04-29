@@ -38,14 +38,16 @@ function SidebarItem({
           target="_blank"
           rel="noopener noreferrer"
           onClick={(e) => e.stopPropagation()}
-          className="ml-auto shrink-0 flex items-center gap-1 px-1.5 py-0.5 rounded-full bg-gray-100 text-gray-400 hover:bg-gray-200 hover:text-blue-600 transition-colors text-xs font-mono"
-          title="View on GitHub"
+          className="relative group/pill ml-auto shrink-0 flex items-center gap-1 px-1.5 py-0.5 rounded-full bg-gray-100 text-gray-400 hover:bg-gray-200 hover:text-blue-600 transition-colors text-xs font-mono"
         >
           #{project.number}
           <svg xmlns="http://www.w3.org/2000/svg" className="w-3 h-3" viewBox="0 0 20 20" fill="currentColor">
             <path d="M11 3a1 1 0 100 2h2.586l-6.293 6.293a1 1 0 101.414 1.414L15 6.414V9a1 1 0 102 0V4a1 1 0 00-1-1h-5z" />
             <path d="M5 5a2 2 0 00-2 2v8a2 2 0 002 2h8a2 2 0 002-2v-3a1 1 0 10-2 0v3H5V7h3a1 1 0 000-2H5z" />
           </svg>
+          <span className="pointer-events-none absolute bottom-full left-1/2 -translate-x-1/2 mb-1.5 z-50 whitespace-nowrap rounded bg-gray-900 px-2 py-1 text-xs font-sans font-normal text-white opacity-0 group-hover/pill:opacity-100 transition-opacity">
+            Open on GitHub
+          </span>
         </a>
       </div>
     </div>
