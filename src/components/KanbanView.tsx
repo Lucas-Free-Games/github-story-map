@@ -97,7 +97,7 @@ export default function KanbanView() {
     <>
       <DragDropContext onDragEnd={handleDragEnd}>
         <div className="flex-1 overflow-auto h-full">
-          <table className="border-collapse">
+          <table className="border-collapse w-full">
             <thead>
               <tr>
                 {cols.map((status) => (
@@ -136,16 +136,17 @@ export default function KanbanView() {
                         <td
                           key={kanbanColKey(status)}
                           className="border border-gray-200 align-top p-2 bg-white"
-                          style={{ width: colK(status), minWidth: colK(status) }}
+                          style={{ minWidth: colK(status) }}
                         >
                           <Droppable droppableId={kanbanCellId(status, projectId)} type="CARD">
                             {(provided, snapshot) => (
                               <div
                                 ref={provided.innerRef}
                                 {...provided.droppableProps}
-                                className={`flex flex-col gap-2 min-h-16 rounded transition-colors ${
+                                className={`grid gap-2 min-h-12 rounded transition-colors items-start ${
                                   snapshot.isDraggingOver ? 'bg-green-50/60' : ''
                                 }`}
+                                style={{ gridTemplateColumns: 'repeat(auto-fill, minmax(160px, 1fr))' }}
                               >
                                 {items.map((issue, idx) => (
                                   <Draggable key={issue.number} draggableId={`i:${issue.number}`} index={idx}>
@@ -162,18 +163,18 @@ export default function KanbanView() {
                                   </Draggable>
                                 ))}
                                 {provided.placeholder}
-                                {status !== '' && (
-                                  <button
-                                    onClick={() => setCreateCell({ projectId, statusLabel: status })}
-                                    className="mt-auto w-full text-xs text-gray-400 hover:text-green-600 hover:bg-green-50 rounded-lg py-1.5 border border-dashed border-gray-200 hover:border-green-300 transition-colors flex items-center justify-center gap-1"
-                                  >
-                                    <span className="text-sm font-medium leading-none">+</span>
-                                    New Issue
-                                  </button>
-                                )}
                               </div>
                             )}
                           </Droppable>
+                          {status !== '' && (
+                            <button
+                              onClick={() => setCreateCell({ projectId, statusLabel: status })}
+                              className="mt-2 w-full text-xs text-gray-400 hover:text-green-600 hover:bg-green-50 rounded-lg py-1.5 border border-dashed border-gray-200 hover:border-green-300 transition-colors flex items-center justify-center gap-1"
+                            >
+                              <span className="text-sm font-medium leading-none">+</span>
+                              New Issue
+                            </button>
+                          )}
                         </td>
                       );
                     })}

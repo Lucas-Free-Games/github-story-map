@@ -78,7 +78,7 @@ const ResizableHeader = forwardRef<HTMLTableCellElement, ResizableHeaderProps>(
         {...rest}
         // Width is set via inline style so it overrides class-based constraints.
         // The DnD style prop (transform, etc.) is merged last so it is not lost.
-        style={{ width, minWidth: width, maxWidth: width, ...style }}
+        style={{ width, minWidth: width, ...style }}
         className={`relative group/colresize ${className ?? ''}`}
       >
         {children}
