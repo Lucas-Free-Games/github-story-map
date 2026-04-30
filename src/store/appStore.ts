@@ -13,7 +13,7 @@ interface AppState {
   error: string | null;
   milestones: GitHubMilestone[];
   statusLabels: string[]; // values without prefix, e.g. ["Todo", "In Progress", "Done"]
-  view: 'grid' | 'kanban' | 'waves' | 'user-activities' | 'settings';
+  view: 'grid' | 'kanban' | 'waves' | 'user-activities' | 'roadmap' | 'settings';
   showClosedIssues: boolean;
   projects: GitHubProject[];
   projectIssues: Record<string, number[]>; // project node_id → issue numbers
@@ -41,7 +41,7 @@ interface AppState {
   updateMilestone: (number: number, title: string, description: string) => Promise<void>;
   deleteMilestone: (number: number) => Promise<void>;
   addStatusLabel: (name: string) => Promise<void>;
-  setView: (view: 'grid' | 'kanban' | 'waves' | 'user-activities' | 'settings') => void;
+  setView: (view: 'grid' | 'kanban' | 'waves' | 'user-activities' | 'roadmap' | 'settings') => void;
   moveStory: (
     storyNumber: number,
     fromKey: string,

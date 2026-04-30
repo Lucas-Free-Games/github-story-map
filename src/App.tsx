@@ -6,6 +6,7 @@ import StoryMap from './components/StoryMap';
 import KanbanView from './components/KanbanView';
 import WavesView from './components/WavesView';
 import UserActivitiesView from './components/UserActivitiesView';
+import RoadmapView from './components/RoadmapView';
 import SettingsView from './components/SettingsView';
 
 export default function App() {
@@ -49,6 +50,7 @@ export default function App() {
           {view === 'kanban' && <KanbanView />}
           {view === 'waves' && <WavesView />}
           {view === 'user-activities' && <UserActivitiesView />}
+          {view === 'roadmap' && <RoadmapView />}
           {view === 'settings' && <SettingsView />}
         </div>
       )}
