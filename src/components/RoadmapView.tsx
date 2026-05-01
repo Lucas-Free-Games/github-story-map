@@ -61,7 +61,7 @@ function DonutChart({ open, done, closed }: IssueCounts) {
   let cumulative = 0;
   const arcs = segments.map((s) => {
     const length = (s.count / total) * CIRCUMFERENCE;
-    const dashoffset = CIRCUMFERENCE / 4 - cumulative;
+    const dashoffset = -cumulative;
     cumulative += length;
     return { ...s, length, dashoffset };
   });
@@ -82,6 +82,7 @@ function DonutChart({ open, done, closed }: IssueCounts) {
           strokeWidth={STROKE}
           strokeDasharray={`${arc.length} ${CIRCUMFERENCE}`}
           strokeDashoffset={arc.dashoffset}
+          transform={`rotate(-90, ${CX}, ${CY})`}
         />
       ))}
       <text
