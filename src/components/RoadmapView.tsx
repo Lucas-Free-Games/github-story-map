@@ -19,12 +19,24 @@ function countIssues(issues: GitHubIssue[]): IssueCounts {
   );
 }
 
-const SIZE = 56;
-const STROKE = 7;
+const SIZE = 39;
+const STROKE = 5;
 const RADIUS = (SIZE - STROKE) / 2;
 const CX = SIZE / 2;
 const CY = SIZE / 2;
 const CIRCUMFERENCE = 2 * Math.PI * RADIUS;
+
+function issueStatus(issue: GitHubIssue): 'closed' | 'done' | 'open' {
+  if (issue.state === 'closed') return 'closed';
+  if (isDone(issue)) return 'done';
+  return 'open';
+}
+
+const STATUS_COLOR: Record<string, string> = {
+  closed: '#4ade80',
+  done:   '#60a5fa',
+  open:   '#e5e7eb',
+};
 
 function DonutChart({ open, done, closed }: IssueCounts) {
   const total = open + done + closed;
@@ -37,6 +49,8 @@ function DonutChart({ open, done, closed }: IssueCounts) {
       />
     );
   }
+
+  const allClosed = closed === total;
 
   const segments = [
     { count: closed, color: '#4ade80' },
@@ -54,7 +68,9 @@ function DonutChart({ open, done, closed }: IssueCounts) {
 
   return (
     <svg width={SIZE} height={SIZE}>
-      <circle cx={CX} cy={CY} r={RADIUS} fill="none" stroke="#f3f4f6" strokeWidth={STROKE} />
+      {!allClosed && (
+        <circle cx={CX} cy={CY} r={RADIUS} fill="none" stroke="#f3f4f6" strokeWidth={STROKE} />
+      )}
       {arcs.map((arc, i) => (
         <circle
           key={i}
@@ -74,7 +90,7 @@ function DonutChart({ open, done, closed }: IssueCounts) {
         textAnchor="middle"
         dominantBaseline="middle"
         fill="#6b7280"
-        fontSize={13}
+        fontSize={9}
         fontFamily="sans-serif"
       >
         {total}
@@ -88,23 +104,21 @@ function RoadmapCell({ issues }: { issues: GitHubIssue[] }) {
   const total = counts.open + counts.done + counts.closed;
 
   return (
-    <div className="relative group/cell flex items-center justify-center p-2 min-w-[72px] min-h-[72px]">
+    <div className="relative group/cell flex items-center justify-center p-2 min-w-[52px] min-h-[52px]">
       <DonutChart {...counts} />
       {total > 0 && (
-        <div className="pointer-events-none absolute bottom-full left-1/2 -translate-x-1/2 mb-2 z-50 whitespace-nowrap rounded bg-gray-900 px-2.5 py-1.5 text-xs text-white opacity-0 group-hover/cell:opacity-100 transition-opacity">
-          <div className="flex flex-col gap-0.5">
-            <span className="flex items-center gap-1.5">
-              <span className="inline-block w-2 h-2 rounded-full flex-shrink-0" style={{ background: '#e5e7eb' }} />
-              Open: {counts.open}
-            </span>
-            <span className="flex items-center gap-1.5">
-              <span className="inline-block w-2 h-2 rounded-full flex-shrink-0" style={{ background: '#60a5fa' }} />
-              Done: {counts.done}
-            </span>
-            <span className="flex items-center gap-1.5">
-              <span className="inline-block w-2 h-2 rounded-full flex-shrink-0" style={{ background: '#4ade80' }} />
-              Closed: {counts.closed}
-            </span>
+        <div className="pointer-events-none absolute bottom-full left-1/2 -translate-x-1/2 mb-2 z-50 rounded bg-gray-900 px-2.5 py-1.5 text-xs text-white opacity-0 group-hover/cell:opacity-100 transition-opacity max-w-xs">
+          <div className="flex flex-col gap-1">
+            {issues.map((issue) => {
+              const status = issueStatus(issue);
+              return (
+                <span key={issue.number} className="flex items-center gap-1.5 whitespace-nowrap">
+                  <span className="inline-block w-2 h-2 rounded-full flex-shrink-0" style={{ background: STATUS_COLOR[status] }} />
+                  <span className="text-gray-400 font-mono">#{issue.number}</span>
+                  <span className="truncate max-w-[200px]">{issue.title}</span>
+                </span>
+              );
+            })}
           </div>
         </div>
       )}
