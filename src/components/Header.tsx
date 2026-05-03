@@ -9,25 +9,25 @@ export default function Header() {
   return (
     <>
       <header className="bg-white border-b border-gray-200 px-6 shrink-0">
-        <div className="flex items-center justify-between">
+        <div className="flex items-end justify-between">
           {/* Pill + Tabs */}
-          <div className="flex items-center gap-1">
+          <div className="flex items-end gap-1">
             <a
               href={`https://github.com/${owner}/${repo}/issues`}
               target="_blank"
               rel="noopener noreferrer"
-              className="mr-2 px-2.5 py-1 text-xs font-medium bg-green-100 text-green-700 border border-green-200 rounded-full shrink-0 cursor-pointer hover:brightness-95 transition-[filter]"
+              className="self-center mr-2 px-2.5 py-1 text-xs font-medium bg-green-100 text-green-700 border border-green-200 rounded-full shrink-0 cursor-pointer hover:brightness-95 transition-[filter]"
             >
               {owner}/{repo}
             </a>
-            {(['grid', 'kanban', 'waves', 'user-activities', 'roadmap', 'settings'] as const).map((v) => (
+            {(['grid', 'kanban', 'roadmap', 'waves', 'user-activities', 'settings'] as const).map((v) => (
               <button
                 key={v}
                 onClick={() => setView(v)}
-                className={`px-4 py-2 text-sm font-medium border-b-2 transition-colors ${
+                className={`px-4 py-2 text-sm font-medium rounded-t transition-colors -mb-px ${
                   view === v
-                    ? 'border-gray-900 text-gray-900'
-                    : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+                    ? 'border border-gray-200 border-b-white text-gray-900 bg-white'
+                    : 'text-gray-500 hover:text-gray-700'
                 }`}
               >
                 {v === 'grid' ? 'Story Map' : v === 'kanban' ? 'Kanban' : v === 'waves' ? 'Waves' : v === 'user-activities' ? 'User Activities' : v === 'roadmap' ? 'Roadmap' : 'Settings'}
@@ -41,7 +41,7 @@ export default function Header() {
               value={kanbanMilestoneNumber ?? ''}
               onChange={(e) => setKanbanMilestone(e.target.value ? Number(e.target.value) : null)}
               disabled={loading}
-              className="ml-3 text-sm border border-gray-200 rounded-md px-2 py-1 bg-white text-gray-700 focus:outline-none focus:ring-2 focus:ring-green-400 disabled:opacity-50"
+              className="self-center ml-3 text-sm border border-gray-200 rounded-md px-2 py-1 bg-white text-gray-700 focus:outline-none focus:ring-2 focus:ring-green-400 disabled:opacity-50"
             >
               <option value="">All Waves</option>
               {milestones.map((m) => (
@@ -51,7 +51,7 @@ export default function Header() {
           )}
 
           {/* Action buttons */}
-          <div className="flex items-center gap-1">
+          <div className="self-center flex items-center gap-1">
             {/* Show/hide closed */}
             <div className="relative group">
               <button

@@ -55,7 +55,7 @@ function SidebarItem({
 }
 
 export default function UserActivitiesView() {
-  const { projects, issues, projectIssues, showClosedIssues, createProject, updateProject, deleteProject } = useAppStore();
+  const { projects, issues, projectIssues, createProject, updateProject, deleteProject } = useAppStore();
   const [selectedId, setSelectedId] = useState<string | null>(
     projects.length > 0 ? projects[0].id : null,
   );
@@ -91,7 +91,6 @@ export default function UserActivitiesView() {
     ? issues.filter((i) => {
         const nums = new Set(projectIssues[selected.id] ?? []);
         if (!nums.has(i.number)) return false;
-        if (!showClosedIssues && i.state === 'closed') return false;
         return true;
       })
     : [];

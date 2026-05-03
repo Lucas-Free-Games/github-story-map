@@ -56,7 +56,7 @@ function SidebarItem({
 }
 
 export default function WavesView() {
-  const { milestones, issues, owner, repo, showClosedIssues, createMilestone, updateMilestone, deleteMilestone } = useAppStore();
+  const { milestones, issues, owner, repo, createMilestone, updateMilestone, deleteMilestone } = useAppStore();
   const [selectedNumber, setSelectedNumber] = useState<number | null>(
     milestones.length > 0 ? milestones[0].number : null,
   );
@@ -92,7 +92,6 @@ export default function WavesView() {
   const milestoneIssues = selected
     ? issues.filter((i) => {
         if (i.milestone?.number !== selected.number) return false;
-        if (!showClosedIssues && i.state === 'closed') return false;
         return true;
       })
     : [];

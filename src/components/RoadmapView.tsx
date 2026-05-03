@@ -1,5 +1,8 @@
+import { useState } from 'react';
 import { useAppStore } from '../store/appStore';
 import type { GitHubIssue, GitHubProject, GitHubMilestone } from '../types';
+
+type CellMode = 'donut' | 'dots';
 
 // Map GitHub Project color enum values to hex
 const GITHUB_COLOR_HEX: Record<string, string> = {
@@ -13,11 +16,19 @@ const GITHUB_COLOR_HEX: Record<string, string> = {
   GRAY:   '#9ca3af',
 };
 
-const CLOSED_COLOR  = '#4ade80';
+const CLOSED_COLOR  = '#c084fc';
 const NO_STATUS_COLOR = '#e5e7eb';
 
 function githubColorToHex(name: string): string {
   return GITHUB_COLOR_HEX[name.toUpperCase()] ?? NO_STATUS_COLOR;
+}
+
+function statusSortKey(name: string): number {
+  const n = name.toLowerCase().trim();
+  if (n === 'to do' || n === 'todo') return 0;
+  if (n.includes('progress')) return 1;
+  if (n === 'done') return 2;
+  return 3;
 }
 
 interface Segment { label: string; count: number; color: string }
@@ -38,11 +49,13 @@ function buildSegments(
   });
 
   const segs: Segment[] = [];
+  Object.entries(statusCounts)
+    .sort(([a], [b]) => statusSortKey(a) - statusSortKey(b))
+    .forEach(([label, count]) =>
+      segs.push({ label, count, color: githubColorToHex(kanbanStatusColors[label] ?? '') }),
+    );
   if (closed > 0)
-    segs.push({ label: 'Closed', count: closed, color: CLOSED_COLOR });
-  Object.entries(statusCounts).forEach(([label, count]) =>
-    segs.push({ label, count, color: githubColorToHex(kanbanStatusColors[label] ?? '') }),
-  );
+    segs.push({ label: 'Done', count: closed, color: CLOSED_COLOR });
   if (noStatus > 0)
     segs.push({ label: 'No status', count: noStatus, color: NO_STATUS_COLOR });
   return segs;
@@ -115,10 +128,12 @@ function RoadmapCell({
   issues,
   kanbanIssueStatuses,
   kanbanStatusColors,
+  mode,
 }: {
   issues: GitHubIssue[];
   kanbanIssueStatuses: Record<number, string>;
   kanbanStatusColors: Record<string, string>;
+  mode: CellMode;
 }) {
   const segments = buildSegments(issues, kanbanIssueStatuses, kanbanStatusColors);
   const total = segments.reduce((s, seg) => s + seg.count, 0);
@@ -130,26 +145,42 @@ function RoadmapCell({
     return { label: 'No status', color: NO_STATUS_COLOR };
   }
 
+  const tooltip = total > 0 && (
+    <div className="pointer-events-none absolute bottom-full left-1/2 -translate-x-1/2 mb-2 z-50 rounded bg-gray-900 px-2.5 py-1.5 text-xs text-white opacity-0 group-hover/cell:opacity-100 transition-opacity max-w-xs">
+      <div className="flex flex-col gap-1">
+        {issues.map((issue) => {
+          const { label, color } = issueLabel(issue);
+          return (
+            <span key={issue.number} className="flex items-center gap-1.5 whitespace-nowrap">
+              <span className="inline-block w-2 h-2 rounded-full flex-shrink-0" style={{ background: color }} />
+              <span className="text-gray-400 font-mono">#{issue.number}</span>
+              <span className="truncate max-w-[200px]">{issue.title}</span>
+              <span className="text-gray-500 ml-auto pl-2">{label}</span>
+            </span>
+          );
+        })}
+      </div>
+    </div>
+  );
+
   return (
-    <div className="relative group/cell flex items-center justify-center p-2 min-w-[52px] min-h-[52px]">
-      <DonutChart segments={segments} />
-      {total > 0 && (
-        <div className="pointer-events-none absolute bottom-full left-1/2 -translate-x-1/2 mb-2 z-50 rounded bg-gray-900 px-2.5 py-1.5 text-xs text-white opacity-0 group-hover/cell:opacity-100 transition-opacity max-w-xs">
-          <div className="flex flex-col gap-1">
-            {issues.map((issue) => {
-              const { label, color } = issueLabel(issue);
-              return (
-                <span key={issue.number} className="flex items-center gap-1.5 whitespace-nowrap">
-                  <span className="inline-block w-2 h-2 rounded-full flex-shrink-0" style={{ background: color }} />
-                  <span className="text-gray-400 font-mono">#{issue.number}</span>
-                  <span className="truncate max-w-[200px]">{issue.title}</span>
-                  <span className="text-gray-500 ml-auto pl-2">{label}</span>
-                </span>
-              );
-            })}
-          </div>
+    <div className="relative group/cell p-2 min-w-[52px] min-h-[52px] flex flex-wrap gap-1 content-start">
+      {issues.map((issue) => {
+        const { color } = issueLabel(issue);
+        return (
+          <span
+            key={issue.number}
+            className={`inline-block w-3 h-3 rounded-full flex-shrink-0 ${mode === 'donut' ? 'opacity-0' : ''}`}
+            style={{ background: color }}
+          />
+        );
+      })}
+      {mode === 'donut' && (
+        <div className="absolute inset-0 flex items-center justify-center">
+          <DonutChart segments={segments} />
         </div>
       )}
+      {tooltip}
     </div>
   );
 }
@@ -182,6 +213,8 @@ export default function RoadmapView() {
     kanbanIssueStatuses, kanbanStatusColors, kanbanStatusColumns,
   } = useAppStore();
 
+  const [cellMode, setCellMode] = useState<CellMode>('donut');
+
   const rows = sortedProjects(projects, layout.userActivityOrder);
   const cols = sortedMilestones(milestones, layout.milestoneOrder ?? []);
 
@@ -201,6 +234,35 @@ export default function RoadmapView() {
 
   return (
     <div className="flex-1 overflow-auto">
+      <div className="flex items-center gap-4 px-4 py-2 border-b border-gray-100 flex-wrap">
+        <div className="flex rounded border border-gray-200 overflow-hidden text-xs">
+          <button
+            className={`px-3 py-1 transition-colors ${cellMode === 'donut' ? 'bg-gray-100 font-medium text-gray-800' : 'bg-white text-gray-400 hover:text-gray-600'}`}
+            onClick={() => setCellMode('donut')}
+          >
+            Donut
+          </button>
+          <button
+            className={`px-3 py-1 border-l border-gray-200 transition-colors ${cellMode === 'dots' ? 'bg-gray-100 font-medium text-gray-800' : 'bg-white text-gray-400 hover:text-gray-600'}`}
+            onClick={() => setCellMode('dots')}
+          >
+            Dots
+          </button>
+        </div>
+        <div className="flex items-center gap-3 text-xs text-gray-500 flex-wrap">
+          {[...kanbanStatusColumns]
+            .sort((a, b) => statusSortKey(a) - statusSortKey(b))
+            .map((status) => (
+              <span key={status} className="flex items-center gap-1.5">
+                <span
+                  className="inline-block w-3 h-3 rounded-full"
+                  style={{ background: statusSortKey(status) === 2 ? CLOSED_COLOR : githubColorToHex(kanbanStatusColors[status] ?? '') }}
+                />
+                {status}
+              </span>
+            ))}
+        </div>
+      </div>
       <table className="border-collapse">
         <thead>
           <tr>
@@ -232,6 +294,7 @@ export default function RoadmapView() {
                     issues={cellIssues(project.id, m.number)}
                     kanbanIssueStatuses={kanbanIssueStatuses}
                     kanbanStatusColors={kanbanStatusColors}
+                    mode={cellMode}
                   />
                 </td>
               ))}
@@ -240,6 +303,7 @@ export default function RoadmapView() {
                   issues={cellIssues(project.id, null)}
                   kanbanIssueStatuses={kanbanIssueStatuses}
                   kanbanStatusColors={kanbanStatusColors}
+                  mode={cellMode}
                 />
               </td>
             </tr>
@@ -254,6 +318,7 @@ export default function RoadmapView() {
                   issues={cellIssues(null, m.number)}
                   kanbanIssueStatuses={kanbanIssueStatuses}
                   kanbanStatusColors={kanbanStatusColors}
+                  mode={cellMode}
                 />
               </td>
             ))}
@@ -262,32 +327,13 @@ export default function RoadmapView() {
                 issues={cellIssues(null, null)}
                 kanbanIssueStatuses={kanbanIssueStatuses}
                 kanbanStatusColors={kanbanStatusColors}
+                mode={cellMode}
               />
             </td>
           </tr>
         </tbody>
       </table>
 
-      {/* Legend */}
-      <div className="flex items-center gap-4 px-4 py-3 text-xs text-gray-500 border-t border-gray-100 flex-wrap">
-        <span className="flex items-center gap-1.5">
-          <span className="inline-block w-3 h-3 rounded-full" style={{ background: CLOSED_COLOR }} />
-          Closed
-        </span>
-        {kanbanStatusColumns.map((status) => (
-          <span key={status} className="flex items-center gap-1.5">
-            <span
-              className="inline-block w-3 h-3 rounded-full"
-              style={{ background: githubColorToHex(kanbanStatusColors[status] ?? '') }}
-            />
-            {status}
-          </span>
-        ))}
-        <span className="flex items-center gap-1.5">
-          <span className="inline-block w-3 h-3 rounded-full" style={{ background: NO_STATUS_COLOR }} />
-          No status
-        </span>
-      </div>
     </div>
   );
 }
