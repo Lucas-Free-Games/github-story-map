@@ -89,6 +89,7 @@ export default function IssueCard({ issue }: Props) {
     if (!confirm(`Close issue #${issue.number}?`)) return;
     setBusy(true);
     try { await closeIssue(issue.number); } catch { setBusy(false); }
+    setBusy(false);
   }
 
   async function handleReopen(e: React.MouseEvent) {

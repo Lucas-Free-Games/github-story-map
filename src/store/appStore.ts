@@ -435,7 +435,10 @@ export const useAppStore = create<AppState>((set, get) => ({
       storyOrder: newStoryOrder,
     };
 
-    set({ issues: issues.filter((i) => i.number !== number), layout: newLayout });
+    set({
+      issues: issues.map((i) => i.number === number ? { ...i, state: 'closed' as const } : i),
+      layout: newLayout,
+    });
     saveLayout(owner, repo, newLayout).catch(() => { /* offline */ });
   },
 
