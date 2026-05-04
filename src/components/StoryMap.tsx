@@ -285,7 +285,7 @@ export default function StoryMap() {
                           <ResizableHeader
                             ref={provided.innerRef}
                             {...provided.draggableProps}
-                            {...provided.dragHandleProps}
+                            dragHandleProps={provided.dragHandleProps}
                             columnKey={project.id}
                             width={colW(project.id)}
                             onResize={setColumnWidth}
