@@ -1,4 +1,5 @@
 import { useRef, useCallback, forwardRef } from 'react';
+import type { DraggableProvidedDragHandleProps } from '@hello-pangea/dnd';
 
 export const GRID_DEFAULT_WIDTH = 200;
 export const KANBAN_DEFAULT_WIDTH = 280;
@@ -14,20 +15,29 @@ interface ResizableHeaderProps extends React.ThHTMLAttributes<HTMLTableCellEleme
   onResize: (key: string, width: number) => void;
   /** Colour theme of the visual handle indicator. */
   handleVariant?: 'blue' | 'green';
+  /**
+   * When provided, the drag-handle props are applied to an inner wrapper div
+   * around the children instead of the <th> itself. This prevents the resize
+   * handle — a sibling of that wrapper — from being found by
+   * `event.target.closest('[data-rfd-drag-handle-context-id]')`, which the
+   * @hello-pangea/dnd window-level capture listener uses to detect drags.
+   */
+  dragHandleProps?: DraggableProvidedDragHandleProps | null;
 }
 
 /**
- * A `<th>` wrapper that renders a draggable resize handle on its right edge.
+ * A `<th>` wrapper that renders a drag-to-resize handle on its right edge.
  *
  * Supports React `forwardRef` so it works seamlessly inside
  * `@hello-pangea/dnd` Draggable render props that require `provided.innerRef`.
  *
- * The resize handle calls `e.stopPropagation()` on `mousedown` so that it
- * does NOT accidentally trigger a DnD column-reorder drag.
+ * Pass `dragHandleProps={provided.dragHandleProps}` instead of spreading them
+ * directly on this component. The component places them on an inner content
+ * div so the resize handle (a sibling) cannot trigger a column-reorder drag.
  */
 const ResizableHeader = forwardRef<HTMLTableCellElement, ResizableHeaderProps>(
   function ResizableHeader(
-    { columnKey, width, onResize, handleVariant = 'blue', style, className, children, ...rest },
+    { columnKey, width, onResize, handleVariant = 'blue', style, className, children, dragHandleProps, ...rest },
     ref,
   ) {
     const startXRef = useRef<number>(0);
@@ -35,7 +45,6 @@ const ResizableHeader = forwardRef<HTMLTableCellElement, ResizableHeaderProps>(
 
     const handleMouseDown = useCallback(
       (e: React.MouseEvent<HTMLDivElement>) => {
-        // Prevent the parent DnD drag-handle from starting a column-reorder drag.
         e.preventDefault();
         e.stopPropagation();
 
@@ -58,7 +67,6 @@ const ResizableHeader = forwardRef<HTMLTableCellElement, ResizableHeaderProps>(
           document.body.style.userSelect = '';
         };
 
-        // Override cursor and text-selection for the whole page while dragging.
         document.body.style.cursor = 'col-resize';
         document.body.style.userSelect = 'none';
         document.addEventListener('mousemove', onMouseMove);
@@ -76,12 +84,16 @@ const ResizableHeader = forwardRef<HTMLTableCellElement, ResizableHeaderProps>(
       <th
         ref={ref}
         {...rest}
-        // Width is set via inline style so it overrides class-based constraints.
-        // The DnD style prop (transform, etc.) is merged last so it is not lost.
         style={{ width, minWidth: width, ...style }}
         className={`relative group/colresize ${className ?? ''}`}
       >
-        {children}
+        {dragHandleProps ? (
+          <div {...(dragHandleProps as React.HTMLAttributes<HTMLDivElement>)}>
+            {children}
+          </div>
+        ) : (
+          children
+        )}
 
         {/* Drag-to-resize handle — pinned to the right edge of the header */}
         <div
