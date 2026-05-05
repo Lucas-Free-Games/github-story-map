@@ -108,16 +108,34 @@ function sortedMilestones(milestones: GitHubMilestone[], order: number[]): GitHu
   });
 }
 
-type IssueStatus = 'closed' | 'in-progress' | 'todo';
+const GITHUB_COLOR_HEX: Record<string, string> = {
+  GREEN: '#4ade80', YELLOW: '#facc15', ORANGE: '#fb923c', RED: '#f87171',
+  BLUE: '#60a5fa', PURPLE: '#c084fc', PINK: '#f472b6', GRAY: '#9ca3af',
+};
+const CLOSED_COLOR = '#c084fc';
+const NO_STATUS_COLOR = '#e5e7eb';
 
-function issueStatus(issue: GitHubIssue, kanbanStatuses: Record<number, string>): IssueStatus {
-  if (issue.state === 'closed') return 'closed';
-  const raw = (kanbanStatuses[issue.number] ?? issue.labels.find((l) => l.name.startsWith('s_'))?.name.slice(2) ?? '').toLowerCase();
-  return raw === 'to do' || raw === 'todo' || raw === '' ? 'todo' : 'in-progress';
+function githubColorToHex(name: string): string {
+  return GITHUB_COLOR_HEX[name.toUpperCase()] ?? NO_STATUS_COLOR;
+}
+
+function statusSortKey(name: string): number {
+  const n = name.toLowerCase().trim();
+  if (n === 'to do' || n === 'todo') return 0;
+  if (n.includes('progress')) return 1;
+  if (n === 'done') return 2;
+  return 3;
+}
+
+function issueStatusColor(issue: GitHubIssue, kanbanStatuses: Record<number, string>, kanbanStatusColors: Record<string, string>): string {
+  if (issue.state === 'closed') return CLOSED_COLOR;
+  const status = kanbanStatuses[issue.number] ?? issue.labels.find((l) => l.name.startsWith('s_'))?.name.slice(2);
+  if (!status) return NO_STATUS_COLOR;
+  return githubColorToHex(kanbanStatusColors[status] ?? '');
 }
 
 export default function TimelineView() {
-  const { milestones, issues, layout, setWaveDate, timelineGranularity, setTimelineGranularity, kanbanIssueStatuses } = useAppStore();
+  const { milestones, issues, layout, setWaveDate, timelineGranularity, setTimelineGranularity, kanbanIssueStatuses, kanbanStatusColumns, kanbanStatusColors } = useAppStore();
 
   const g = timelineGranularity;
   const tw = TICK_WIDTH[g];
@@ -228,18 +246,21 @@ export default function TimelineView() {
             </button>
           ))}
         </div>
-        <div className="flex items-center gap-3 text-xs text-gray-500">
+        <div className="flex items-center gap-3 text-xs text-gray-500 flex-wrap">
+          {[...kanbanStatusColumns]
+            .sort((a, b) => statusSortKey(a) - statusSortKey(b))
+            .map((status) => (
+              <span key={status} className="flex items-center gap-1.5">
+                <span
+                  className="inline-block w-3 h-3 rounded-full"
+                  style={{ background: githubColorToHex(kanbanStatusColors[status] ?? '') }}
+                />
+                {status}
+              </span>
+            ))}
           <span className="flex items-center gap-1.5">
-            <span className="inline-block w-3 h-3 rounded-full bg-purple-500" />
+            <span className="inline-block w-3 h-3 rounded-full" style={{ background: CLOSED_COLOR }} />
             Closed
-          </span>
-          <span className="flex items-center gap-1.5">
-            <span className="inline-block w-3 h-3 rounded-full bg-orange-400" />
-            In Progress
-          </span>
-          <span className="flex items-center gap-1.5">
-            <span className="inline-block w-3 h-3 rounded-full bg-white border border-gray-400" />
-            To Do
           </span>
         </div>
       </div>
@@ -334,31 +355,23 @@ export default function TimelineView() {
                     />
                   </div>
                 )}
-                {/* Closed issue dots */}
+                {/* Issue dots */}
                 {closedIssues.map((issue) => (
                   <div
                     key={issue.number}
-                    className="absolute w-2.5 h-2.5 rounded-full bg-purple-500 -translate-x-[5px] cursor-pointer hover:bg-purple-700 transition-colors"
-                    style={{ left: dToX(new Date(issue.closed_at!)), top: ROW_HEIGHT - 22 }}
+                    className="absolute w-2.5 h-2.5 rounded-full -translate-x-[5px] cursor-pointer"
+                    style={{ left: dToX(new Date(issue.closed_at!)), top: ROW_HEIGHT - 22, background: CLOSED_COLOR }}
                     title={`#${issue.number}: ${issue.title}`}
                   />
                 ))}
-                {/* In-progress / todo dots at today (clamped to wave range) */}
-                {openIssues.map((issue, idx) => {
-                  const status = issueStatus(issue, kanbanIssueStatuses);
-                  return (
-                    <div
-                      key={issue.number}
-                      className={`absolute w-2.5 h-2.5 rounded-full -translate-x-[5px] cursor-pointer transition-colors border ${
-                        status === 'in-progress'
-                          ? 'bg-orange-400 border-orange-500 hover:bg-orange-600'
-                          : 'bg-white border-gray-400 hover:border-gray-600'
-                      }`}
-                      style={{ left: openDotX + idx * 2, top: ROW_HEIGHT - 22 }}
-                      title={`#${issue.number}: ${issue.title} (${status})`}
-                    />
-                  );
-                })}
+                {openIssues.map((issue, idx) => (
+                  <div
+                    key={issue.number}
+                    className="absolute w-2.5 h-2.5 rounded-full -translate-x-[5px] cursor-pointer"
+                    style={{ left: openDotX + idx * 2, top: ROW_HEIGHT - 22, background: issueStatusColor(issue, kanbanIssueStatuses, kanbanStatusColors) }}
+                    title={`#${issue.number}: ${issue.title}`}
+                  />
+                ))}
               </div>
             </div>
           );
