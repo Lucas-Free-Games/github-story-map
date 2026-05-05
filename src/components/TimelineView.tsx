@@ -108,8 +108,16 @@ function sortedMilestones(milestones: GitHubMilestone[], order: number[]): GitHu
   });
 }
 
+type IssueStatus = 'closed' | 'in-progress' | 'todo';
+
+function issueStatus(issue: GitHubIssue, kanbanStatuses: Record<number, string>): IssueStatus {
+  if (issue.state === 'closed') return 'closed';
+  const raw = (kanbanStatuses[issue.number] ?? issue.labels.find((l) => l.name.startsWith('s_'))?.name.slice(2) ?? '').toLowerCase();
+  return raw === 'to do' || raw === 'todo' || raw === '' ? 'todo' : 'in-progress';
+}
+
 export default function TimelineView() {
-  const { milestones, issues, layout, setWaveDate, timelineGranularity } = useAppStore();
+  const { milestones, issues, layout, setWaveDate, timelineGranularity, kanbanIssueStatuses } = useAppStore();
 
   const g = timelineGranularity;
   const tw = TICK_WIDTH[g];
@@ -241,9 +249,13 @@ export default function TimelineView() {
           const startX = dToX(new Date(dates.start));
           const endX = dToX(new Date(dates.end));
           const barWidth = Math.max(0, endX - startX);
-          const waveIssues = issues.filter(
-            (i) => i.milestone?.number === m.number && i.state === 'closed' && i.closed_at,
-          );
+          const waveIssues = issues.filter((i) => i.milestone?.number === m.number);
+          const closedIssues = waveIssues.filter((i) => i.state === 'closed' && i.closed_at);
+          const openIssues = waveIssues.filter((i) => i.state === 'open');
+          const todayMs = Date.now();
+          const waveStartMs = new Date(dates.start).getTime();
+          const waveEndMs = new Date(dates.end).getTime();
+          const openDotX = dToX(new Date(Math.min(Math.max(todayMs, waveStartMs), waveEndMs)));
           return (
             <div key={m.number} className="flex border-b border-gray-100" style={{ height: ROW_HEIGHT }}>
               <div
@@ -291,7 +303,7 @@ export default function TimelineView() {
                   </div>
                 )}
                 {/* Closed issue dots */}
-                {waveIssues.map((issue) => (
+                {closedIssues.map((issue) => (
                   <div
                     key={issue.number}
                     className="absolute w-2.5 h-2.5 rounded-full bg-purple-500 -translate-x-[5px] cursor-pointer hover:bg-purple-700 transition-colors"
@@ -299,6 +311,22 @@ export default function TimelineView() {
                     title={`#${issue.number}: ${issue.title}`}
                   />
                 ))}
+                {/* In-progress / todo dots at today (clamped to wave range) */}
+                {openIssues.map((issue, idx) => {
+                  const status = issueStatus(issue, kanbanIssueStatuses);
+                  return (
+                    <div
+                      key={issue.number}
+                      className={`absolute w-2.5 h-2.5 rounded-full -translate-x-[5px] cursor-pointer transition-colors border ${
+                        status === 'in-progress'
+                          ? 'bg-orange-400 border-orange-500 hover:bg-orange-600'
+                          : 'bg-white border-gray-400 hover:border-gray-600'
+                      }`}
+                      style={{ left: openDotX + idx * 2, top: ROW_HEIGHT - 22 }}
+                      title={`#${issue.number}: ${issue.title} (${status})`}
+                    />
+                  );
+                })}
               </div>
             </div>
           );
