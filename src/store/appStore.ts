@@ -13,7 +13,8 @@ interface AppState {
   error: string | null;
   milestones: GitHubMilestone[];
   statusLabels: string[]; // values without prefix, e.g. ["Todo", "In Progress", "Done"]
-  view: 'grid' | 'kanban' | 'waves' | 'user-activities' | 'roadmap' | 'settings';
+  view: 'grid' | 'kanban' | 'waves' | 'user-activities' | 'roadmap' | 'timeline' | 'settings';
+  timelineGranularity: 'day' | 'week' | 'quarter' | 'year';
   showClosedIssues: boolean;
   projects: GitHubProject[];
   projectIssues: Record<string, number[]>; // project node_id → issue numbers
@@ -41,7 +42,9 @@ interface AppState {
   updateMilestone: (number: number, title: string, description: string) => Promise<void>;
   deleteMilestone: (number: number) => Promise<void>;
   addStatusLabel: (name: string) => Promise<void>;
-  setView: (view: 'grid' | 'kanban' | 'waves' | 'user-activities' | 'roadmap' | 'settings') => void;
+  setView: (view: 'grid' | 'kanban' | 'waves' | 'user-activities' | 'roadmap' | 'timeline' | 'settings') => void;
+  setTimelineGranularity: (g: 'day' | 'week' | 'quarter' | 'year') => void;
+  setWaveDate: (milestoneNumber: number, start: string, end: string) => Promise<void>;
   moveStory: (
     storyNumber: number,
     fromKey: string,
@@ -144,6 +147,7 @@ export const useAppStore = create<AppState>((set, get) => ({
   milestones: [],
   statusLabels: [],
   view: 'grid',
+  timelineGranularity: 'week' as const,
   showClosedIssues: false,
   projects: [],
   projectIssues: {},
@@ -170,6 +174,18 @@ export const useAppStore = create<AppState>((set, get) => ({
   },
 
   setView: (view) => set({ view }),
+
+  setTimelineGranularity: (g) => set({ timelineGranularity: g }),
+
+  setWaveDate: async (milestoneNumber, start, end) => {
+    const { owner, repo, layout } = get();
+    const newLayout = {
+      ...layout,
+      waveDates: { ...(layout.waveDates ?? {}), [milestoneNumber]: { start, end } },
+    };
+    set({ layout: newLayout });
+    saveLayout(owner, repo, newLayout).catch(() => { /* offline */ });
+  },
 
   toggleShowClosedIssues: () => set((state) => ({ showClosedIssues: !state.showClosedIssues })),
 
@@ -295,6 +311,7 @@ export const useAppStore = create<AppState>((set, get) => ({
               : null,
             state: item.state as 'open' | 'closed',
             html_url: item.html_url,
+            closed_at: item.closed_at ?? null,
           } as GitHubIssue));
 
         allItems.push(...mapped);
@@ -389,6 +406,7 @@ export const useAppStore = create<AppState>((set, get) => ({
       milestone: data.milestone ? { number: data.milestone.number, title: data.milestone.title, description: null, state: 'open', due_on: null } : null,
       state: 'open',
       html_url: data.html_url,
+      closed_at: null,
     };
 
     set({ issues: [...issues, newIssue] });
