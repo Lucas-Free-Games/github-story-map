@@ -117,7 +117,7 @@ function issueStatus(issue: GitHubIssue, kanbanStatuses: Record<number, string>)
 }
 
 export default function TimelineView() {
-  const { milestones, issues, layout, setWaveDate, timelineGranularity, kanbanIssueStatuses } = useAppStore();
+  const { milestones, issues, layout, setWaveDate, timelineGranularity, setTimelineGranularity, kanbanIssueStatuses } = useAppStore();
 
   const g = timelineGranularity;
   const tw = TICK_WIDTH[g];
@@ -212,7 +212,39 @@ export default function TimelineView() {
   const todayX = ticks.length ? dToX(new Date()) : null;
 
   return (
-    <div className="flex-1 overflow-auto h-full" style={{ minWidth: 0 }}>
+    <div className="flex-1 flex flex-col overflow-hidden h-full" style={{ minWidth: 0 }}>
+      {/* Toolbar */}
+      <div className="flex items-center gap-4 px-4 py-2 border-b border-gray-100 shrink-0 flex-wrap">
+        <div className="flex rounded border border-gray-200 overflow-hidden text-xs">
+          {(['day', 'week', 'quarter', 'year'] as const).map((opt, i) => (
+            <button
+              key={opt}
+              onClick={() => setTimelineGranularity(opt)}
+              className={`px-3 py-1 capitalize transition-colors ${i > 0 ? 'border-l border-gray-200' : ''} ${
+                timelineGranularity === opt ? 'bg-gray-100 font-medium text-gray-800' : 'bg-white text-gray-400 hover:text-gray-600'
+              }`}
+            >
+              {opt}
+            </button>
+          ))}
+        </div>
+        <div className="flex items-center gap-3 text-xs text-gray-500">
+          <span className="flex items-center gap-1.5">
+            <span className="inline-block w-3 h-3 rounded-full bg-purple-500" />
+            Closed
+          </span>
+          <span className="flex items-center gap-1.5">
+            <span className="inline-block w-3 h-3 rounded-full bg-orange-400" />
+            In Progress
+          </span>
+          <span className="flex items-center gap-1.5">
+            <span className="inline-block w-3 h-3 rounded-full bg-white border border-gray-400" />
+            To Do
+          </span>
+        </div>
+      </div>
+
+      <div className="flex-1 overflow-auto" style={{ minWidth: 0 }}>
       <div style={{ minWidth: LABEL_WIDTH + totalWidth }}>
 
         {/* Time axis header */}
@@ -365,6 +397,7 @@ export default function TimelineView() {
             No waves or closed issues to display.
           </div>
         )}
+      </div>
       </div>
     </div>
   );

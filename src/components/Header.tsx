@@ -3,7 +3,7 @@ import { useAppStore } from '../store/appStore';
 import CreateIssueModal from './CreateIssueModal';
 
 export default function Header() {
-  const { owner, repo, fetchIssues, fetchProjects, fetchMilestones, fetchAllProjectStatuses, reset, loading, view, setView, showClosedIssues, toggleShowClosedIssues, milestones, kanbanMilestoneNumber, setKanbanMilestone, timelineGranularity, setTimelineGranularity } = useAppStore();
+  const { owner, repo, fetchIssues, fetchProjects, fetchMilestones, fetchAllProjectStatuses, reset, loading, view, setView, showClosedIssues, toggleShowClosedIssues, milestones, kanbanMilestoneNumber, setKanbanMilestone } = useAppStore();
   const [showCreate, setShowCreate] = useState(false);
 
   return (
@@ -47,20 +47,6 @@ export default function Header() {
               {milestones.map((m) => (
                 <option key={m.number} value={m.number}>{m.title}</option>
               ))}
-            </select>
-          )}
-
-          {/* Timeline granularity selector */}
-          {view === 'timeline' && (
-            <select
-              value={timelineGranularity}
-              onChange={(e) => setTimelineGranularity(e.target.value as 'day' | 'week' | 'quarter' | 'year')}
-              className="self-center ml-3 text-sm border border-gray-200 rounded-md px-2 py-1 bg-white text-gray-700 focus:outline-none focus:ring-2 focus:ring-orange-400"
-            >
-              <option value="day">Day</option>
-              <option value="week">Week</option>
-              <option value="quarter">Quarter</option>
-              <option value="year">Year</option>
             </select>
           )}
 
