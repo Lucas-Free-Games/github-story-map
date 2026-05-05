@@ -6,7 +6,7 @@ type Granularity = 'day' | 'week' | 'quarter' | 'year';
 
 const TICK_WIDTH: Record<Granularity, number> = { day: 44, week: 80, quarter: 110, year: 90 };
 const LABEL_WIDTH = 160;
-const ROW_HEIGHT = 64;
+const ROW_HEIGHT = 72;
 const HEADER_HEIGHT = 40;
 
 const MONTHS = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
@@ -247,7 +247,7 @@ export default function TimelineView() {
           return (
             <div key={m.number} className="flex border-b border-gray-100" style={{ height: ROW_HEIGHT }}>
               <div
-                className="sticky left-0 z-10 bg-white border-r border-gray-200 shrink-0 flex items-center px-3 text-sm font-medium text-purple-900"
+                className="sticky left-0 z-10 bg-white border-r border-gray-200 shrink-0 flex items-start pt-2 px-3 text-sm font-medium text-purple-900"
                 style={{ width: LABEL_WIDTH }}
               >
                 <span className="truncate">{m.title}</span>
@@ -272,7 +272,7 @@ export default function TimelineView() {
                 {barWidth > 0 && (
                   <div
                     className="absolute rounded-md bg-purple-200 select-none"
-                    style={{ left: startX, width: barWidth, top: 14, height: 36 }}
+                    style={{ left: startX, width: barWidth, top: 6, height: 24 }}
                   >
                     {/* Left resize handle */}
                     <div
@@ -280,7 +280,7 @@ export default function TimelineView() {
                       onMouseDown={(e) => startEdgeDrag(e, m, 'start')}
                     />
                     {/* Label */}
-                    <div className="absolute inset-0 flex items-center justify-center text-xs text-purple-700 font-medium pointer-events-none overflow-hidden px-3">
+                    <div className="absolute inset-0 flex items-center justify-start text-xs text-purple-700 font-medium pointer-events-none overflow-hidden px-3">
                       {m.title}
                     </div>
                     {/* Right resize handle */}
@@ -295,7 +295,7 @@ export default function TimelineView() {
                   <div
                     key={issue.number}
                     className="absolute w-2.5 h-2.5 rounded-full bg-purple-500 -translate-x-[5px] cursor-pointer hover:bg-purple-700 transition-colors"
-                    style={{ left: dToX(new Date(issue.closed_at!)), top: ROW_HEIGHT / 2 - 5 }}
+                    style={{ left: dToX(new Date(issue.closed_at!)), top: ROW_HEIGHT - 22 }}
                     title={`#${issue.number}: ${issue.title}`}
                   />
                 ))}
@@ -324,7 +324,7 @@ export default function TimelineView() {
                 <div
                   key={issue.number}
                   className="absolute w-2.5 h-2.5 rounded-full bg-gray-400 -translate-x-[5px] cursor-pointer hover:bg-gray-600 transition-colors"
-                  style={{ left: dToX(new Date(issue.closed_at!)), top: ROW_HEIGHT / 2 - 5 }}
+                  style={{ left: dToX(new Date(issue.closed_at!)), top: ROW_HEIGHT - 22 }}
                   title={`#${issue.number}: ${issue.title}`}
                 />
               ))}
