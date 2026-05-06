@@ -161,6 +161,7 @@ export default function TimelineView() {
   const tw = TICK_WIDTH[g];
 
   const [selectedIssue, setSelectedIssue] = useState<GitHubIssue | null>(null);
+  const [savingWaves, setSavingWaves] = useState<Set<number>>(new Set());
   const [localDates, setLocalDates] = useState<Record<number, { start: string; end: string }>>({});
   const localDatesRef = useRef<Record<number, { start: string; end: string }>>({});
   const scrollContainerRef = useRef<HTMLDivElement>(null);
@@ -252,19 +253,20 @@ export default function TimelineView() {
 
     const onUp = () => {
       const drag = dragRef.current;
-      if (drag) {
-        const entry = localDatesRef.current[drag.milestoneNumber];
-        if (entry) {
-          setWaveDate(drag.milestoneNumber, entry.start, entry.end);
-          const rest = { ...localDatesRef.current };
-          delete rest[drag.milestoneNumber];
-          localDatesRef.current = rest;
-          setLocalDates(rest);
-        }
-      }
       dragRef.current = null;
       document.removeEventListener('mousemove', onMove);
       document.removeEventListener('mouseup', onUp);
+      if (!drag) return;
+      const entry = localDatesRef.current[drag.milestoneNumber];
+      const rest = { ...localDatesRef.current };
+      delete rest[drag.milestoneNumber];
+      localDatesRef.current = rest;
+      setLocalDates(rest);
+      if (!entry) return;
+      setSavingWaves((prev) => new Set(prev).add(drag.milestoneNumber));
+      setWaveDate(drag.milestoneNumber, entry.start, entry.end).finally(() => {
+        setSavingWaves((prev) => { const next = new Set(prev); next.delete(drag.milestoneNumber); return next; });
+      });
     };
 
     document.addEventListener('mousemove', onMove);
@@ -421,6 +423,15 @@ export default function TimelineView() {
                     >
                       {m.title}
                     </div>
+                    {/* Saving spinner */}
+                    {savingWaves.has(m.number) && (
+                      <div className="absolute right-4 top-1/2 -translate-y-1/2 pointer-events-none">
+                        <svg className="animate-spin w-3 h-3 text-purple-500" viewBox="0 0 24 24" fill="none">
+                          <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                          <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
+                        </svg>
+                      </div>
+                    )}
                     {/* Right resize handle */}
                     <div
                       className="absolute right-0 top-0 w-3 h-full cursor-e-resize rounded-r-md hover:bg-purple-400/30 z-10"
