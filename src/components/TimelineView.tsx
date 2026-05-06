@@ -1,6 +1,7 @@
 import { useMemo, useRef, useState } from 'react';
 import { useAppStore } from '../store/appStore';
 import type { GitHubIssue, GitHubMilestone } from '../types';
+import IssueReadModal from './IssueReadModal';
 
 type Granularity = 'day' | 'week' | 'quarter' | 'year';
 
@@ -139,10 +140,10 @@ function issueStatusLabel(issue: GitHubIssue, kanbanStatuses: Record<number, str
   return kanbanStatuses[issue.number] ?? issue.labels.find((l) => l.name.startsWith('s_'))?.name.slice(2) ?? 'No status';
 }
 
-function IssueDot({ issue, x, y, color, label }: { issue: GitHubIssue; x: number; y: number; color: string; label: string }) {
+function IssueDot({ issue, x, y, color, label, onClick }: { issue: GitHubIssue; x: number; y: number; color: string; label: string; onClick: () => void }) {
   return (
     <div className="absolute group" style={{ left: x, top: y }}>
-      <div className="w-2.5 h-2.5 rounded-full -translate-x-[5px] cursor-pointer" style={{ background: color }} />
+      <div className="w-2.5 h-2.5 rounded-full -translate-x-[5px] cursor-pointer" style={{ background: color }} onClick={onClick} />
       <div className="pointer-events-none absolute bottom-full left-1/2 -translate-x-1/2 mb-1.5 z-50 rounded bg-gray-900 px-2.5 py-1.5 text-xs text-white opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap">
         <span className="flex items-center gap-1.5">
           <span className="inline-block w-2 h-2 rounded-full flex-shrink-0" style={{ background: color }} />
@@ -161,6 +162,7 @@ export default function TimelineView() {
   const g = timelineGranularity;
   const tw = TICK_WIDTH[g];
 
+  const [selectedIssue, setSelectedIssue] = useState<GitHubIssue | null>(null);
   const [localDates, setLocalDates] = useState<Record<number, { start: string; end: string }>>({});
   const localDatesRef = useRef<Record<number, { start: string; end: string }>>({});
   const dragRef = useRef<{
@@ -251,6 +253,7 @@ export default function TimelineView() {
   const todayX = ticks.length ? dToX(new Date()) : null;
 
   return (
+    <>
     <div className="flex-1 flex flex-col overflow-hidden h-full" style={{ minWidth: 0 }}>
       {/* Toolbar */}
       <div className="flex items-center gap-4 px-4 py-2 border-b border-gray-100 shrink-0 flex-wrap">
@@ -385,6 +388,7 @@ export default function TimelineView() {
                     y={ROW_HEIGHT - 22}
                     color={CLOSED_COLOR}
                     label="Closed"
+                    onClick={() => setSelectedIssue(issue)}
                   />
                 ))}
                 {openIssues.map((issue, idx) => (
@@ -395,6 +399,7 @@ export default function TimelineView() {
                     y={ROW_HEIGHT - 22}
                     color={issueStatusColor(issue, kanbanIssueStatuses, kanbanStatusColors)}
                     label={issueStatusLabel(issue, kanbanIssueStatuses)}
+                    onClick={() => setSelectedIssue(issue)}
                   />
                 ))}
               </div>
@@ -426,6 +431,7 @@ export default function TimelineView() {
                   y={ROW_HEIGHT - 22}
                   color={CLOSED_COLOR}
                   label="Closed"
+                  onClick={() => setSelectedIssue(issue)}
                 />
               ))}
             </div>
@@ -440,5 +446,7 @@ export default function TimelineView() {
       </div>
       </div>
     </div>
+    {selectedIssue && <IssueReadModal issue={selectedIssue} onClose={() => setSelectedIssue(null)} />}
+    </>
   );
 }
