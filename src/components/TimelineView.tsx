@@ -155,12 +155,14 @@ function IssueDot({ issue, x, y, color, label, onClick }: { issue: GitHubIssue; 
 }
 
 export default function TimelineView() {
-  const { milestones, issues, layout, setWaveDate, timelineGranularity, setTimelineGranularity, timelineShowIssues, toggleTimelineShowIssues, kanbanIssueStatuses, kanbanStatusColumns, kanbanStatusColors } = useAppStore();
+  const { milestones, issues, layout, setWaveDate, timelineGranularity, setTimelineGranularity, timelineShowIssues, toggleTimelineShowIssues, timelineMilestoneOrder, reorderTimelineMilestones, kanbanIssueStatuses, kanbanStatusColumns, kanbanStatusColors } = useAppStore();
 
   const g = timelineGranularity;
   const tw = TICK_WIDTH[g];
 
   const [selectedIssue, setSelectedIssue] = useState<GitHubIssue | null>(null);
+  const [draggingRowIdx, setDraggingRowIdx] = useState<number | null>(null);
+  const [dropRowIdx, setDropRowIdx] = useState<number | null>(null);
   const [savingWaves, setSavingWaves] = useState<Set<number>>(new Set());
   const [localDates, setLocalDates] = useState<Record<number, { start: string; end: string }>>({});
   const localDatesRef = useRef<Record<number, { start: string; end: string }>>({});
@@ -175,8 +177,8 @@ export default function TimelineView() {
   } | null>(null);
 
   const ordered = useMemo(
-    () => sortedMilestones(milestones, layout.milestoneOrder ?? []),
-    [milestones, layout.milestoneOrder],
+    () => sortedMilestones(milestones, timelineMilestoneOrder.length ? timelineMilestoneOrder : (layout.milestoneOrder ?? [])),
+    [milestones, timelineMilestoneOrder, layout.milestoneOrder],
   );
 
   const effectiveDates = useMemo(() => {
@@ -369,7 +371,7 @@ export default function TimelineView() {
         </div>
 
         {/* Wave rows */}
-        {ordered.map((m) => {
+        {ordered.map((m, rowIdx) => {
           const dates = effectiveDates[m.number];
           const startX = dToX(new Date(dates.start));
           const endX = dToX(new Date(dates.end));
@@ -381,12 +383,33 @@ export default function TimelineView() {
           const waveStartMs = new Date(dates.start).getTime();
           const waveEndMs = new Date(dates.end).getTime();
           const openDotX = dToX(new Date(Math.min(Math.max(todayMs, waveStartMs), waveEndMs)));
+          const isDropTarget = dropRowIdx === rowIdx && draggingRowIdx !== null && draggingRowIdx !== rowIdx;
           return (
-            <div key={m.number} className="flex border-b border-gray-100" style={{ height: ROW_HEIGHT }}>
+            <div
+              key={m.number}
+              className={`flex border-b border-gray-100 ${isDropTarget ? 'border-t-2 border-purple-400' : ''}`}
+              style={{ height: ROW_HEIGHT }}
+              onDragOver={(e) => { e.preventDefault(); setDropRowIdx(rowIdx); }}
+              onDrop={(e) => {
+                e.preventDefault();
+                if (draggingRowIdx !== null && draggingRowIdx !== rowIdx) {
+                  reorderTimelineMilestones(draggingRowIdx, rowIdx);
+                }
+                setDraggingRowIdx(null);
+                setDropRowIdx(null);
+              }}
+              onDragEnd={() => { setDraggingRowIdx(null); setDropRowIdx(null); }}
+            >
               <div
-                className="sticky left-0 z-10 bg-white border-r border-gray-200 shrink-0 flex items-start pt-2 px-3 text-sm font-medium text-purple-900"
+                className="sticky left-0 z-10 bg-white border-r border-gray-200 shrink-0 flex items-start pt-2 px-3 gap-1.5 text-sm font-medium text-purple-900"
                 style={{ width: LABEL_WIDTH }}
+                draggable
+                onDragStart={(e) => { e.dataTransfer.effectAllowed = 'move'; setDraggingRowIdx(rowIdx); }}
               >
+                <svg className="w-3 h-3 mt-0.5 shrink-0 text-gray-300 cursor-grab" viewBox="0 0 16 16" fill="currentColor">
+                  <circle cx="5" cy="4" r="1.2"/><circle cx="5" cy="8" r="1.2"/><circle cx="5" cy="12" r="1.2"/>
+                  <circle cx="11" cy="4" r="1.2"/><circle cx="11" cy="8" r="1.2"/><circle cx="11" cy="12" r="1.2"/>
+                </svg>
                 <span className="truncate">{m.title}</span>
               </div>
               <div className="relative shrink-0" style={{ width: totalWidth }}>

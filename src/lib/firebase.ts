@@ -6,6 +6,7 @@ export interface UserProfile {
   timelineGranularity?: 'day' | 'week' | 'quarter' | 'year';
   timelineShowIssues?: boolean;
   kanbanMilestoneNumber?: number | null;
+  timelineMilestoneOrder?: number[];
 }
 
 const firebaseConfig = {

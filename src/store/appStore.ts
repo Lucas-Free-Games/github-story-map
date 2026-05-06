@@ -16,6 +16,7 @@ interface AppState {
   view: 'grid' | 'kanban' | 'waves' | 'user-activities' | 'roadmap' | 'timeline' | 'settings';
   timelineGranularity: 'day' | 'week' | 'quarter' | 'year';
   timelineShowIssues: boolean;
+  timelineMilestoneOrder: number[];
   showClosedIssues: boolean;
   kanbanShowClosedIssues: boolean;
   projects: GitHubProject[];
@@ -48,6 +49,7 @@ interface AppState {
   setView: (view: 'grid' | 'kanban' | 'waves' | 'user-activities' | 'roadmap' | 'timeline' | 'settings') => void;
   setTimelineGranularity: (g: 'day' | 'week' | 'quarter' | 'year') => void;
   toggleTimelineShowIssues: () => void;
+  reorderTimelineMilestones: (fromIndex: number, toIndex: number) => void;
   setWaveDate: (milestoneNumber: number, start: string, end: string) => Promise<void>;
   moveStory: (
     storyNumber: number,
@@ -153,6 +155,7 @@ export const useAppStore = create<AppState>((set, get) => ({
   view: 'grid',
   timelineGranularity: 'week' as const,
   timelineShowIssues: true,
+  timelineMilestoneOrder: [],
   showClosedIssues: false,
   kanbanShowClosedIssues: true,
   projects: [],
@@ -192,6 +195,25 @@ export const useAppStore = create<AppState>((set, get) => ({
     set({ timelineShowIssues: next });
     const { owner } = get();
     if (owner) saveUserProfile(owner, { timelineShowIssues: next }).catch(() => {});
+  },
+
+  reorderTimelineMilestones: (fromIndex, toIndex) => {
+    const { timelineMilestoneOrder, milestones, layout, owner } = get();
+    const base = timelineMilestoneOrder.length
+      ? timelineMilestoneOrder
+      : [...milestones].sort((a, b) => {
+          const order = layout.milestoneOrder ?? [];
+          const ai = order.indexOf(a.number), bi = order.indexOf(b.number);
+          if (ai === -1 && bi === -1) return 0;
+          if (ai === -1) return 1;
+          if (bi === -1) return -1;
+          return ai - bi;
+        }).map((m) => m.number);
+    const newOrder = [...base];
+    const [moved] = newOrder.splice(fromIndex, 1);
+    newOrder.splice(toIndex, 0, moved);
+    set({ timelineMilestoneOrder: newOrder });
+    if (owner) saveUserProfile(owner, { timelineMilestoneOrder: newOrder }).catch(() => {});
   },
 
   setWaveDate: async (milestoneNumber, start, end) => {
@@ -360,10 +382,11 @@ export const useAppStore = create<AppState>((set, get) => ({
       } catch (firestoreErr) {
         console.warn('Firestore unavailable, building layout from issues', firestoreErr);
       }
-      const profileUpdate: Partial<{ timelineGranularity: 'day' | 'week' | 'quarter' | 'year'; timelineShowIssues: boolean; kanbanMilestoneNumber: number | null }> = {};
+      const profileUpdate: Partial<{ timelineGranularity: 'day' | 'week' | 'quarter' | 'year'; timelineShowIssues: boolean; kanbanMilestoneNumber: number | null; timelineMilestoneOrder: number[] }> = {};
       if (userProfile?.timelineGranularity) profileUpdate.timelineGranularity = userProfile.timelineGranularity;
       if (userProfile?.timelineShowIssues !== undefined) profileUpdate.timelineShowIssues = userProfile.timelineShowIssues;
       if (userProfile?.kanbanMilestoneNumber !== undefined) profileUpdate.kanbanMilestoneNumber = userProfile.kanbanMilestoneNumber;
+      if (userProfile?.timelineMilestoneOrder?.length) profileUpdate.timelineMilestoneOrder = userProfile.timelineMilestoneOrder;
       if (Object.keys(profileUpdate).length) set(profileUpdate);
 
       let layout: StoryMapLayout;
