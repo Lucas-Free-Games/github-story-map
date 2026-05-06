@@ -132,6 +132,7 @@ function issueStatusColor(issue: GitHubIssue, kanbanStatuses: Record<number, str
   if (issue.state === 'closed') return CLOSED_COLOR;
   const status = kanbanStatuses[issue.number] ?? issue.labels.find((l) => l.name.startsWith('s_'))?.name.slice(2);
   if (!status) return NO_STATUS_COLOR;
+  if (statusSortKey(status) === 2) return CLOSED_COLOR;
   return githubColorToHex(kanbanStatusColors[status] ?? '');
 }
 
@@ -299,15 +300,17 @@ export default function TimelineView() {
               <span key={status} className="flex items-center gap-1.5">
                 <span
                   className="inline-block w-3 h-3 rounded-full"
-                  style={{ background: githubColorToHex(kanbanStatusColors[status] ?? '') }}
+                  style={{ background: statusSortKey(status) === 2 ? CLOSED_COLOR : githubColorToHex(kanbanStatusColors[status] ?? '') }}
                 />
                 {status}
               </span>
             ))}
-          <span className="flex items-center gap-1.5">
-            <span className="inline-block w-3 h-3 rounded-full" style={{ background: CLOSED_COLOR }} />
-            Closed
-          </span>
+          {!kanbanStatusColumns.some((s) => statusSortKey(s) === 2) && (
+            <span className="flex items-center gap-1.5">
+              <span className="inline-block w-3 h-3 rounded-full" style={{ background: CLOSED_COLOR }} />
+              Closed
+            </span>
+          )}
         </div>
       </div>
 
