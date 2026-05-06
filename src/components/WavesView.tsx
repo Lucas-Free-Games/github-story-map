@@ -1,7 +1,42 @@
 import { useState } from 'react';
 import { useAppStore } from '../store/appStore';
-import type { GitHubMilestone } from '../types';
+import type { GitHubIssue, GitHubMilestone } from '../types';
 import IssueCard from './IssueCard';
+
+const MONTHS = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+
+function fmtDate(iso: string): string {
+  const d = new Date(iso);
+  const year = d.getFullYear();
+  const now = new Date().getFullYear();
+  return year === now
+    ? `${MONTHS[d.getMonth()]} ${d.getDate()}`
+    : `${MONTHS[d.getMonth()]} ${d.getDate()} '${String(year).slice(-2)}`;
+}
+
+function toISODate(d: Date): string {
+  return d.toISOString().slice(0, 10);
+}
+
+function resolveDates(
+  m: GitHubMilestone,
+  issues: GitHubIssue[],
+  waveDates?: { start: string; end: string },
+): { start: string; end: string } | null {
+  if (waveDates) return waveDates;
+  if (issues.length === 0 && !m.due_on) return null;
+  const oldest = issues.reduce<GitHubIssue | null>(
+    (a, b) => !a || b.created_at < a.created_at ? b : a, null,
+  );
+  const start = oldest ? toISODate(new Date(oldest.created_at)) : toISODate(new Date());
+  if (m.due_on) return { start, end: toISODate(new Date(m.due_on)) };
+  const closed = issues.filter((i) => i.state === 'closed' && i.closed_at);
+  if (closed.length > 0) {
+    const maxMs = Math.max(...closed.map((i) => new Date(i.closed_at!).getTime()));
+    return { start, end: toISODate(new Date(maxMs + 7 * 86400_000)) };
+  }
+  return { start, end: toISODate(new Date(new Date(start).getTime() + 30 * 86400_000)) };
+}
 
 function SidebarItem({
   milestone,
@@ -11,6 +46,7 @@ function SidebarItem({
   closedCount,
   owner,
   repo,
+  waveDates,
 }: {
   milestone: GitHubMilestone;
   selected: boolean;
@@ -19,6 +55,7 @@ function SidebarItem({
   closedCount: number;
   owner: string;
   repo: string;
+  waveDates?: { start: string; end: string };
 }) {
   return (
     <div
@@ -30,6 +67,12 @@ function SidebarItem({
           {milestone.title}
         </span>
       </div>
+      {waveDates && (
+        <span className="text-xs text-purple-500 mt-0.5">
+          <span className="text-gray-400 mr-1">Timeline</span>
+          {fmtDate(waveDates.start)} – {fmtDate(waveDates.end)}
+        </span>
+      )}
       <div className="flex items-center gap-1.5 mt-0.5">
         <span className="text-xs text-green-600">{openCount} open</span>
         <span className="text-xs text-gray-300">·</span>
@@ -56,7 +99,7 @@ function SidebarItem({
 }
 
 export default function WavesView() {
-  const { milestones, issues, owner, repo, createMilestone, updateMilestone, deleteMilestone } = useAppStore();
+  const { milestones, issues, owner, repo, layout, createMilestone, updateMilestone, deleteMilestone } = useAppStore();
   const [selectedNumber, setSelectedNumber] = useState<number | null>(
     milestones.length > 0 ? milestones[0].number : null,
   );
@@ -170,6 +213,7 @@ export default function WavesView() {
                 closedCount={issueCounts[m.number]?.closed ?? 0}
                 owner={owner}
                 repo={repo}
+                waveDates={resolveDates(m, issues, layout.waveDates?.[m.number]) ?? undefined}
               />
             ))
           )}
@@ -293,9 +337,19 @@ export default function WavesView() {
                   {selected.description && (
                     <p className="text-sm text-gray-500 mb-2">{selected.description}</p>
                   )}
+                  {(() => {
+                    const dates = resolveDates(selected, milestoneIssues, layout.waveDates?.[selected.number]);
+                    return dates ? (
+                      <p className="text-xs text-purple-500 mb-1">
+                        <span className="text-gray-400 mr-1">Timeline</span>
+                        {fmtDate(dates.start)} – {fmtDate(dates.end)}
+                      </p>
+                    ) : null;
+                  })()}
                   {selected.due_on && (
                     <p className="text-xs text-gray-400 mb-2">
-                      Due {new Date(selected.due_on).toLocaleDateString()}
+                      <span className="mr-1">Due</span>
+                      {new Date(selected.due_on).toLocaleDateString()}
                     </p>
                   )}
                   <a

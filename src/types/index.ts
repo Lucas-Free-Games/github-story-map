@@ -27,6 +27,8 @@ export interface GitHubIssue {
   milestone: GitHubMilestone | null;
   state: 'open' | 'closed';
   html_url: string;
+  created_at: string;
+  closed_at: string | null;
 }
 
 export interface StoryMapLayout {
@@ -34,6 +36,8 @@ export interface StoryMapLayout {
   milestoneOrder: number[];
   // key is project number as string, or "backlog" for unassigned
   storyOrder: Record<string, number[]>;
+  /** Wave (milestone) start/end dates for the Timeline view, keyed by milestone number. */
+  waveDates?: Record<number, { start: string; end: string }>;
 }
 
 export interface GitHubProject {

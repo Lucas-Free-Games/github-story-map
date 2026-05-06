@@ -1,7 +1,7 @@
 import { create } from 'zustand';
 import { Octokit } from '@octokit/rest';
 import type { GitHubIssue, GitHubMilestone, GitHubProject, StoryMapLayout } from '../types';
-import { loadLayout, saveLayout } from '../lib/firebase';
+import { loadLayout, saveLayout, loadUserProfile, saveUserProfile } from '../lib/firebase';
 
 interface AppState {
   token: string;
@@ -13,7 +13,9 @@ interface AppState {
   error: string | null;
   milestones: GitHubMilestone[];
   statusLabels: string[]; // values without prefix, e.g. ["Todo", "In Progress", "Done"]
-  view: 'grid' | 'kanban' | 'waves' | 'user-activities' | 'roadmap' | 'settings';
+  view: 'grid' | 'kanban' | 'waves' | 'user-activities' | 'roadmap' | 'timeline' | 'settings';
+  timelineGranularity: 'day' | 'week' | 'quarter' | 'year';
+  timelineShowIssues: boolean;
   showClosedIssues: boolean;
   projects: GitHubProject[];
   projectIssues: Record<string, number[]>; // project node_id → issue numbers
@@ -41,7 +43,10 @@ interface AppState {
   updateMilestone: (number: number, title: string, description: string) => Promise<void>;
   deleteMilestone: (number: number) => Promise<void>;
   addStatusLabel: (name: string) => Promise<void>;
-  setView: (view: 'grid' | 'kanban' | 'waves' | 'user-activities' | 'roadmap' | 'settings') => void;
+  setView: (view: 'grid' | 'kanban' | 'waves' | 'user-activities' | 'roadmap' | 'timeline' | 'settings') => void;
+  setTimelineGranularity: (g: 'day' | 'week' | 'quarter' | 'year') => void;
+  toggleTimelineShowIssues: () => void;
+  setWaveDate: (milestoneNumber: number, start: string, end: string) => Promise<void>;
   moveStory: (
     storyNumber: number,
     fromKey: string,
@@ -144,6 +149,8 @@ export const useAppStore = create<AppState>((set, get) => ({
   milestones: [],
   statusLabels: [],
   view: 'grid',
+  timelineGranularity: 'week' as const,
+  timelineShowIssues: true,
   showClosedIssues: false,
   projects: [],
   projectIssues: {},
@@ -170,6 +177,40 @@ export const useAppStore = create<AppState>((set, get) => ({
   },
 
   setView: (view) => set({ view }),
+
+  setTimelineGranularity: (g) => {
+    set({ timelineGranularity: g });
+    const { owner } = get();
+    if (owner) saveUserProfile(owner, { timelineGranularity: g }).catch(() => {});
+  },
+
+  toggleTimelineShowIssues: () => {
+    const next = !get().timelineShowIssues;
+    set({ timelineShowIssues: next });
+    const { owner } = get();
+    if (owner) saveUserProfile(owner, { timelineShowIssues: next }).catch(() => {});
+  },
+
+  setWaveDate: async (milestoneNumber, start, end) => {
+    const { token, owner, repo, layout, milestones } = get();
+    const newLayout = {
+      ...layout,
+      waveDates: { ...(layout.waveDates ?? {}), [milestoneNumber]: { start, end } },
+    };
+    set({ layout: newLayout });
+    saveLayout(owner, repo, newLayout).catch(() => {});
+    if (token) {
+      try {
+        const octokit = new Octokit({ auth: token });
+        await octokit.rest.issues.updateMilestone({
+          owner, repo,
+          milestone_number: milestoneNumber,
+          due_on: `${end}T00:00:00Z`,
+        });
+        set({ milestones: milestones.map((m) => m.number === milestoneNumber ? { ...m, due_on: end } : m) });
+      } catch { /* silently ignore */ }
+    }
+  },
 
   toggleShowClosedIssues: () => set((state) => ({ showClosedIssues: !state.showClosedIssues })),
 
@@ -295,6 +336,8 @@ export const useAppStore = create<AppState>((set, get) => ({
               : null,
             state: item.state as 'open' | 'closed',
             html_url: item.html_url,
+            created_at: item.created_at,
+            closed_at: item.closed_at ?? null,
           } as GitHubIssue));
 
         allItems.push(...mapped);
@@ -304,11 +347,19 @@ export const useAppStore = create<AppState>((set, get) => ({
 
       // Load or build layout — Firestore is optional; app works without it
       let savedLayout: StoryMapLayout | null = null;
+      let userProfile = null;
       try {
-        savedLayout = await loadLayout(owner, repo);
+        [savedLayout, userProfile] = await Promise.all([
+          loadLayout(owner, repo),
+          loadUserProfile(owner),
+        ]);
       } catch (firestoreErr) {
         console.warn('Firestore unavailable, building layout from issues', firestoreErr);
       }
+      const profileUpdate: Partial<{ timelineGranularity: 'day' | 'week' | 'quarter' | 'year'; timelineShowIssues: boolean }> = {};
+      if (userProfile?.timelineGranularity) profileUpdate.timelineGranularity = userProfile.timelineGranularity;
+      if (userProfile?.timelineShowIssues !== undefined) profileUpdate.timelineShowIssues = userProfile.timelineShowIssues;
+      if (Object.keys(profileUpdate).length) set(profileUpdate);
 
       let layout: StoryMapLayout;
       if (!savedLayout) {
@@ -389,6 +440,8 @@ export const useAppStore = create<AppState>((set, get) => ({
       milestone: data.milestone ? { number: data.milestone.number, title: data.milestone.title, description: null, state: 'open', due_on: null } : null,
       state: 'open',
       html_url: data.html_url,
+      created_at: data.created_at,
+      closed_at: null,
     };
 
     set({ issues: [...issues, newIssue] });

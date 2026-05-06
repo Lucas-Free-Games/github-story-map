@@ -20,7 +20,7 @@ export default function Header() {
             >
               {owner}/{repo}
             </a>
-            {(['grid', 'kanban', 'roadmap', 'waves', 'user-activities', 'settings'] as const).map((v) => (
+            {(['grid', 'kanban', 'roadmap', 'timeline', 'waves', 'user-activities', 'settings'] as const).map((v) => (
               <button
                 key={v}
                 onClick={() => setView(v)}
@@ -30,7 +30,7 @@ export default function Header() {
                     : 'text-gray-500 hover:text-gray-700'
                 }`}
               >
-                {v === 'grid' ? 'Story Map' : v === 'kanban' ? 'Kanban' : v === 'waves' ? 'Waves' : v === 'user-activities' ? 'User Activities' : v === 'roadmap' ? 'Roadmap' : 'Settings'}
+                {v === 'grid' ? 'Story Map' : v === 'kanban' ? 'Kanban' : v === 'waves' ? 'Waves' : v === 'user-activities' ? 'User Activities' : v === 'roadmap' ? 'Roadmap' : v === 'timeline' ? 'Timeline' : 'Settings'}
               </button>
             ))}
           </div>
