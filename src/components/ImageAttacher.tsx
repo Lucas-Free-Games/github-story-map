@@ -47,6 +47,7 @@ export default function ImageAttacher({
   const [showUrlInput, setShowUrlInput] = useState(false);
   const [urlInput, setUrlInput] = useState('');
   const [hoveredIdx, setHoveredIdx] = useState<number | null>(null);
+  const [hoverPos, setHoverPos] = useState({ x: 0.5, y: 0.5 });
   const fileInputRef = useRef<HTMLInputElement>(null);
   const onAddRef = useRef(onAdd);
   useEffect(() => { onAddRef.current = onAdd; }, [onAdd]);
@@ -91,6 +92,14 @@ export default function ImageAttacher({
     e.preventDefault();
     setDragOver(false);
     handleFiles(Array.from(e.dataTransfer.files));
+  }
+
+  function handleThumbMove(e: React.MouseEvent<HTMLDivElement>) {
+    const r = e.currentTarget.getBoundingClientRect();
+    setHoverPos({
+      x: (e.clientX - r.left) / r.width,
+      y: (e.clientY - r.top) / r.height,
+    });
   }
 
   function handleUrlAdd() {
@@ -194,33 +203,35 @@ export default function ImageAttacher({
           {readOnly ? (
             /* Overlay mode: preview floats absolutely above the thumbnail strip */
             hoveredImage && (
-              <div className="absolute bottom-full left-0 right-0 z-20 mb-2 rounded-lg border border-gray-200 bg-white shadow-xl overflow-hidden flex items-center justify-center">
-                <a href={hoveredImage.url} target="_blank" rel="noreferrer" className="block">
-                  <img
-                    src={hoveredImage.url}
-                    alt={hoveredImage.name}
-                    className="max-h-56 max-w-full object-contain"
-                  />
-                </a>
-              </div>
+              <a
+                href={hoveredImage.url}
+                target="_blank"
+                rel="noreferrer"
+                className="absolute bottom-full left-0 right-0 z-20 mb-2 block h-36 rounded-lg border border-gray-200 shadow-xl overflow-hidden"
+                style={{
+                  backgroundImage: `url(${hoveredImage.url})`,
+                  backgroundSize: '300%',
+                  backgroundPosition: `${hoverPos.x * 100}% ${hoverPos.y * 100}%`,
+                  backgroundRepeat: 'no-repeat',
+                }}
+              />
             )
           ) : (
             /* Inline mode (edit / create): preview expands in flow above thumbnails */
-            <div
-              className={`overflow-hidden rounded-lg border border-gray-200 bg-gray-50 transition-all duration-200 ${
-                hoveredImage ? 'max-h-48 opacity-100' : 'max-h-0 opacity-0 border-transparent'
+            <a
+              href={hoveredImage?.url}
+              target="_blank"
+              rel="noreferrer"
+              className={`block rounded-lg border border-gray-200 overflow-hidden transition-all duration-200 ${
+                hoveredImage ? 'h-36 opacity-100' : 'h-0 opacity-0 border-transparent pointer-events-none'
               }`}
-            >
-              {hoveredImage && (
-                <a href={hoveredImage.url} target="_blank" rel="noreferrer" className="flex items-center justify-center">
-                  <img
-                    src={hoveredImage.url}
-                    alt={hoveredImage.name}
-                    className="max-h-48 max-w-full object-contain"
-                  />
-                </a>
-              )}
-            </div>
+              style={hoveredImage ? {
+                backgroundImage: `url(${hoveredImage.url})`,
+                backgroundSize: '300%',
+                backgroundPosition: `${hoverPos.x * 100}% ${hoverPos.y * 100}%`,
+                backgroundRepeat: 'no-repeat',
+              } : undefined}
+            />
           )}
 
           {/* Thumbnail row */}
@@ -231,7 +242,8 @@ export default function ImageAttacher({
                 <div
                   key={idx}
                   className="relative group"
-                  onMouseEnter={() => setHoveredIdx(idx)}
+                  onMouseEnter={(e) => { setHoveredIdx(idx); handleThumbMove(e); }}
+                  onMouseMove={handleThumbMove}
                 >
                   <a href={img.url} target="_blank" rel="noreferrer">
                     <img
