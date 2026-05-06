@@ -5,7 +5,7 @@ import IssueReadModal from './IssueReadModal';
 
 type Granularity = 'day' | 'week' | 'quarter' | 'year';
 
-const TICK_WIDTH: Record<Granularity, number> = { day: 44, week: 80, quarter: 110, year: 90 };
+const TICK_WIDTH: Record<Granularity, number> = { day: 44, week: 160, quarter: 440, year: 90 };
 const LABEL_WIDTH = 160;
 const ROW_HEIGHT = 72;
 const HEADER_HEIGHT = 40;
@@ -201,8 +201,9 @@ export default function TimelineView() {
     const now = Date.now();
     const minMs = allMs.length ? Math.min(...allMs) : now - 30 * 86400_000;
     const maxMs = allMs.length ? Math.max(...allMs) : now + 30 * 86400_000;
-    const rangeStart = floorToGranularity(new Date(minMs), g);
-    const padEnd = addTick(floorToGranularity(new Date(maxMs), g), g);
+    const sixMonths = 6 * 30 * 86400_000;
+    const rangeStart = floorToGranularity(new Date(minMs - sixMonths), g);
+    const padEnd = addTick(floorToGranularity(new Date(maxMs + sixMonths), g), g);
     const t = generateTicks(rangeStart, padEnd, g);
     return { ticks: t, totalWidth: t.length * tw };
   }, [ordered, effectiveDates, issues, g, tw]);
