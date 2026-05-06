@@ -167,9 +167,10 @@ export default function TimelineView() {
   const isFirstScroll = useRef(true);
   const dragRef = useRef<{
     milestoneNumber: number;
-    edge: 'start' | 'end';
+    edge: 'start' | 'end' | 'move';
     startMouseX: number;
-    origX: number;
+    origStartX: number;
+    origEndX: number;
   } | null>(null);
 
   const ordered = useMemo(
@@ -220,21 +221,31 @@ export default function TimelineView() {
     isFirstScroll.current = false;
   }, [g]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  function startEdgeDrag(e: React.MouseEvent, m: GitHubMilestone, edge: 'start' | 'end') {
+  function startEdgeDrag(e: React.MouseEvent, m: GitHubMilestone, edge: 'start' | 'end' | 'move') {
     e.preventDefault();
     const dates = effectiveDates[m.number];
-    const origDate = edge === 'start' ? new Date(dates.start) : new Date(dates.end);
-    dragRef.current = { milestoneNumber: m.number, edge, startMouseX: e.clientX, origX: dToX(origDate) };
+    dragRef.current = {
+      milestoneNumber: m.number, edge, startMouseX: e.clientX,
+      origStartX: dToX(new Date(dates.start)),
+      origEndX: dToX(new Date(dates.end)),
+    };
 
     const onMove = (ev: MouseEvent) => {
       const drag = dragRef.current;
       if (!drag) return;
-      const newX = Math.max(0, drag.origX + (ev.clientX - drag.startMouseX));
-      const dateStr = toISODate(xToD(newX));
-      const curr = localDatesRef.current[drag.milestoneNumber] ?? effectiveDates[drag.milestoneNumber];
-      const next = drag.edge === 'start'
-        ? { start: dateStr, end: curr.end }
-        : { start: curr.start, end: dateStr };
+      const delta = ev.clientX - drag.startMouseX;
+      let next: { start: string; end: string };
+      if (drag.edge === 'move') {
+        next = {
+          start: toISODate(xToD(Math.max(0, drag.origStartX + delta))),
+          end: toISODate(xToD(Math.max(0, drag.origEndX + delta))),
+        };
+      } else {
+        const newX = Math.max(0, (drag.edge === 'start' ? drag.origStartX : drag.origEndX) + delta);
+        const dateStr = toISODate(xToD(newX));
+        const curr = localDatesRef.current[drag.milestoneNumber] ?? effectiveDates[drag.milestoneNumber];
+        next = drag.edge === 'start' ? { start: dateStr, end: curr.end } : { start: curr.start, end: dateStr };
+      }
       localDatesRef.current = { ...localDatesRef.current, [drag.milestoneNumber]: next };
       setLocalDates({ ...localDatesRef.current });
     };
@@ -403,8 +414,11 @@ export default function TimelineView() {
                       className="absolute left-0 top-0 w-3 h-full cursor-w-resize rounded-l-md hover:bg-purple-400/30 z-10"
                       onMouseDown={(e) => startEdgeDrag(e, m, 'start')}
                     />
-                    {/* Label */}
-                    <div className="absolute inset-0 flex items-center justify-start text-xs text-purple-700 font-medium pointer-events-none overflow-hidden px-3">
+                    {/* Label / move handle */}
+                    <div
+                      className="absolute inset-0 flex items-center justify-start text-xs text-purple-700 font-medium overflow-hidden px-3 cursor-grab active:cursor-grabbing"
+                      onMouseDown={(e) => startEdgeDrag(e, m, 'move')}
+                    >
                       {m.title}
                     </div>
                     {/* Right resize handle */}
