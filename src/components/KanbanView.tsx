@@ -44,7 +44,7 @@ function kanbanColKey(status: string): string {
 
 export default function KanbanView() {
   const {
-    issues, layout, showClosedIssues,
+    issues, layout, kanbanShowClosedIssues,
     moveIssueInKanbanByProject, columnWidths, setColumnWidth,
     projects, projectIssues, kanbanMilestoneNumber,
     kanbanStatusColumns, kanbanIssueStatuses,
@@ -61,7 +61,7 @@ export default function KanbanView() {
 
   const allProjectIssueNumbers = new Set(Object.values(projectIssues).flat());
 
-  const allVisible = showClosedIssues ? issues : issues.filter((i) => i.state === 'open');
+  const allVisible = kanbanShowClosedIssues ? issues : issues.filter((i) => i.state === 'open');
   const visibleIssues = kanbanMilestoneNumber !== null
     ? allVisible.filter((i) => i.milestone?.number === kanbanMilestoneNumber)
     : allVisible;

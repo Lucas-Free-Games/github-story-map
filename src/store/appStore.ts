@@ -17,6 +17,7 @@ interface AppState {
   timelineGranularity: 'day' | 'week' | 'quarter' | 'year';
   timelineShowIssues: boolean;
   showClosedIssues: boolean;
+  kanbanShowClosedIssues: boolean;
   projects: GitHubProject[];
   projectIssues: Record<string, number[]>; // project node_id → issue numbers
   /** Column resize widths in pixels, keyed by column identifier (project ID or status string). */
@@ -37,6 +38,7 @@ interface AppState {
   setCredentials: (token: string, owner: string, repo: string) => void;
   fetchIssues: () => Promise<void>;
   toggleShowClosedIssues: () => void;
+  toggleKanbanShowClosedIssues: () => void;
   fetchLabels: () => Promise<void>;
   fetchMilestones: () => Promise<void>;
   createMilestone: (title: string, description: string) => Promise<void>;
@@ -152,6 +154,7 @@ export const useAppStore = create<AppState>((set, get) => ({
   timelineGranularity: 'week' as const,
   timelineShowIssues: true,
   showClosedIssues: false,
+  kanbanShowClosedIssues: true,
   projects: [],
   projectIssues: {},
   columnWidths: JSON.parse(localStorage.getItem('gh_column_widths') ?? '{}') as Record<string, number>,
@@ -213,6 +216,7 @@ export const useAppStore = create<AppState>((set, get) => ({
   },
 
   toggleShowClosedIssues: () => set((state) => ({ showClosedIssues: !state.showClosedIssues })),
+  toggleKanbanShowClosedIssues: () => set((state) => ({ kanbanShowClosedIssues: !state.kanbanShowClosedIssues })),
 
   fetchLabels: async () => {
     const { token, owner, repo } = get();
