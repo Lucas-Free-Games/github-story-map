@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useAppStore } from '../store/appStore';
-import type { GitHubMilestone } from '../types';
+import type { GitHubIssue, GitHubMilestone } from '../types';
 import IssueCard from './IssueCard';
 
 const MONTHS = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
@@ -12,6 +12,28 @@ function fmtDate(iso: string): string {
   return year === now
     ? `${MONTHS[d.getMonth()]} ${d.getDate()}`
     : `${MONTHS[d.getMonth()]} ${d.getDate()} '${String(year).slice(-2)}`;
+}
+
+function toISODate(d: Date): string {
+  return d.toISOString().slice(0, 10);
+}
+
+function resolveDates(
+  m: GitHubMilestone,
+  issues: GitHubIssue[],
+  waveDates?: { start: string; end: string },
+): { start: string; end: string } | null {
+  if (waveDates) return waveDates;
+  const closed = issues.filter((i) => i.milestone?.number === m.number && i.state === 'closed' && i.closed_at);
+  if (closed.length > 0) {
+    const ms = closed.map((i) => new Date(i.closed_at!).getTime());
+    return { start: toISODate(new Date(Math.min(...ms))), end: toISODate(new Date(Math.max(...ms) + 7 * 86400_000)) };
+  }
+  if (m.due_on) {
+    const due = new Date(m.due_on);
+    return { start: toISODate(new Date(due.getTime() - 30 * 86400_000)), end: toISODate(due) };
+  }
+  return null;
 }
 
 function SidebarItem({
@@ -188,7 +210,7 @@ export default function WavesView() {
                 closedCount={issueCounts[m.number]?.closed ?? 0}
                 owner={owner}
                 repo={repo}
-                waveDates={layout.waveDates?.[m.number]}
+                waveDates={resolveDates(m, issues, layout.waveDates?.[m.number]) ?? undefined}
               />
             ))
           )}
@@ -312,16 +334,14 @@ export default function WavesView() {
                   {selected.description && (
                     <p className="text-sm text-gray-500 mb-2">{selected.description}</p>
                   )}
-                  {layout.waveDates?.[selected.number] && (
-                    <p className="text-xs text-purple-500 mb-1">
-                      {fmtDate(layout.waveDates[selected.number].start)} – {fmtDate(layout.waveDates[selected.number].end)}
-                    </p>
-                  )}
-                  {selected.due_on && (
-                    <p className="text-xs text-gray-400 mb-2">
-                      Due {new Date(selected.due_on).toLocaleDateString()}
-                    </p>
-                  )}
+                  {(() => {
+                    const dates = resolveDates(selected, milestoneIssues, layout.waveDates?.[selected.number]);
+                    return dates ? (
+                      <p className="text-xs text-purple-500 mb-1">
+                        {fmtDate(dates.start)} – {fmtDate(dates.end)}
+                      </p>
+                    ) : null;
+                  })()}
                   <a
                     href={`https://github.com/${owner}/${repo}/milestone/${selected.number}`}
                     target="_blank"
