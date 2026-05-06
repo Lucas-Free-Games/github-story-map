@@ -3,7 +3,7 @@ import { useAppStore } from '../store/appStore';
 import CreateIssueModal from './CreateIssueModal';
 
 export default function Header() {
-  const { owner, repo, fetchIssues, fetchProjects, fetchMilestones, fetchAllProjectStatuses, reset, loading, view, setView, showClosedIssues, toggleShowClosedIssues, kanbanShowClosedIssues, toggleKanbanShowClosedIssues, milestones, kanbanMilestoneNumber, setKanbanMilestone } = useAppStore();
+  const { owner, repo, fetchIssues, fetchProjects, fetchMilestones, fetchAllProjectStatuses, reset, loading, view, setView, showClosedIssues, toggleShowClosedIssues, kanbanShowClosedIssues, toggleKanbanShowClosedIssues } = useAppStore();
   const activeShowClosed = view === 'kanban' ? kanbanShowClosedIssues : showClosedIssues;
   const activeToggleClosed = view === 'kanban' ? toggleKanbanShowClosedIssues : toggleShowClosedIssues;
   const [showCreate, setShowCreate] = useState(false);
@@ -36,21 +36,6 @@ export default function Header() {
               </button>
             ))}
           </div>
-
-          {/* Kanban wave selector */}
-          {view === 'kanban' && milestones.length > 0 && (
-            <select
-              value={kanbanMilestoneNumber ?? ''}
-              onChange={(e) => setKanbanMilestone(e.target.value ? Number(e.target.value) : null)}
-              disabled={loading}
-              className="self-center ml-3 text-sm border border-gray-200 rounded-md px-2 py-1 bg-white text-gray-700 focus:outline-none focus:ring-2 focus:ring-green-400 disabled:opacity-50"
-            >
-              <option value="">All Waves</option>
-              {milestones.map((m) => (
-                <option key={m.number} value={m.number}>{m.title}</option>
-              ))}
-            </select>
-          )}
 
           {/* Action buttons */}
           <div className="self-center flex items-center gap-1">

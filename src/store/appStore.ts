@@ -360,9 +360,10 @@ export const useAppStore = create<AppState>((set, get) => ({
       } catch (firestoreErr) {
         console.warn('Firestore unavailable, building layout from issues', firestoreErr);
       }
-      const profileUpdate: Partial<{ timelineGranularity: 'day' | 'week' | 'quarter' | 'year'; timelineShowIssues: boolean }> = {};
+      const profileUpdate: Partial<{ timelineGranularity: 'day' | 'week' | 'quarter' | 'year'; timelineShowIssues: boolean; kanbanMilestoneNumber: number | null }> = {};
       if (userProfile?.timelineGranularity) profileUpdate.timelineGranularity = userProfile.timelineGranularity;
       if (userProfile?.timelineShowIssues !== undefined) profileUpdate.timelineShowIssues = userProfile.timelineShowIssues;
+      if (userProfile?.kanbanMilestoneNumber !== undefined) profileUpdate.kanbanMilestoneNumber = userProfile.kanbanMilestoneNumber;
       if (Object.keys(profileUpdate).length) set(profileUpdate);
 
       let layout: StoryMapLayout;
@@ -902,7 +903,11 @@ export const useAppStore = create<AppState>((set, get) => ({
     set({ columnWidths: newWidths });
   },
 
-  setKanbanMilestone: (milestoneNumber) => set({ kanbanMilestoneNumber: milestoneNumber }),
+  setKanbanMilestone: (milestoneNumber) => {
+    set({ kanbanMilestoneNumber: milestoneNumber });
+    const { owner } = get();
+    if (owner) saveUserProfile(owner, { kanbanMilestoneNumber: milestoneNumber ?? null }).catch(() => {});
+  },
 
   fetchAllProjectStatuses: async () => {
     const { token, projects } = get();

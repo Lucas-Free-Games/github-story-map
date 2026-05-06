@@ -5,6 +5,7 @@ import type { StoryMapLayout } from '../types';
 export interface UserProfile {
   timelineGranularity?: 'day' | 'week' | 'quarter' | 'year';
   timelineShowIssues?: boolean;
+  kanbanMilestoneNumber?: number | null;
 }
 
 const firebaseConfig = {
