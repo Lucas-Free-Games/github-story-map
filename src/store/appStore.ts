@@ -1,7 +1,7 @@
 import { create } from 'zustand';
 import { Octokit } from '@octokit/rest';
 import type { GitHubIssue, GitHubMilestone, GitHubProject, StoryMapLayout } from '../types';
-import { loadLayout, saveLayout } from '../lib/firebase';
+import { loadLayout, saveLayout, loadUserProfile, saveUserProfile } from '../lib/firebase';
 
 interface AppState {
   token: string;
@@ -175,7 +175,11 @@ export const useAppStore = create<AppState>((set, get) => ({
 
   setView: (view) => set({ view }),
 
-  setTimelineGranularity: (g) => set({ timelineGranularity: g }),
+  setTimelineGranularity: (g) => {
+    set({ timelineGranularity: g });
+    const { owner } = get();
+    if (owner) saveUserProfile(owner, { timelineGranularity: g }).catch(() => {});
+  },
 
   setWaveDate: async (milestoneNumber, start, end) => {
     const { owner, repo, layout } = get();
@@ -321,10 +325,17 @@ export const useAppStore = create<AppState>((set, get) => ({
 
       // Load or build layout — Firestore is optional; app works without it
       let savedLayout: StoryMapLayout | null = null;
+      let userProfile = null;
       try {
-        savedLayout = await loadLayout(owner, repo);
+        [savedLayout, userProfile] = await Promise.all([
+          loadLayout(owner, repo),
+          loadUserProfile(owner),
+        ]);
       } catch (firestoreErr) {
         console.warn('Firestore unavailable, building layout from issues', firestoreErr);
+      }
+      if (userProfile?.timelineGranularity) {
+        set({ timelineGranularity: userProfile.timelineGranularity });
       }
 
       let layout: StoryMapLayout;
