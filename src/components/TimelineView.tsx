@@ -134,6 +134,27 @@ function issueStatusColor(issue: GitHubIssue, kanbanStatuses: Record<number, str
   return githubColorToHex(kanbanStatusColors[status] ?? '');
 }
 
+function issueStatusLabel(issue: GitHubIssue, kanbanStatuses: Record<number, string>): string {
+  if (issue.state === 'closed') return 'Closed';
+  return kanbanStatuses[issue.number] ?? issue.labels.find((l) => l.name.startsWith('s_'))?.name.slice(2) ?? 'No status';
+}
+
+function IssueDot({ issue, x, y, color, label }: { issue: GitHubIssue; x: number; y: number; color: string; label: string }) {
+  return (
+    <div className="absolute group" style={{ left: x, top: y }}>
+      <div className="w-2.5 h-2.5 rounded-full -translate-x-[5px] cursor-pointer" style={{ background: color }} />
+      <div className="pointer-events-none absolute bottom-full left-1/2 -translate-x-1/2 mb-1.5 z-50 rounded bg-gray-900 px-2.5 py-1.5 text-xs text-white opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap">
+        <span className="flex items-center gap-1.5">
+          <span className="inline-block w-2 h-2 rounded-full flex-shrink-0" style={{ background: color }} />
+          <span className="text-gray-400 font-mono">#{issue.number}</span>
+          <span className="max-w-[220px] truncate">{issue.title}</span>
+          <span className="text-gray-400 pl-2">{label}</span>
+        </span>
+      </div>
+    </div>
+  );
+}
+
 export default function TimelineView() {
   const { milestones, issues, layout, setWaveDate, timelineGranularity, setTimelineGranularity, kanbanIssueStatuses, kanbanStatusColumns, kanbanStatusColors } = useAppStore();
 
@@ -357,19 +378,23 @@ export default function TimelineView() {
                 )}
                 {/* Issue dots */}
                 {closedIssues.map((issue) => (
-                  <div
+                  <IssueDot
                     key={issue.number}
-                    className="absolute w-2.5 h-2.5 rounded-full -translate-x-[5px] cursor-pointer"
-                    style={{ left: dToX(new Date(issue.closed_at!)), top: ROW_HEIGHT - 22, background: CLOSED_COLOR }}
-                    title={`#${issue.number}: ${issue.title}`}
+                    issue={issue}
+                    x={dToX(new Date(issue.closed_at!))}
+                    y={ROW_HEIGHT - 22}
+                    color={CLOSED_COLOR}
+                    label="Closed"
                   />
                 ))}
                 {openIssues.map((issue, idx) => (
-                  <div
+                  <IssueDot
                     key={issue.number}
-                    className="absolute w-2.5 h-2.5 rounded-full -translate-x-[5px] cursor-pointer"
-                    style={{ left: openDotX + idx * 2, top: ROW_HEIGHT - 22, background: issueStatusColor(issue, kanbanIssueStatuses, kanbanStatusColors) }}
-                    title={`#${issue.number}: ${issue.title}`}
+                    issue={issue}
+                    x={openDotX + idx * 2}
+                    y={ROW_HEIGHT - 22}
+                    color={issueStatusColor(issue, kanbanIssueStatuses, kanbanStatusColors)}
+                    label={issueStatusLabel(issue, kanbanIssueStatuses)}
                   />
                 ))}
               </div>
@@ -394,11 +419,13 @@ export default function TimelineView() {
                 <div className="absolute top-0 bottom-0 w-px bg-red-200 pointer-events-none" style={{ left: todayX }} />
               )}
               {noWaveIssues.map((issue) => (
-                <div
+                <IssueDot
                   key={issue.number}
-                  className="absolute w-2.5 h-2.5 rounded-full bg-gray-400 -translate-x-[5px] cursor-pointer hover:bg-gray-600 transition-colors"
-                  style={{ left: dToX(new Date(issue.closed_at!)), top: ROW_HEIGHT - 22 }}
-                  title={`#${issue.number}: ${issue.title}`}
+                  issue={issue}
+                  x={dToX(new Date(issue.closed_at!))}
+                  y={ROW_HEIGHT - 22}
+                  color={CLOSED_COLOR}
+                  label="Closed"
                 />
               ))}
             </div>
