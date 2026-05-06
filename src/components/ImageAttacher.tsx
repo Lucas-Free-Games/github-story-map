@@ -199,38 +199,20 @@ export default function ImageAttacher({
 
       {/* Gallery */}
       {images.length > 0 && (
-        <div className={readOnly ? 'relative' : 'space-y-2'} onMouseLeave={() => setHoveredIdx(null)}>
-          {readOnly ? (
-            /* Overlay mode: preview floats absolutely above the thumbnail strip */
-            hoveredImage && (
-              <a
-                href={hoveredImage.url}
-                target="_blank"
-                rel="noreferrer"
-                className="absolute bottom-full left-0 right-0 z-20 mb-2 block h-36 rounded-lg border border-gray-200 shadow-xl overflow-hidden"
-                style={{
-                  backgroundImage: `url(${hoveredImage.url})`,
-                  backgroundSize: '300%',
-                  backgroundPosition: `${hoverPos.x * 100}% ${hoverPos.y * 100}%`,
-                  backgroundRepeat: 'no-repeat',
-                }}
-              />
-            )
-          ) : (
-            /* Inline mode (edit / create): preview expands in flow above thumbnails */
+        <div className="relative" onMouseLeave={() => setHoveredIdx(null)}>
+          {/* Preview — absolute overlay, square, full width of the content area */}
+          {hoveredImage && (
             <a
-              href={hoveredImage?.url}
+              href={hoveredImage.url}
               target="_blank"
               rel="noreferrer"
-              className={`block rounded-lg border border-gray-200 overflow-hidden transition-all duration-200 ${
-                hoveredImage ? 'h-36 opacity-100' : 'h-0 opacity-0 border-transparent pointer-events-none'
-              }`}
-              style={hoveredImage ? {
+              className="absolute bottom-full left-0 right-0 z-30 mb-1 block aspect-square rounded-lg border border-gray-200 shadow-2xl overflow-hidden"
+              style={{
                 backgroundImage: `url(${hoveredImage.url})`,
                 backgroundSize: '300%',
                 backgroundPosition: `${hoverPos.x * 100}% ${hoverPos.y * 100}%`,
                 backgroundRepeat: 'no-repeat',
-              } : undefined}
+              }}
             />
           )}
 
