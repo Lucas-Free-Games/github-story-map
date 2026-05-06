@@ -192,13 +192,24 @@ export const useAppStore = create<AppState>((set, get) => ({
   },
 
   setWaveDate: async (milestoneNumber, start, end) => {
-    const { owner, repo, layout } = get();
+    const { token, owner, repo, layout, milestones } = get();
     const newLayout = {
       ...layout,
       waveDates: { ...(layout.waveDates ?? {}), [milestoneNumber]: { start, end } },
     };
     set({ layout: newLayout });
-    saveLayout(owner, repo, newLayout).catch(() => { /* offline */ });
+    saveLayout(owner, repo, newLayout).catch(() => {});
+    if (token) {
+      try {
+        const octokit = new Octokit({ auth: token });
+        await octokit.rest.issues.updateMilestone({
+          owner, repo,
+          milestone_number: milestoneNumber,
+          due_on: `${end}T00:00:00Z`,
+        });
+        set({ milestones: milestones.map((m) => m.number === milestoneNumber ? { ...m, due_on: end } : m) });
+      } catch { /* silently ignore */ }
+    }
   },
 
   toggleShowClosedIssues: () => set((state) => ({ showClosedIssues: !state.showClosedIssues })),
