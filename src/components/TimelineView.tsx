@@ -1,4 +1,4 @@
-import { useMemo, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { useAppStore } from '../store/appStore';
 import type { GitHubIssue, GitHubMilestone } from '../types';
 import IssueReadModal from './IssueReadModal';
@@ -166,6 +166,8 @@ export default function TimelineView() {
   const [selectedIssue, setSelectedIssue] = useState<GitHubIssue | null>(null);
   const [localDates, setLocalDates] = useState<Record<number, { start: string; end: string }>>({});
   const localDatesRef = useRef<Record<number, { start: string; end: string }>>({});
+  const scrollContainerRef = useRef<HTMLDivElement>(null);
+  const isFirstScroll = useRef(true);
   const dragRef = useRef<{
     milestoneNumber: number;
     edge: 'start' | 'end';
@@ -210,6 +212,16 @@ export default function TimelineView() {
 
   const dToX = (d: Date) => dateToX(d, ticks, tw);
   const xToD = (x: number) => xToDate(x, ticks, tw);
+
+  useEffect(() => {
+    const container = scrollContainerRef.current;
+    if (!container || !ticks.length) return;
+    const todayXValue = dateToX(new Date(), ticks, tw);
+    const containerWidth = container.clientWidth;
+    const targetLeft = Math.max(0, LABEL_WIDTH + todayXValue - containerWidth / 2);
+    container.scrollTo({ left: targetLeft, behavior: isFirstScroll.current ? 'instant' : 'smooth' });
+    isFirstScroll.current = false;
+  }, [ticks, tw]); // eslint-disable-line react-hooks/exhaustive-deps
 
   function startEdgeDrag(e: React.MouseEvent, m: GitHubMilestone, edge: 'start' | 'end') {
     e.preventDefault();
@@ -315,7 +327,7 @@ export default function TimelineView() {
         </div>
       </div>
 
-      <div className="flex-1 overflow-auto" style={{ minWidth: 0 }}>
+      <div ref={scrollContainerRef} className="flex-1 overflow-auto" style={{ minWidth: 0 }}>
       <div style={{ minWidth: LABEL_WIDTH + totalWidth }}>
 
         {/* Time axis header */}
