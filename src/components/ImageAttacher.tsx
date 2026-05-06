@@ -190,23 +190,38 @@ export default function ImageAttacher({
 
       {/* Gallery */}
       {images.length > 0 && (
-        <div className="space-y-2" onMouseLeave={() => setHoveredIdx(null)}>
-          {/* Magnified preview — expands in the space above the thumbnail row */}
-          <div
-            className={`overflow-hidden rounded-lg border border-gray-200 bg-gray-50 transition-all duration-200 ${
-              hoveredImage ? 'max-h-48 opacity-100' : 'max-h-0 opacity-0 border-transparent'
-            }`}
-          >
-            {hoveredImage && (
-              <a href={hoveredImage.url} target="_blank" rel="noreferrer" className="block">
-                <img
-                  src={hoveredImage.url}
-                  alt={hoveredImage.name}
-                  className="w-full max-h-48 object-contain"
-                />
-              </a>
-            )}
-          </div>
+        <div className={readOnly ? 'relative' : 'space-y-2'} onMouseLeave={() => setHoveredIdx(null)}>
+          {readOnly ? (
+            /* Overlay mode: preview floats absolutely above the thumbnail strip */
+            hoveredImage && (
+              <div className="absolute bottom-full left-0 right-0 z-20 mb-2 rounded-lg border border-gray-200 bg-white shadow-xl overflow-hidden flex items-center justify-center">
+                <a href={hoveredImage.url} target="_blank" rel="noreferrer" className="block">
+                  <img
+                    src={hoveredImage.url}
+                    alt={hoveredImage.name}
+                    className="max-h-56 max-w-full object-contain"
+                  />
+                </a>
+              </div>
+            )
+          ) : (
+            /* Inline mode (edit / create): preview expands in flow above thumbnails */
+            <div
+              className={`overflow-hidden rounded-lg border border-gray-200 bg-gray-50 transition-all duration-200 ${
+                hoveredImage ? 'max-h-48 opacity-100' : 'max-h-0 opacity-0 border-transparent'
+              }`}
+            >
+              {hoveredImage && (
+                <a href={hoveredImage.url} target="_blank" rel="noreferrer" className="flex items-center justify-center">
+                  <img
+                    src={hoveredImage.url}
+                    alt={hoveredImage.name}
+                    className="max-h-48 max-w-full object-contain"
+                  />
+                </a>
+              )}
+            </div>
+          )}
 
           {/* Thumbnail row */}
           <div className="flex flex-wrap gap-2">

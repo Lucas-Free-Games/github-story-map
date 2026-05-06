@@ -238,7 +238,7 @@ export default function IssueReadModal({ issue, onClose }: Props) {
         </div>
 
         {/* ── Body ───────────────────────────────────────────────────── */}
-        <div className="flex-1 overflow-y-auto px-6 py-4 space-y-4">
+        <div className="flex-1 overflow-y-auto px-6 py-4 relative">
           {renderedBody ? (
             <div
               className="issue-body"
@@ -250,8 +250,7 @@ export default function IssueReadModal({ issue, onClose }: Props) {
             <p className="text-sm text-gray-400 italic">No description provided.</p>
           )}
           {galleryImages.length > 0 && (
-            <div className="border-t border-gray-100 pt-4">
-              <p className="text-xs font-medium text-gray-400 mb-2">Attachments</p>
+            <div className="sticky bottom-0 -mx-6 px-6 py-2 bg-white/85 backdrop-blur-sm">
               <ImageAttacher readOnly images={galleryImages} />
             </div>
           )}
