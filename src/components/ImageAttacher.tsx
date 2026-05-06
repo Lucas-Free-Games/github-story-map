@@ -190,7 +190,7 @@ export default function ImageAttacher({
 
       {/* Gallery */}
       {images.length > 0 && (
-        <div className="space-y-2">
+        <div className="space-y-2" onMouseLeave={() => setHoveredIdx(null)}>
           {/* Magnified preview — expands in the space above the thumbnail row */}
           <div
             className={`overflow-hidden rounded-lg border border-gray-200 bg-gray-50 transition-all duration-200 ${
@@ -217,7 +217,6 @@ export default function ImageAttacher({
                   key={idx}
                   className="relative group"
                   onMouseEnter={() => setHoveredIdx(idx)}
-                  onMouseLeave={() => setHoveredIdx(null)}
                 >
                   <a href={img.url} target="_blank" rel="noreferrer">
                     <img
