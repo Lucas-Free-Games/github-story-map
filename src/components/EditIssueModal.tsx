@@ -1,9 +1,10 @@
-import { useState, useRef, useEffect, type RefObject } from 'react';
+import { useState, useRef, useEffect, useMemo, type RefObject } from 'react';
 import { useAppStore } from '../store/appStore';
 import type { GitHubIssue } from '../types';
 import { generateDescription, loadGeminiSettings } from '../lib/gemini';
 import type { IssueContext } from '../lib/gemini';
-import { fetchIssueImplementation } from '../lib/github';
+import { fetchIssueImplementation, parseImagesFromBody } from '../lib/github';
+import ImageAttacher, { type AttachedImage } from './ImageAttacher';
 import {
   loadAnthropicSettings,
   createSession,
@@ -197,6 +198,9 @@ export default function EditIssueModal({ issue, onClose, initialTab = 'descripti
     issue.milestone?.number.toString() ?? ''
   );
 
+  const initialImages = useMemo(() => parseImagesFromBody(body), []); // eslint-disable-line react-hooks/exhaustive-deps
+  const [attachedImages, setAttachedImages] = useState<AttachedImage[]>(initialImages);
+  const lockedCount = initialImages.length;
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
   const [generating, setGenerating] = useState(false);
@@ -409,8 +413,11 @@ export default function EditIssueModal({ issue, onClose, initialTab = 'descripti
       }
       const newMilestone = milestoneNumber ? Number(milestoneNumber) : null;
       const milestoneChanged = newMilestone !== (issue.milestone?.number ?? null);
-      // Preserve AI links when saving
-      const savedBody = encodeAiLinks(body.trim(), aiLinks);
+      const newImages = attachedImages.slice(lockedCount);
+      const imageMarkdown = newImages.length > 0
+        ? '\n\n' + newImages.map(img => `![${img.name}](${img.url})`).join('\n')
+        : '';
+      const savedBody = encodeAiLinks(body.trim() + imageMarkdown, aiLinks);
       await updateIssue(
         issue.number,
         title.trim(),
@@ -519,8 +526,19 @@ export default function EditIssueModal({ issue, onClose, initialTab = 'descripti
                 <textarea
                   value={body}
                   onChange={(e) => setBody(e.target.value)}
-                  className="w-full flex-1 border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none"
+                  className="w-full flex-1 min-h-[6rem] border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none"
                 />
+                <div className="shrink-0 mt-2">
+                  <ImageAttacher
+                    token={token}
+                    owner={owner}
+                    repo={repo}
+                    images={attachedImages}
+                    lockedCount={lockedCount}
+                    onAdd={(img) => setAttachedImages(prev => [...prev, img])}
+                    onRemove={(idx) => setAttachedImages(prev => prev.filter((_, i) => i !== idx))}
+                  />
+                </div>
                 <div className="grid grid-cols-2 gap-3 shrink-0">
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-1">User Activity</label>
