@@ -1,5 +1,34 @@
 import type { AiLinks } from './anthropic';
 
+export async function uploadImageToRepo(
+  token: string,
+  owner: string,
+  repo: string,
+  filename: string,
+  base64Content: string,
+): Promise<string> {
+  const safeName = filename.replace(/[^a-zA-Z0-9._-]/g, '_');
+  const path = `.github/assets/${Date.now()}-${safeName}`;
+  const res = await fetch(
+    `https://api.github.com/repos/${owner}/${repo}/contents/${path}`,
+    {
+      method: 'PUT',
+      headers: {
+        Authorization: `Bearer ${token}`,
+        Accept: 'application/vnd.github.v3+json',
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ message: 'Add image attachment', content: base64Content }),
+    },
+  );
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({})) as { message?: string };
+    throw new Error(err.message ?? `Upload failed: ${res.status}`);
+  }
+  const json = await res.json() as { content: { download_url: string } };
+  return json.content.download_url;
+}
+
 /**
  * Fetch implementation links (branch + PR) for an issue directly from GitHub.
  * Strategy:

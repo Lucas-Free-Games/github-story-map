@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { useAppStore } from '../store/appStore';
 import { generateDescription, loadGeminiSettings } from '../lib/gemini';
 import type { IssueContext } from '../lib/gemini';
+import ImageAttacher, { type AttachedImage } from './ImageAttacher';
 
 interface Props {
   defaultProjectId?: string;
@@ -15,6 +16,7 @@ export default function CreateIssueModal({ defaultProjectId, defaultMilestoneNum
 
   const [title, setTitle] = useState('');
   const [body, setBody] = useState('');
+  const [attachedImages, setAttachedImages] = useState<AttachedImage[]>([]);
   const [projectId, setProjectId] = useState(defaultProjectId ?? '');
   const [milestoneNumber, setMilestoneNumber] = useState<string>(defaultMilestoneNumber?.toString() ?? '');
   const [statusLabel, setStatusLabel] = useState(defaultStatusLabel ?? '');
@@ -53,9 +55,12 @@ export default function CreateIssueModal({ defaultProjectId, defaultMilestoneNum
     setSubmitting(true);
     setError('');
     try {
+      const imageMarkdown = attachedImages.length > 0
+        ? '\n\n' + attachedImages.map(img => `![${img.name}](${img.url})`).join('\n')
+        : '';
       await createIssue(
         title.trim(),
-        body.trim(),
+        body.trim() + imageMarkdown,
         projectId || undefined,
         milestoneNumber ? Number(milestoneNumber) : undefined,
         statusLabel || undefined,
@@ -127,8 +132,16 @@ export default function CreateIssueModal({ defaultProjectId, defaultMilestoneNum
               value={body}
               onChange={(e) => setBody(e.target.value)}
               placeholder="Add details…"
-              rows={6}
+              rows={5}
               className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none"
+            />
+            <ImageAttacher
+              token={token}
+              owner={owner}
+              repo={repo}
+              images={attachedImages}
+              onAdd={(img) => setAttachedImages(prev => [...prev, img])}
+              onRemove={(idx) => setAttachedImages(prev => prev.filter((_, i) => i !== idx))}
             />
           </div>
 
