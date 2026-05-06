@@ -27,6 +27,7 @@ export interface GitHubIssue {
   milestone: GitHubMilestone | null;
   state: 'open' | 'closed';
   html_url: string;
+  created_at: string;
   closed_at: string | null;
 }
 

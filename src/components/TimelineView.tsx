@@ -82,21 +82,18 @@ function toISODate(d: Date): string {
 }
 
 function fallbackDates(m: GitHubMilestone, issues: GitHubIssue[]): { start: string; end: string } {
-  const closed = issues.filter(
-    (i) => i.milestone?.number === m.number && i.state === 'closed' && i.closed_at,
+  const waveIssues = issues.filter((i) => i.milestone?.number === m.number);
+  const oldest = waveIssues.reduce<GitHubIssue | null>(
+    (a, b) => !a || b.created_at < a.created_at ? b : a, null,
   );
+  const start = oldest ? toISODate(new Date(oldest.created_at)) : toISODate(new Date());
+  if (m.due_on) return { start, end: toISODate(new Date(m.due_on)) };
+  const closed = waveIssues.filter((i) => i.state === 'closed' && i.closed_at);
   if (closed.length > 0) {
-    const ms = closed.map((i) => new Date(i.closed_at!).getTime());
-    const s = new Date(Math.min(...ms));
-    const e = new Date(Math.max(...ms) + 7 * 86400_000);
-    return { start: toISODate(s), end: toISODate(e) };
+    const maxMs = Math.max(...closed.map((i) => new Date(i.closed_at!).getTime()));
+    return { start, end: toISODate(new Date(maxMs + 7 * 86400_000)) };
   }
-  if (m.due_on) {
-    const due = new Date(m.due_on);
-    return { start: toISODate(new Date(due.getTime() - 30 * 86400_000)), end: toISODate(due) };
-  }
-  const now = new Date();
-  return { start: toISODate(now), end: toISODate(new Date(now.getTime() + 30 * 86400_000)) };
+  return { start, end: toISODate(new Date(new Date(start).getTime() + 30 * 86400_000)) };
 }
 
 function sortedMilestones(milestones: GitHubMilestone[], order: number[]): GitHubMilestone[] {

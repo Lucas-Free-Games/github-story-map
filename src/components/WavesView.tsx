@@ -24,16 +24,18 @@ function resolveDates(
   waveDates?: { start: string; end: string },
 ): { start: string; end: string } | null {
   if (waveDates) return waveDates;
-  const closed = issues.filter((i) => i.milestone?.number === m.number && i.state === 'closed' && i.closed_at);
+  if (issues.length === 0 && !m.due_on) return null;
+  const oldest = issues.reduce<GitHubIssue | null>(
+    (a, b) => !a || b.created_at < a.created_at ? b : a, null,
+  );
+  const start = oldest ? toISODate(new Date(oldest.created_at)) : toISODate(new Date());
+  if (m.due_on) return { start, end: toISODate(new Date(m.due_on)) };
+  const closed = issues.filter((i) => i.state === 'closed' && i.closed_at);
   if (closed.length > 0) {
-    const ms = closed.map((i) => new Date(i.closed_at!).getTime());
-    return { start: toISODate(new Date(Math.min(...ms))), end: toISODate(new Date(Math.max(...ms) + 7 * 86400_000)) };
+    const maxMs = Math.max(...closed.map((i) => new Date(i.closed_at!).getTime()));
+    return { start, end: toISODate(new Date(maxMs + 7 * 86400_000)) };
   }
-  if (m.due_on) {
-    const due = new Date(m.due_on);
-    return { start: toISODate(new Date(due.getTime() - 30 * 86400_000)), end: toISODate(due) };
-  }
-  return null;
+  return { start, end: toISODate(new Date(new Date(start).getTime() + 30 * 86400_000)) };
 }
 
 function SidebarItem({

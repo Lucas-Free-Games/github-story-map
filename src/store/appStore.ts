@@ -336,6 +336,7 @@ export const useAppStore = create<AppState>((set, get) => ({
               : null,
             state: item.state as 'open' | 'closed',
             html_url: item.html_url,
+            created_at: item.created_at,
             closed_at: item.closed_at ?? null,
           } as GitHubIssue));
 
@@ -439,6 +440,7 @@ export const useAppStore = create<AppState>((set, get) => ({
       milestone: data.milestone ? { number: data.milestone.number, title: data.milestone.title, description: null, state: 'open', due_on: null } : null,
       state: 'open',
       html_url: data.html_url,
+      created_at: data.created_at,
       closed_at: null,
     };
 
