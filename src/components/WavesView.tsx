@@ -3,6 +3,17 @@ import { useAppStore } from '../store/appStore';
 import type { GitHubMilestone } from '../types';
 import IssueCard from './IssueCard';
 
+const MONTHS = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+
+function fmtDate(iso: string): string {
+  const d = new Date(iso);
+  const year = d.getFullYear();
+  const now = new Date().getFullYear();
+  return year === now
+    ? `${MONTHS[d.getMonth()]} ${d.getDate()}`
+    : `${MONTHS[d.getMonth()]} ${d.getDate()} '${String(year).slice(-2)}`;
+}
+
 function SidebarItem({
   milestone,
   selected,
@@ -11,6 +22,7 @@ function SidebarItem({
   closedCount,
   owner,
   repo,
+  waveDates,
 }: {
   milestone: GitHubMilestone;
   selected: boolean;
@@ -19,6 +31,7 @@ function SidebarItem({
   closedCount: number;
   owner: string;
   repo: string;
+  waveDates?: { start: string; end: string };
 }) {
   return (
     <div
@@ -30,6 +43,11 @@ function SidebarItem({
           {milestone.title}
         </span>
       </div>
+      {waveDates && (
+        <span className="text-xs text-purple-500 mt-0.5">
+          {fmtDate(waveDates.start)} – {fmtDate(waveDates.end)}
+        </span>
+      )}
       <div className="flex items-center gap-1.5 mt-0.5">
         <span className="text-xs text-green-600">{openCount} open</span>
         <span className="text-xs text-gray-300">·</span>
@@ -56,7 +74,7 @@ function SidebarItem({
 }
 
 export default function WavesView() {
-  const { milestones, issues, owner, repo, createMilestone, updateMilestone, deleteMilestone } = useAppStore();
+  const { milestones, issues, owner, repo, layout, createMilestone, updateMilestone, deleteMilestone } = useAppStore();
   const [selectedNumber, setSelectedNumber] = useState<number | null>(
     milestones.length > 0 ? milestones[0].number : null,
   );
@@ -170,6 +188,7 @@ export default function WavesView() {
                 closedCount={issueCounts[m.number]?.closed ?? 0}
                 owner={owner}
                 repo={repo}
+                waveDates={layout.waveDates?.[m.number]}
               />
             ))
           )}
@@ -292,6 +311,11 @@ export default function WavesView() {
                   {deleteError && <p className="text-xs text-red-600 mb-2">{deleteError}</p>}
                   {selected.description && (
                     <p className="text-sm text-gray-500 mb-2">{selected.description}</p>
+                  )}
+                  {layout.waveDates?.[selected.number] && (
+                    <p className="text-xs text-purple-500 mb-1">
+                      {fmtDate(layout.waveDates[selected.number].start)} – {fmtDate(layout.waveDates[selected.number].end)}
+                    </p>
                   )}
                   {selected.due_on && (
                     <p className="text-xs text-gray-400 mb-2">
