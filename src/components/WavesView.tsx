@@ -67,6 +67,7 @@ function SidebarItem({
       </div>
       {waveDates && (
         <span className="text-xs text-purple-500 mt-0.5">
+          <span className="text-gray-400 mr-1">Timeline</span>
           {fmtDate(waveDates.start)} – {fmtDate(waveDates.end)}
         </span>
       )}
@@ -338,10 +339,17 @@ export default function WavesView() {
                     const dates = resolveDates(selected, milestoneIssues, layout.waveDates?.[selected.number]);
                     return dates ? (
                       <p className="text-xs text-purple-500 mb-1">
+                        <span className="text-gray-400 mr-1">Timeline</span>
                         {fmtDate(dates.start)} – {fmtDate(dates.end)}
                       </p>
                     ) : null;
                   })()}
+                  {selected.due_on && (
+                    <p className="text-xs text-gray-400 mb-2">
+                      <span className="mr-1">Due</span>
+                      {new Date(selected.due_on).toLocaleDateString()}
+                    </p>
+                  )}
                   <a
                     href={`https://github.com/${owner}/${repo}/milestone/${selected.number}`}
                     target="_blank"
