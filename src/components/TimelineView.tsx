@@ -214,7 +214,6 @@ export default function TimelineView() {
   const xToD = (x: number) => xToDate(x, ticks, tw);
 
   useEffect(() => {
-    if (dragRef.current) return;
     const container = scrollContainerRef.current;
     if (!container || !ticks.length) return;
     const todayXValue = dateToX(new Date(), ticks, tw);
@@ -222,7 +221,7 @@ export default function TimelineView() {
     const targetLeft = Math.max(0, LABEL_WIDTH + todayXValue - containerWidth / 2);
     container.scrollTo({ left: targetLeft, behavior: isFirstScroll.current ? 'instant' : 'smooth' });
     isFirstScroll.current = false;
-  }, [ticks, tw]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [g]); // eslint-disable-line react-hooks/exhaustive-deps
 
   function startEdgeDrag(e: React.MouseEvent, m: GitHubMilestone, edge: 'start' | 'end') {
     e.preventDefault();
