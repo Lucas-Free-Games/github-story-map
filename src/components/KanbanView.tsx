@@ -95,6 +95,7 @@ export default function KanbanView() {
 
   return (
     <>
+      <div className="flex-1 flex flex-col overflow-hidden">
       {milestones.length > 0 && (
         <div className="shrink-0 px-4 py-2 bg-white border-b border-gray-200 flex items-center gap-2">
           <span className="text-xs font-medium text-gray-500">Wave</span>
@@ -112,7 +113,7 @@ export default function KanbanView() {
         </div>
       )}
       <DragDropContext onDragEnd={handleDragEnd}>
-        <div className="flex-1 overflow-auto h-full">
+        <div className="flex-1 overflow-auto">
           <table className="border-collapse w-full">
             <thead>
               <tr>
@@ -201,6 +202,7 @@ export default function KanbanView() {
           </table>
         </div>
       </DragDropContext>
+      </div>
 
       {createCell && (
         <CreateIssueModal
