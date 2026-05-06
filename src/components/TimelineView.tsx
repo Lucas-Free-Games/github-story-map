@@ -214,6 +214,7 @@ export default function TimelineView() {
   const xToD = (x: number) => xToDate(x, ticks, tw);
 
   useEffect(() => {
+    if (dragRef.current) return;
     const container = scrollContainerRef.current;
     if (!container || !ticks.length) return;
     const todayXValue = dateToX(new Date(), ticks, tw);
