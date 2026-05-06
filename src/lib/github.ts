@@ -1,5 +1,17 @@
 import type { AiLinks } from './anthropic';
 
+export interface ParsedImage { url: string; name: string; }
+
+export function parseImagesFromBody(body: string): ParsedImage[] {
+  const regex = /!\[([^\]]*)\]\(([^)\s]+)\)/g;
+  const images: ParsedImage[] = [];
+  let match;
+  while ((match = regex.exec(body)) !== null) {
+    images.push({ name: match[1] || 'image', url: match[2] });
+  }
+  return images;
+}
+
 export async function uploadImageToRepo(
   token: string,
   owner: string,

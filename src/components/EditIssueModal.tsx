@@ -1,9 +1,9 @@
-import { useState, useRef, useEffect, type RefObject } from 'react';
+import { useState, useRef, useEffect, useMemo, type RefObject } from 'react';
 import { useAppStore } from '../store/appStore';
 import type { GitHubIssue } from '../types';
 import { generateDescription, loadGeminiSettings } from '../lib/gemini';
 import type { IssueContext } from '../lib/gemini';
-import { fetchIssueImplementation } from '../lib/github';
+import { fetchIssueImplementation, parseImagesFromBody } from '../lib/github';
 import ImageAttacher, { type AttachedImage } from './ImageAttacher';
 import {
   loadAnthropicSettings,
@@ -198,7 +198,9 @@ export default function EditIssueModal({ issue, onClose, initialTab = 'descripti
     issue.milestone?.number.toString() ?? ''
   );
 
-  const [attachedImages, setAttachedImages] = useState<AttachedImage[]>([]);
+  const initialImages = useMemo(() => parseImagesFromBody(body), []); // eslint-disable-line react-hooks/exhaustive-deps
+  const [attachedImages, setAttachedImages] = useState<AttachedImage[]>(initialImages);
+  const lockedCount = initialImages.length;
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
   const [generating, setGenerating] = useState(false);
@@ -411,8 +413,9 @@ export default function EditIssueModal({ issue, onClose, initialTab = 'descripti
       }
       const newMilestone = milestoneNumber ? Number(milestoneNumber) : null;
       const milestoneChanged = newMilestone !== (issue.milestone?.number ?? null);
-      const imageMarkdown = attachedImages.length > 0
-        ? '\n\n' + attachedImages.map(img => `![${img.name}](${img.url})`).join('\n')
+      const newImages = attachedImages.slice(lockedCount);
+      const imageMarkdown = newImages.length > 0
+        ? '\n\n' + newImages.map(img => `![${img.name}](${img.url})`).join('\n')
         : '';
       const savedBody = encodeAiLinks(body.trim() + imageMarkdown, aiLinks);
       await updateIssue(
@@ -531,6 +534,7 @@ export default function EditIssueModal({ issue, onClose, initialTab = 'descripti
                     owner={owner}
                     repo={repo}
                     images={attachedImages}
+                    lockedCount={lockedCount}
                     onAdd={(img) => setAttachedImages(prev => [...prev, img])}
                     onRemove={(idx) => setAttachedImages(prev => prev.filter((_, i) => i !== idx))}
                   />

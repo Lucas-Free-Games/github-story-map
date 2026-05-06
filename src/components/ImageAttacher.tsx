@@ -7,12 +7,16 @@ export interface AttachedImage {
 }
 
 interface Props {
-  token: string;
-  owner: string;
-  repo: string;
   images: AttachedImage[];
-  onAdd: (img: AttachedImage) => void;
-  onRemove: (idx: number) => void;
+  onAdd?: (img: AttachedImage) => void;
+  onRemove?: (idx: number) => void;
+  /** When true, hide all upload controls — gallery only. */
+  readOnly?: boolean;
+  /** Images at indices 0..lockedCount-1 have no remove button (they're from the saved body). */
+  lockedCount?: number;
+  token?: string;
+  owner?: string;
+  repo?: string;
 }
 
 function Spinner() {
@@ -33,7 +37,10 @@ async function fileToBase64(file: File): Promise<string> {
   });
 }
 
-export default function ImageAttacher({ token, owner, repo, images, onAdd, onRemove }: Props) {
+export default function ImageAttacher({
+  images, onAdd, onRemove, readOnly = false, lockedCount = 0,
+  token = '', owner = '', repo = '',
+}: Props) {
   const [uploading, setUploading] = useState(false);
   const [uploadError, setUploadError] = useState('');
   const [dragOver, setDragOver] = useState(false);
@@ -45,6 +52,7 @@ export default function ImageAttacher({ token, owner, repo, images, onAdd, onRem
   useEffect(() => { onAddRef.current = onAdd; }, [onAdd]);
 
   const handleFiles = useCallback(async (files: File[]) => {
+    if (readOnly || !onAddRef.current) return;
     const imageFiles = files.filter(f => f.type.startsWith('image/'));
     if (imageFiles.length === 0) return;
     setUploading(true);
@@ -60,12 +68,13 @@ export default function ImageAttacher({ token, owner, repo, images, onAdd, onRem
     } finally {
       setUploading(false);
     }
-  }, [token, owner, repo]);
+  }, [token, owner, repo, readOnly]);
 
   const handleFilesRef = useRef(handleFiles);
   useEffect(() => { handleFilesRef.current = handleFiles; }, [handleFiles]);
 
   useEffect(() => {
+    if (readOnly) return;
     function onPaste(e: ClipboardEvent) {
       const items = Array.from(e.clipboardData?.items ?? []);
       const imageItem = items.find(item => item.kind === 'file' && item.type.startsWith('image/'));
@@ -76,7 +85,7 @@ export default function ImageAttacher({ token, owner, repo, images, onAdd, onRem
     }
     document.addEventListener('paste', onPaste);
     return () => document.removeEventListener('paste', onPaste);
-  }, []);
+  }, [readOnly]);
 
   function handleDrop(e: React.DragEvent) {
     e.preventDefault();
@@ -86,7 +95,7 @@ export default function ImageAttacher({ token, owner, repo, images, onAdd, onRem
 
   function handleUrlAdd() {
     const trimmed = urlInput.trim();
-    if (!trimmed) return;
+    if (!trimmed || !onAdd) return;
     const name = trimmed.split('/').pop()?.split('?')[0] ?? 'image';
     onAdd({ url: trimmed, name });
     setUrlInput('');
@@ -97,86 +106,92 @@ export default function ImageAttacher({ token, owner, repo, images, onAdd, onRem
 
   return (
     <div className="space-y-2">
-      <div
-        className={`border-2 border-dashed rounded-lg px-3 py-2 transition-colors ${
-          dragOver ? 'border-blue-400 bg-blue-50' : 'border-gray-200 hover:border-gray-300'
-        }`}
-        onDragOver={(e) => { e.preventDefault(); setDragOver(true); }}
-        onDragLeave={() => setDragOver(false)}
-        onDrop={handleDrop}
-      >
-        <div className="flex items-center justify-center gap-2 text-xs text-gray-400">
-          {uploading ? (
-            <span className="flex items-center gap-1.5"><Spinner />Uploading…</span>
-          ) : (
-            <>
-              <span>Drop images here or</span>
-              <button
-                type="button"
-                onClick={() => fileInputRef.current?.click()}
-                className="text-blue-500 hover:text-blue-700 underline"
-              >
-                pick file
-              </button>
-              <span>·</span>
-              <button
-                type="button"
-                onClick={() => setShowUrlInput(v => !v)}
-                className="text-blue-500 hover:text-blue-700 underline"
-              >
-                URL
-              </button>
-              <span>· or paste</span>
-            </>
-          )}
-        </div>
-        <input
-          ref={fileInputRef}
-          type="file"
-          accept="image/*"
-          multiple
-          className="hidden"
-          onChange={(e) => { handleFiles(Array.from(e.target.files ?? [])); e.target.value = ''; }}
-        />
-      </div>
+      {/* Upload controls — hidden in readOnly mode */}
+      {!readOnly && (
+        <>
+          <div
+            className={`border-2 border-dashed rounded-lg px-3 py-2 transition-colors ${
+              dragOver ? 'border-blue-400 bg-blue-50' : 'border-gray-200 hover:border-gray-300'
+            }`}
+            onDragOver={(e) => { e.preventDefault(); setDragOver(true); }}
+            onDragLeave={() => setDragOver(false)}
+            onDrop={handleDrop}
+          >
+            <div className="flex items-center justify-center gap-2 text-xs text-gray-400">
+              {uploading ? (
+                <span className="flex items-center gap-1.5"><Spinner />Uploading…</span>
+              ) : (
+                <>
+                  <span>Drop images here or</span>
+                  <button
+                    type="button"
+                    onClick={() => fileInputRef.current?.click()}
+                    className="text-blue-500 hover:text-blue-700 underline"
+                  >
+                    pick file
+                  </button>
+                  <span>·</span>
+                  <button
+                    type="button"
+                    onClick={() => setShowUrlInput(v => !v)}
+                    className="text-blue-500 hover:text-blue-700 underline"
+                  >
+                    URL
+                  </button>
+                  <span>· or paste</span>
+                </>
+              )}
+            </div>
+            <input
+              ref={fileInputRef}
+              type="file"
+              accept="image/*"
+              multiple
+              className="hidden"
+              onChange={(e) => { handleFiles(Array.from(e.target.files ?? [])); e.target.value = ''; }}
+            />
+          </div>
 
-      {showUrlInput && (
-        <div className="flex gap-2">
-          <input
-            autoFocus
-            type="url"
-            value={urlInput}
-            onChange={(e) => setUrlInput(e.target.value)}
-            onKeyDown={(e) => {
-              if (e.key === 'Enter') { e.preventDefault(); handleUrlAdd(); }
-              if (e.key === 'Escape') setShowUrlInput(false);
-            }}
-            placeholder="https://example.com/image.png"
-            className="flex-1 border border-gray-300 rounded-lg px-3 py-1.5 text-xs focus:outline-none focus:ring-2 focus:ring-blue-500"
-          />
-          <button
-            type="button"
-            onClick={handleUrlAdd}
-            disabled={!urlInput.trim()}
-            className="px-3 py-1.5 text-xs bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50"
-          >
-            Add
-          </button>
-          <button
-            type="button"
-            onClick={() => setShowUrlInput(false)}
-            className="px-3 py-1.5 text-xs text-gray-500 hover:text-gray-700 rounded-lg hover:bg-gray-100"
-          >
-            Cancel
-          </button>
-        </div>
+          {showUrlInput && (
+            <div className="flex gap-2">
+              <input
+                autoFocus
+                type="url"
+                value={urlInput}
+                onChange={(e) => setUrlInput(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') { e.preventDefault(); handleUrlAdd(); }
+                  if (e.key === 'Escape') setShowUrlInput(false);
+                }}
+                placeholder="https://example.com/image.png"
+                className="flex-1 border border-gray-300 rounded-lg px-3 py-1.5 text-xs focus:outline-none focus:ring-2 focus:ring-blue-500"
+              />
+              <button
+                type="button"
+                onClick={handleUrlAdd}
+                disabled={!urlInput.trim()}
+                className="px-3 py-1.5 text-xs bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50"
+              >
+                Add
+              </button>
+              <button
+                type="button"
+                onClick={() => setShowUrlInput(false)}
+                className="px-3 py-1.5 text-xs text-gray-500 hover:text-gray-700 rounded-lg hover:bg-gray-100"
+              >
+                Cancel
+              </button>
+            </div>
+          )}
+
+          {uploadError && <p className="text-red-500 text-xs">{uploadError}</p>}
+        </>
       )}
 
-      {uploadError && <p className="text-red-500 text-xs">{uploadError}</p>}
-
+      {/* Gallery */}
       {images.length > 0 && (
         <div className="space-y-2">
-          {/* Magnified preview — occupies space above the gallery row */}
+          {/* Magnified preview — expands in the space above the thumbnail row */}
           <div
             className={`overflow-hidden rounded-lg border border-gray-200 bg-gray-50 transition-all duration-200 ${
               hoveredImage ? 'max-h-48 opacity-100' : 'max-h-0 opacity-0 border-transparent'
@@ -195,44 +210,49 @@ export default function ImageAttacher({ token, owner, repo, images, onAdd, onRem
 
           {/* Thumbnail row */}
           <div className="flex flex-wrap gap-2">
-            {images.map((img, idx) => (
-              <div
-                key={idx}
-                className="relative group"
-                onMouseEnter={() => setHoveredIdx(idx)}
-                onMouseLeave={() => setHoveredIdx(null)}
-              >
-                <a href={img.url} target="_blank" rel="noreferrer">
-                  <img
-                    src={img.url}
-                    alt={img.name}
-                    className={`w-16 h-16 object-cover rounded-lg border bg-gray-50 transition-all duration-150 ${
-                      hoveredIdx === idx ? 'border-blue-400 ring-2 ring-blue-200' : 'border-gray-200'
-                    }`}
-                    onError={(e) => {
-                      (e.currentTarget as HTMLImageElement).style.display = 'none';
-                      (e.currentTarget.nextElementSibling as HTMLElement | null)?.style.setProperty('display', 'flex');
-                    }}
-                  />
-                  <div
-                    style={{ display: 'none' }}
-                    className="w-16 h-16 rounded-lg border border-gray-200 bg-gray-50 flex-col items-center justify-center text-center px-1"
-                  >
-                    <svg className="w-5 h-5 text-gray-400 mb-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
-                    </svg>
-                    <span className="text-gray-400 text-[9px] leading-tight break-all line-clamp-2">{img.name}</span>
-                  </div>
-                </a>
-                <button
-                  type="button"
-                  onClick={() => onRemove(idx)}
-                  className="absolute -top-1 -right-1 w-4 h-4 bg-gray-700 text-white rounded-full text-[10px] items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity leading-none hidden group-hover:flex"
+            {images.map((img, idx) => {
+              const removable = !readOnly && onRemove != null && idx >= lockedCount;
+              return (
+                <div
+                  key={idx}
+                  className="relative group"
+                  onMouseEnter={() => setHoveredIdx(idx)}
+                  onMouseLeave={() => setHoveredIdx(null)}
                 >
-                  ×
-                </button>
-              </div>
-            ))}
+                  <a href={img.url} target="_blank" rel="noreferrer">
+                    <img
+                      src={img.url}
+                      alt={img.name}
+                      className={`w-16 h-16 object-cover rounded-lg border bg-gray-50 transition-all duration-150 ${
+                        hoveredIdx === idx ? 'border-blue-400 ring-2 ring-blue-200' : 'border-gray-200'
+                      }`}
+                      onError={(e) => {
+                        (e.currentTarget as HTMLImageElement).style.display = 'none';
+                        (e.currentTarget.nextElementSibling as HTMLElement | null)?.style.setProperty('display', 'flex');
+                      }}
+                    />
+                    <div
+                      style={{ display: 'none' }}
+                      className="w-16 h-16 rounded-lg border border-gray-200 bg-gray-50 flex-col items-center justify-center text-center px-1"
+                    >
+                      <svg className="w-5 h-5 text-gray-400 mb-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                      </svg>
+                      <span className="text-gray-400 text-[9px] leading-tight break-all line-clamp-2">{img.name}</span>
+                    </div>
+                  </a>
+                  {removable && (
+                    <button
+                      type="button"
+                      onClick={() => onRemove(idx)}
+                      className="absolute -top-1 -right-1 w-4 h-4 bg-gray-700 text-white rounded-full text-[10px] items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity leading-none hidden group-hover:flex"
+                    >
+                      ×
+                    </button>
+                  )}
+                </div>
+              );
+            })}
           </div>
         </div>
       )}
