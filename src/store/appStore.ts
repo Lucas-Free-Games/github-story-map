@@ -15,6 +15,7 @@ interface AppState {
   statusLabels: string[]; // values without prefix, e.g. ["Todo", "In Progress", "Done"]
   view: 'grid' | 'kanban' | 'waves' | 'user-activities' | 'roadmap' | 'timeline' | 'settings';
   timelineGranularity: 'day' | 'week' | 'quarter' | 'year';
+  timelineShowIssues: boolean;
   showClosedIssues: boolean;
   projects: GitHubProject[];
   projectIssues: Record<string, number[]>; // project node_id → issue numbers
@@ -44,6 +45,7 @@ interface AppState {
   addStatusLabel: (name: string) => Promise<void>;
   setView: (view: 'grid' | 'kanban' | 'waves' | 'user-activities' | 'roadmap' | 'timeline' | 'settings') => void;
   setTimelineGranularity: (g: 'day' | 'week' | 'quarter' | 'year') => void;
+  toggleTimelineShowIssues: () => void;
   setWaveDate: (milestoneNumber: number, start: string, end: string) => Promise<void>;
   moveStory: (
     storyNumber: number,
@@ -148,6 +150,7 @@ export const useAppStore = create<AppState>((set, get) => ({
   statusLabels: [],
   view: 'grid',
   timelineGranularity: 'week' as const,
+  timelineShowIssues: true,
   showClosedIssues: false,
   projects: [],
   projectIssues: {},
@@ -179,6 +182,13 @@ export const useAppStore = create<AppState>((set, get) => ({
     set({ timelineGranularity: g });
     const { owner } = get();
     if (owner) saveUserProfile(owner, { timelineGranularity: g }).catch(() => {});
+  },
+
+  toggleTimelineShowIssues: () => {
+    const next = !get().timelineShowIssues;
+    set({ timelineShowIssues: next });
+    const { owner } = get();
+    if (owner) saveUserProfile(owner, { timelineShowIssues: next }).catch(() => {});
   },
 
   setWaveDate: async (milestoneNumber, start, end) => {
@@ -334,9 +344,10 @@ export const useAppStore = create<AppState>((set, get) => ({
       } catch (firestoreErr) {
         console.warn('Firestore unavailable, building layout from issues', firestoreErr);
       }
-      if (userProfile?.timelineGranularity) {
-        set({ timelineGranularity: userProfile.timelineGranularity });
-      }
+      const profileUpdate: Partial<{ timelineGranularity: 'day' | 'week' | 'quarter' | 'year'; timelineShowIssues: boolean }> = {};
+      if (userProfile?.timelineGranularity) profileUpdate.timelineGranularity = userProfile.timelineGranularity;
+      if (userProfile?.timelineShowIssues !== undefined) profileUpdate.timelineShowIssues = userProfile.timelineShowIssues;
+      if (Object.keys(profileUpdate).length) set(profileUpdate);
 
       let layout: StoryMapLayout;
       if (!savedLayout) {

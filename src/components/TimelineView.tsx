@@ -157,7 +157,7 @@ function IssueDot({ issue, x, y, color, label, onClick }: { issue: GitHubIssue; 
 }
 
 export default function TimelineView() {
-  const { milestones, issues, layout, setWaveDate, timelineGranularity, setTimelineGranularity, kanbanIssueStatuses, kanbanStatusColumns, kanbanStatusColors } = useAppStore();
+  const { milestones, issues, layout, setWaveDate, timelineGranularity, setTimelineGranularity, timelineShowIssues, toggleTimelineShowIssues, kanbanIssueStatuses, kanbanStatusColumns, kanbanStatusColors } = useAppStore();
 
   const g = timelineGranularity;
   const tw = TICK_WIDTH[g];
@@ -270,6 +270,18 @@ export default function TimelineView() {
             </button>
           ))}
         </div>
+        <button
+          onClick={toggleTimelineShowIssues}
+          className={`flex items-center gap-1.5 px-3 py-1 rounded border text-xs transition-colors ${
+            timelineShowIssues
+              ? 'bg-gray-100 border-gray-300 text-gray-700 font-medium'
+              : 'bg-white border-gray-200 text-gray-400 hover:text-gray-600'
+          }`}
+        >
+          <span className="inline-block w-2.5 h-2.5 rounded-full bg-purple-400" />
+          Issues
+        </button>
+
         <div className="flex items-center gap-3 text-xs text-gray-500 flex-wrap">
           {[...kanbanStatusColumns]
             .sort((a, b) => statusSortKey(a) - statusSortKey(b))
@@ -380,7 +392,7 @@ export default function TimelineView() {
                   </div>
                 )}
                 {/* Issue dots */}
-                {closedIssues.map((issue) => (
+                {timelineShowIssues && closedIssues.map((issue) => (
                   <IssueDot
                     key={issue.number}
                     issue={issue}
@@ -391,7 +403,7 @@ export default function TimelineView() {
                     onClick={() => setSelectedIssue(issue)}
                   />
                 ))}
-                {openIssues.map((issue, idx) => (
+                {timelineShowIssues && openIssues.map((issue, idx) => (
                   <IssueDot
                     key={issue.number}
                     issue={issue}
@@ -423,7 +435,7 @@ export default function TimelineView() {
               {todayX !== null && (
                 <div className="absolute top-0 bottom-0 w-px bg-red-200 pointer-events-none" style={{ left: todayX }} />
               )}
-              {noWaveIssues.map((issue) => (
+              {timelineShowIssues && noWaveIssues.map((issue) => (
                 <IssueDot
                   key={issue.number}
                   issue={issue}
