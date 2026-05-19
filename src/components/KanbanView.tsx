@@ -55,7 +55,9 @@ export default function KanbanView() {
   const cols = [...kanbanStatusColumns];
   const colK = (status: string) => columnWidths[kanbanColKey(status)] ?? KANBAN_DEFAULT_WIDTH;
 
-  const openProjects = projects.filter((p) => !p.closed);
+  const openProjects = projects.filter((p) => !p.closed).filter((p) =>
+    layout.includedProjects ? layout.includedProjects.includes(p.number) : !p.closed
+  );
   // null sentinel = "No User Activity" row — always last
   const groups: (GitHubProject | null)[] = [...sortedProjects(openProjects, layout.userActivityOrder), null];
 

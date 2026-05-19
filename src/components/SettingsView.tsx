@@ -1,7 +1,8 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useAppStore } from '../store/appStore';
 import { loadGeminiSettings, saveGeminiSettings, testGeminiConnection, DEFAULT_GEMINI_MODEL } from '../lib/gemini';
 import { loadAnthropicSettings, saveAnthropicSettings, testAnthropicConnection } from '../lib/anthropic';
+import { loadUserProfile, saveUserProfile } from '../lib/firebase';
 
 type Tab = 'general' | 'describing' | 'coding';
 type LedState = 'idle' | 'testing' | 'success' | 'error';
@@ -69,6 +70,35 @@ export default function SettingsView() {
   const [ghOwner, setGhOwner] = useState(owner);
   const [ghRepo, setGhRepo] = useState(repo);
 
+  // User details state
+  const [address, setAddress] = useState('');
+  const [phone, setPhone] = useState('');
+  const [signupDate, setSignupDate] = useState('');
+  const [dateOfBirth, setDateOfBirth] = useState('');
+  const [notes, setNotes] = useState('');
+
+  useEffect(() => {
+    if (!owner) return;
+    loadUserProfile(owner).then((profile) => {
+      if (!profile) return;
+      if (profile.address) setAddress(profile.address);
+      if (profile.phone) setPhone(profile.phone);
+      if (profile.signupDate) setSignupDate(profile.signupDate);
+      if (profile.dateOfBirth) setDateOfBirth(profile.dateOfBirth);
+      if (profile.notes) setNotes(profile.notes);
+    }).catch(() => {});
+  }, [owner]);
+
+  const calculatedAge = (() => {
+    if (!dateOfBirth) return null;
+    const today = new Date();
+    const dob = new Date(dateOfBirth);
+    let age = today.getFullYear() - dob.getFullYear();
+    const m = today.getMonth() - dob.getMonth();
+    if (m < 0 || (m === 0 && today.getDate() < dob.getDate())) age--;
+    return age >= 0 ? age : null;
+  })();
+
   // Describing tab state
   const savedGemini = loadGeminiSettings();
   const [apiKey, setApiKey] = useState(savedGemini.apiKey);
@@ -123,6 +153,17 @@ export default function SettingsView() {
         fetchLabels();
         fetchProjects().then(() => fetchAllProjectStatuses());
         fetchMilestones();
+      }
+      const currentOwner = ghOwner.trim() || owner;
+      if (currentOwner) {
+        saveUserProfile(currentOwner, {
+          address: address.trim() || undefined,
+          phone: phone.trim() || undefined,
+          signupDate: signupDate || undefined,
+          dateOfBirth: dateOfBirth || undefined,
+          age: calculatedAge ?? undefined,
+          notes: notes.trim() || undefined,
+        }).catch(() => {});
       }
     } else if (activeTab === 'describing') {
       saveGeminiSettings({ apiKey, model, exampleIssueNumbers: exampleNumbers, extraInstructions });
@@ -219,6 +260,70 @@ export default function SettingsView() {
                   Layout data (user activity order, wave order, story positions) is automatically synced to
                   Firestore when available. No configuration required.
                 </p>
+              </div>
+
+              <div className="border-t border-gray-200 pt-6">
+                <h2 className="text-base font-semibold text-gray-900 mb-4">User Details</h2>
+                <div className="space-y-4">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Address</label>
+                    <input
+                      type="text"
+                      value={address}
+                      onChange={(e) => setAddress(e.target.value)}
+                      placeholder="123 Main St, City, Country"
+                      className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Phone</label>
+                    <input
+                      type="tel"
+                      value={phone}
+                      onChange={(e) => setPhone(e.target.value)}
+                      placeholder="+1 555 000 0000"
+                      className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    />
+                  </div>
+                  <div className="flex gap-4">
+                    <div className="flex-1">
+                      <label className="block text-sm font-medium text-gray-700 mb-1">Signup Date</label>
+                      <input
+                        type="date"
+                        value={signupDate}
+                        onChange={(e) => setSignupDate(e.target.value)}
+                        className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      />
+                    </div>
+                  </div>
+                  <div className="flex gap-4">
+                    <div className="flex-1">
+                      <label className="block text-sm font-medium text-gray-700 mb-1">Date of Birth</label>
+                      <input
+                        type="date"
+                        value={dateOfBirth}
+                        onChange={(e) => setDateOfBirth(e.target.value)}
+                        className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      />
+                    </div>
+                    <div className="w-24">
+                      <label className="block text-sm font-medium text-gray-700 mb-1">Age</label>
+                      <div className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm bg-gray-50 text-gray-500 h-[38px] flex items-center">
+                        {calculatedAge !== null ? calculatedAge : '—'}
+                      </div>
+                    </div>
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Notes</label>
+                    <textarea
+                      value={notes}
+                      onChange={(e) => setNotes(e.target.value)}
+                      rows={3}
+                      placeholder="Any additional notes…"
+                      className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none"
+                    />
+                  </div>
+                </div>
               </div>
             </>
           )}

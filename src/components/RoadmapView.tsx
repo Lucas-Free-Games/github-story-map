@@ -215,7 +215,9 @@ export default function RoadmapView() {
 
   const [cellMode, setCellMode] = useState<CellMode>('donut');
 
-  const rows = sortedProjects(projects, layout.userActivityOrder);
+  const rows = sortedProjects(projects, layout.userActivityOrder).filter((p) =>
+    layout.includedProjects ? layout.includedProjects.includes(p.number) : !p.closed
+  );
   const cols = sortedMilestones(milestones, layout.milestoneOrder ?? []);
 
   const allProjectIssueNumbers = new Set(Object.values(projectIssues).flat());

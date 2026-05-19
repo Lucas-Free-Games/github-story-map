@@ -105,6 +105,7 @@ interface AppState {
     fromProjectId: string | null,
     toProjectId: string | null,
   ) => Promise<void>;
+  toggleProjectInclusion: (projectNumber: number) => Promise<void>;
 }
 
 const emptyLayout: StoryMapLayout = { userActivityOrder: [], milestoneOrder: [], storyOrder: { backlog: [] } };
@@ -1130,6 +1131,24 @@ export const useAppStore = create<AppState>((set, get) => ({
     } catch (err) {
       set({ projectIssues: snapProjectIssues, kanbanIssueStatuses: snapStatuses });
       throw err;
+    }
+  },
+
+  toggleProjectInclusion: async (projectNumber) => {
+    const { layout, owner, repo, projects } = get();
+    const currentIncluded = layout.includedProjects ?? projects.filter(p => !p.closed).map(p => p.number);
+    let nextIncluded: number[];
+    if (currentIncluded.includes(projectNumber)) {
+      nextIncluded = currentIncluded.filter((n) => n !== projectNumber);
+    } else {
+      nextIncluded = [...currentIncluded, projectNumber];
+    }
+    const newLayout = { ...layout, includedProjects: nextIncluded };
+    set({ layout: newLayout });
+    try {
+      await saveLayout(owner, repo, newLayout);
+    } catch (err) {
+      console.warn('Failed to persist layout change to Firebase', err);
     }
   },
 }));

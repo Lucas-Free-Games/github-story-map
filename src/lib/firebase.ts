@@ -7,6 +7,12 @@ export interface UserProfile {
   timelineShowIssues?: boolean;
   kanbanMilestoneNumber?: number | null;
   timelineMilestoneOrder?: number[];
+  address?: string;
+  phone?: string;
+  signupDate?: string;
+  dateOfBirth?: string;
+  age?: number;
+  notes?: string;
 }
 
 const firebaseConfig = {

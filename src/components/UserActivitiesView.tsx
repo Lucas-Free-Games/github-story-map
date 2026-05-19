@@ -9,22 +9,44 @@ function SidebarItem({
   onSelect,
   openCount,
   closedCount,
+  isIncluded,
+  onToggleInclusion,
 }: {
   project: GitHubProject;
   selected: boolean;
   onSelect: () => void;
   openCount: number;
   closedCount: number;
+  isIncluded: boolean;
+  onToggleInclusion: (e: React.MouseEvent) => void;
 }) {
   return (
     <div
       onClick={onSelect}
       className={`flex flex-col border-b border-gray-100 px-3 py-2.5 cursor-pointer ${selected ? 'bg-blue-50 border-r-2 border-r-blue-500' : 'hover:bg-gray-50'}`}
     >
-      <div className="flex items-center gap-1.5">
-        <span className={`text-sm truncate ${selected ? 'font-medium text-blue-800' : 'text-gray-700'}`}>
-          {project.title}
-        </span>
+      <div className="flex items-center justify-between gap-1.5">
+        <div className="flex items-center gap-2 min-w-0">
+          <button
+            onClick={(e) => {
+              e.stopPropagation();
+              onToggleInclusion(e);
+            }}
+            title={isIncluded ? 'Remove from repository' : 'Add to repository'}
+            className={`shrink-0 w-3.5 h-3.5 rounded-full border flex items-center justify-center transition-colors ${
+              isIncluded
+                ? 'bg-blue-600 border-blue-600 text-white'
+                : 'border-gray-300 text-transparent hover:border-blue-500 hover:text-blue-500 bg-white'
+            }`}
+          >
+            <svg xmlns="http://www.w3.org/2000/svg" className="w-2.5 h-2.5" viewBox="0 0 20 20" fill="currentColor">
+              <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+            </svg>
+          </button>
+          <span className={`text-sm truncate ${selected ? 'font-medium text-blue-800' : 'text-gray-700'}`}>
+            {project.title}
+          </span>
+        </div>
         {project.closed && (
           <span className="shrink-0 px-1 py-0.5 rounded text-xs bg-gray-100 text-gray-400">closed</span>
         )}
@@ -55,7 +77,7 @@ function SidebarItem({
 }
 
 export default function UserActivitiesView() {
-  const { projects, issues, projectIssues, createProject, updateProject, deleteProject } = useAppStore();
+  const { projects, issues, projectIssues, createProject, updateProject, deleteProject, layout, toggleProjectInclusion, repo } = useAppStore();
   const [selectedId, setSelectedId] = useState<string | null>(
     projects.length > 0 ? projects[0].id : null,
   );
@@ -159,16 +181,23 @@ export default function UserActivitiesView() {
           {projects.length === 0 ? (
             <p className="px-3 py-3 text-xs text-gray-400 italic">No user activities yet</p>
           ) : (
-            projects.map((p) => (
-              <SidebarItem
-                key={p.id}
-                project={p}
-                selected={p.id === selected?.id}
-                onSelect={() => selectProject(p.id)}
-                openCount={issueCounts[p.id]?.open ?? 0}
-                closedCount={issueCounts[p.id]?.closed ?? 0}
-              />
-            ))
+            projects.map((p) => {
+              const isIncluded = layout.includedProjects
+                ? layout.includedProjects.includes(p.number)
+                : !p.closed;
+              return (
+                <SidebarItem
+                  key={p.id}
+                  project={p}
+                  selected={p.id === selected?.id}
+                  onSelect={() => selectProject(p.id)}
+                  openCount={issueCounts[p.id]?.open ?? 0}
+                  closedCount={issueCounts[p.id]?.closed ?? 0}
+                  isIncluded={isIncluded}
+                  onToggleInclusion={() => toggleProjectInclusion(p.number)}
+                />
+              );
+            })
           )}
         </div>
 
@@ -262,7 +291,7 @@ export default function UserActivitiesView() {
                 </div>
               ) : (
                 <>
-                  <div className="flex items-start justify-between gap-4 mb-1">
+                  <div className="flex items-start justify-between gap-4 mb-3">
                     <div className="flex items-center gap-2">
                       <h1 className="text-2xl font-bold text-gray-900">{selected.title}</h1>
                       {selected.closed && (
@@ -291,6 +320,23 @@ export default function UserActivitiesView() {
                       </button>
                     </div>
                   </div>
+
+                  {/* Repo assignment premium toggle */}
+                  <div className="flex items-center gap-2.5 px-3.5 py-2.5 rounded-xl border border-blue-100 bg-blue-50/40 mb-4 max-w-xl">
+                    <label className="relative inline-flex items-center cursor-pointer">
+                      <input
+                        type="checkbox"
+                        checked={layout.includedProjects ? layout.includedProjects.includes(selected.number) : !selected.closed}
+                        onChange={() => toggleProjectInclusion(selected.number)}
+                        className="sr-only peer"
+                      />
+                      <div className="w-9 h-5 bg-gray-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-blue-600"></div>
+                      <span className="ml-3 text-xs font-semibold text-gray-700 select-none">
+                        Included in {repo}'s Story Map & Kanban
+                      </span>
+                    </label>
+                  </div>
+
                   {deleteError && <p className="text-xs text-red-600 mb-2">{deleteError}</p>}
                   {selected.shortDescription && (
                     <p className="text-sm text-gray-500 mb-2">{selected.shortDescription}</p>

@@ -106,6 +106,7 @@ export default function StoryMap() {
     reorderProjects, reorderMilestones, moveIssueInGrid, showClosedIssues,
     createProject, createMilestone,
     columnWidths, setColumnWidth,
+    setView,
   } = useAppStore();
   const [createCell, setCreateCell] = useState<CellKey | null>(null);
   const [moveError, setMoveError] = useState<string | null>(null);
@@ -156,7 +157,9 @@ export default function StoryMap() {
     }
   }
 
-  const cols = sortedProjects(projects, layout.userActivityOrder);
+  const cols = sortedProjects(projects, layout.userActivityOrder).filter((p) =>
+    layout.includedProjects ? layout.includedProjects.includes(p.number) : !p.closed
+  );
   const orderedMilestones = sortedMilestones(milestones, layout.milestoneOrder);
   const visibleIssues = showClosedIssues ? issues : issues.filter((i) => i.state === 'open');
 
@@ -224,43 +227,61 @@ export default function StoryMap() {
 
   if (cols.length === 0) {
     return (
-      <div className="flex flex-col items-center justify-center h-full gap-3">
-        <p className="text-gray-400 text-sm">No user activities yet.</p>
-        {addingUserActivity ? (
-          <form onSubmit={handleCreateUserActivity} className="flex items-center gap-2">
-            <input
-              autoFocus
-              value={newUserActivityTitle}
-              onChange={(e) => setNewUserActivityTitle(e.target.value)}
-              placeholder="User activity name\u2026"
-              className="border border-blue-300 rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-400"
-            />
+      <div className="flex-1 flex flex-col items-center justify-center bg-gray-50 p-8">
+        <div className="flex flex-col items-center max-w-sm text-center">
+          <div className="w-16 h-16 rounded-2xl bg-blue-50 flex items-center justify-center text-blue-500 mb-4 animate-bounce">
+            <svg xmlns="http://www.w3.org/2000/svg" className="w-8 h-8" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
+            </svg>
+          </div>
+          <h3 className="text-lg font-semibold text-gray-900 mb-1.5">No active User Activities</h3>
+          <p className="text-gray-500 text-sm mb-6">
+            Cherry-pick which User Activities (GitHub Projects) are included in this repo's Story Map, or create a brand new one to get started.
+          </p>
+          <div className="flex flex-col gap-2 w-full">
             <button
-              type="submit"
-              disabled={userActivitySaving || !newUserActivityTitle.trim()}
-              className="px-3 py-1.5 text-sm font-medium bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 transition-colors"
+              onClick={() => setView('user-activities')}
+              className="w-full px-4 py-2 text-sm font-medium bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors shadow-sm"
             >
-              {userActivitySaving ? 'Creating\u2026' : 'Create'}
+              Cherry-Pick User Activities
             </button>
-            <button
-              type="button"
-              onClick={() => { setAddingUserActivity(false); setNewUserActivityTitle(''); }}
-              className="px-3 py-1.5 text-sm text-gray-500 hover:text-gray-700 rounded-lg hover:bg-gray-100 transition-colors"
-            >
-              Cancel
-            </button>
-          </form>
-        ) : (
-          <button
-            onClick={() => setAddingUserActivity(true)}
-            className="text-sm text-blue-600 hover:text-blue-800 px-4 py-2 border border-blue-200 rounded-lg hover:bg-blue-50 transition-colors"
-          >
-            + New User Activity
-          </button>
-        )}
-        {moveError && (
-          <p className="text-red-500 text-sm">{moveError}</p>
-        )}
+            {addingUserActivity ? (
+              <form onSubmit={handleCreateUserActivity} className="flex items-center gap-2 mt-2 w-full">
+                <input
+                  autoFocus
+                  value={newUserActivityTitle}
+                  onChange={(e) => setNewUserActivityTitle(e.target.value)}
+                  placeholder="User activity name…"
+                  className="flex-1 min-w-0 border border-blue-300 rounded-lg px-3 py-1.5 text-xs focus:outline-none focus:ring-2 focus:ring-blue-400 bg-white"
+                />
+                <button
+                  type="submit"
+                  disabled={userActivitySaving || !newUserActivityTitle.trim()}
+                  className="px-3 py-1.5 text-xs font-medium bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 transition-colors shrink-0"
+                >
+                  {userActivitySaving ? '…' : 'Create'}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => { setAddingUserActivity(false); setNewUserActivityTitle(''); }}
+                  className="px-3 py-1.5 text-xs text-gray-500 hover:text-gray-700 rounded-lg hover:bg-gray-100 transition-colors shrink-0"
+                >
+                  Cancel
+                </button>
+              </form>
+            ) : (
+              <button
+                onClick={() => setAddingUserActivity(true)}
+                className="w-full px-4 py-2 text-sm font-medium bg-white text-gray-700 border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors"
+              >
+                + Create New Activity
+              </button>
+            )}
+          </div>
+          {moveError && (
+            <p className="text-red-500 text-xs mt-4">{moveError}</p>
+          )}
+        </div>
       </div>
     );
   }

@@ -38,6 +38,8 @@ export interface StoryMapLayout {
   storyOrder: Record<string, number[]>;
   /** Wave (milestone) start/end dates for the Timeline view, keyed by milestone number. */
   waveDates?: Record<number, { start: string; end: string }>;
+  /** The numbers of projects that are included in this repo's story map. */
+  includedProjects?: number[];
 }
 
 export interface GitHubProject {
