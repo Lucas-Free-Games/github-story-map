@@ -4,6 +4,7 @@ import Setup from './components/Setup';
 import Header from './components/Header';
 import StoryMap from './components/StoryMap';
 import KanbanView from './components/KanbanView';
+import TableView from './components/TableView';
 import WavesView from './components/WavesView';
 import UserActivitiesView from './components/UserActivitiesView';
 import RoadmapView from './components/RoadmapView';
@@ -49,6 +50,7 @@ export default function App() {
         <div className="flex-1 overflow-hidden flex">
           {view === 'grid' && <StoryMap />}
           {view === 'kanban' && <KanbanView />}
+          {view === 'table' && <TableView />}
           {view === 'waves' && <WavesView />}
           {view === 'user-activities' && <UserActivitiesView />}
           {view === 'roadmap' && <RoadmapView />}

@@ -28,6 +28,7 @@ export interface GitHubIssue {
   state: 'open' | 'closed';
   html_url: string;
   created_at: string;
+  updated_at: string;
   closed_at: string | null;
 }
 
@@ -50,4 +51,3 @@ export interface GitHubProject {
   url: string;
   closed: boolean;
 }
-
