@@ -44,7 +44,7 @@ interface AppState {
   /** status option name → GitHub color enum string (e.g. "YELLOW", "GREEN"). */
   kanbanStatusColors: Record<string, string>;
 
-  setCredentials: (token: string, owner: string, repo: string) => void;
+  setCredentials: (owner: string, repo: string) => void;
   signInWithGithub: () => Promise<void>;
   signOut: () => Promise<void>;
   setAuthSignedIn: (token: string, login: string) => void;
@@ -177,7 +177,7 @@ async function ensureLabel(
 }
 
 export const useAppStore = create<AppState>((set, get) => ({
-  token: getCachedGithubToken() || (import.meta.env.VITE_GITHUB_TOKEN ?? ''),
+  token: getCachedGithubToken(),
   owner: localStorage.getItem('gh_owner') ?? import.meta.env.VITE_GITHUB_OWNER ?? '',
   repo: localStorage.getItem('gh_repo') ?? import.meta.env.VITE_GITHUB_REPO ?? '',
   authStatus: 'loading',
@@ -204,11 +204,10 @@ export const useAppStore = create<AppState>((set, get) => ({
   kanbanItemIds: {},
   kanbanStatusColors: {},
 
-  setCredentials: (token, owner, repo) => {
-    localStorage.setItem('gh_token', token);
+  setCredentials: (owner, repo) => {
     localStorage.setItem('gh_owner', owner);
     localStorage.setItem('gh_repo', repo);
-    set({ token, owner, repo, issues: [], layout: emptyLayout, error: null, milestones: [], statusLabels: [], projects: [], projectIssues: {}, kanbanMilestoneNumber: null, kanbanStatusColumns: [], kanbanIssueStatuses: {}, kanbanProjectStatusFields: {}, kanbanItemIds: {}, kanbanStatusColors: {} });
+    set({ owner, repo, issues: [], layout: emptyLayout, error: null, milestones: [], statusLabels: [], projects: [], projectIssues: {}, kanbanMilestoneNumber: null, kanbanStatusColumns: [], kanbanIssueStatuses: {}, kanbanProjectStatusFields: {}, kanbanItemIds: {}, kanbanStatusColors: {} });
   },
 
   signInWithGithub: async () => {

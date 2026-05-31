@@ -6,6 +6,39 @@ An elegant interface to visualize and manage GitHub issues as a story map or Kan
 
 GitHub Story Map connects to any GitHub repository and presents issues in two structured views — a **Grid** (user activities × waves) and a **Kanban** (status columns × wave swimlanes). All placement is driven by GitHub labels, so the board always reflects what's on the issue.
 
+## Quick start
+
+### Use the hosted app
+
+1. **Open** [https://githubstorymap.web.app](https://githubstorymap.web.app).
+2. **Sign in with GitHub** — click the button on the landing page. A Firebase Auth popup opens; approve the `repo` and `project` scopes. Your access token is stored in your browser's localStorage only.
+3. **Authorize the OAuth app for your organization** *(skip this step for personal repos)* — orgs with SAML SSO or third-party-app restrictions require an explicit grant before their repos appear:
+   1. Open [https://github.com/settings/applications](https://github.com/settings/applications) → **Authorized OAuth Apps**.
+   2. Click this app's entry.
+   3. Under **Organization access**, click **Grant** for each org whose repos you need. If you're not an admin, click **Request access** — an admin has to approve it.
+   4. SAML-SSO orgs will prompt you to authenticate once during the grant.
+4. **Pick a repository** from the list shown after sign-in. The Grid, Kanban, and Table views populate from that repo's issues.
+5. **Create your labels** — open **User Activities & Waves** in the toolbar to add the `e_*` (user activity), `w_*` (wave), and `s_*` (status) labels that drive the board. They're created on GitHub via the API as you go.
+6. *(Optional)* **Enable AI features** — open **Settings**:
+   - **Describing** tab: paste a Gemini API key to enable **✦ Describe with AI** on issues.
+   - **Coding** tab: paste your Anthropic API key, Agent ID, Environment ID, and Vault ID to enable **⚡ Code with AI** (see [Code with AI](#code-with-ai) for the one-time agent setup).
+   - All values stay in your browser's localStorage — nothing is sent to a server we control.
+
+### Run it locally
+
+```bash
+git clone https://github.com/lucssmassuh/github-story-map.git
+cd github-story-map
+npm install
+cp .env.example .env
+# Edit .env: fill in VITE_FIREBASE_* from your Firebase console
+#   (Project settings → Your apps → SDK setup and configuration).
+#   VITE_GITHUB_OWNER / VITE_GITHUB_REPO are optional defaults.
+npm run dev
+```
+
+Open [http://localhost:3000](http://localhost:3000) and follow steps 2–6 from the hosted-app flow above. See [Getting started](#getting-started) below for the full environment-variable reference and notes on deployment.
+
 ## Views
 
 ### Grid view
@@ -47,7 +80,7 @@ Labels are created automatically on GitHub when you add them through the **User 
 
 ## Features
 
-- Connect to any GitHub repository via personal access token
+- Connect to any GitHub repository by signing in with GitHub (OAuth via Firebase Auth)
 - Grid view: user activity × wave matrix with per-cell issue creation
 - Kanban view: status columns with wave swimlanes
 - **Table view**: dense, sortable, filterable spreadsheet of all issues
@@ -90,23 +123,34 @@ The hover overlay on each card still exposes **Edit**, **Close** (open issues) /
 ### Prerequisites
 
 - Node.js 18+
-- A GitHub personal access token with `repo` scope
+- A GitHub account (the app signs you in via OAuth and uses the resulting access token)
 
-### Install
+### Environment variables
+
+Two env files drive the build. Vite inlines every `VITE_*` value into the client bundle, so anything you put in them is readable by every visitor to the deployed site — treat them accordingly.
+
+| File | Loaded during | Purpose | Tracked in git |
+|------|---------------|---------|----------------|
+| [.env](.env) | `npm run dev` and `npm run build` | Local development convenience — pre-fills your own credentials | No (`.gitignore`) |
+| [.env.production](.env.production) | `npm run build` only — overrides `.env` | Strips secrets out of the deployed bundle | Yes |
+| [.env.example](.env.example) | never | Template showing the full variable list | Yes |
+
+**For local development**, copy `.env.example` to `.env` and fill in:
+
+- `VITE_FIREBASE_*` — your Firebase web config (Firebase console → Project settings → Your apps). Safe to publish; access is gated by [firestore.rules](firestore.rules).
+- `VITE_GITHUB_OWNER` / `VITE_GITHUB_REPO` — default repo to load on first visit (users can change it in the app).
+- `VITE_ANTHROPIC_API_KEY` (`sk-ant-…`), `VITE_ANTHROPIC_AGENT_ID` (`agent_…`), `VITE_ANTHROPIC_ENV_ID` (`env_…`), `VITE_ANTHROPIC_VAULT_ID` (`vlt_…`) — optional, only if you want to skip the in-app Settings flow for Code with AI. **The API key is a real secret — never commit.**
+
+The GitHub access token is obtained per-user via the **Sign in with GitHub** flow ([src/lib/auth.ts](src/lib/auth.ts)) — there is no `VITE_GITHUB_TOKEN`.
+
+**For deployment**, fill in the `VITE_FIREBASE_*` values in [.env.production](.env.production) and leave every other variable empty. The empty values override anything you have in `.env`, so the secrets stay out of `dist/`. Per-user credentials (Anthropic key) are entered in the app's **Settings** tab and stored in each user's `localStorage`.
+
+Verify after building:
 
 ```bash
-git clone https://github.com/lucssmassuh/github-story-map.git
-cd github-story-map
-npm install
+npm run build
+grep -r "sk-ant-" dist/   # should print nothing
 ```
-
-### Run
-
-```bash
-npm run dev
-```
-
-Open [http://localhost:5173](http://localhost:5173), enter your GitHub token and `owner/repo`, then use **User Activities & Waves** in the toolbar to add your first labels.
 
 ## Code with AI
 
@@ -117,7 +161,7 @@ A live **Agent Log** streams tool calls and messages in real time. Once the agen
 ### Setup
 
 1. **Create a Managed Agent** (one-time, via the Anthropic API or console):
-   - Give it a system prompt describing your repo conventions
+   - Use the system prompt in [AGENT_INSTRUCTIONS.md](AGENT_INSTRUCTIONS.md) (or your own variant) — it defines the issue-to-PR workflow this app expects
    - Attach a **GitHub MCP server** so it can call the GitHub API
    - Note the returned `agent_id`
 
@@ -150,6 +194,17 @@ All values are stored in `localStorage` only.
 - **Build:** Vite
 
 ## Changelog
+
+### GitHub Sign-in (OAuth-only)
+
+GitHub access is now obtained exclusively via **Sign in with GitHub** (Firebase Auth's GitHub OAuth provider). The legacy Personal Access Token input and `VITE_GITHUB_TOKEN` env var have been removed — there is one auth path, no fallbacks.
+
+- **`src/lib/auth.ts`** — `signInWithGithub()` opens a Firebase Auth popup requesting `repo` and `project` scopes; the OAuth access token returned by GitHub is cached in `localStorage['gh_token']` and read by every GitHub API call via `getCachedGithubToken()`.
+- **`src/components/SettingsView.tsx`** — the **Personal Access Token** input in **Settings → General** has been removed. Owner and Repository inputs remain so users can switch the active repo without re-running the sign-in flow.
+- **`src/store/appStore.ts`** — `setCredentials(owner, repo)` no longer takes a token argument. The store's `token` field is now initialized purely from `getCachedGithubToken()`; the env-var fallback `VITE_GITHUB_TOKEN` has been removed.
+- **`src/components/Setup.tsx`** — call site updated to match the new `setCredentials` signature.
+- **`.env.example` / `.env.production`** — `VITE_GITHUB_TOKEN` removed. The deployment build no longer accepts a baked-in GitHub token, eliminating the previous footgun of leaking a maintainer's token into the public bundle.
+- **Org authorization** — for repos owned by an org with SAML SSO or third-party-app restrictions, the OAuth app must be authorized at [https://github.com/settings/applications](https://github.com/settings/applications) before its repos become reachable. See the **Run** section for the step-by-step.
 
 ### Gemini Models Dropdown (#74)
 
@@ -215,9 +270,6 @@ If you encounter `EACCES` errors when installing packages globally (e.g., `fireb
 sudo chown -R $(whoami) ~/.nvm
 ```
 Then try the installation again.
-
-### GitHub Token Config
-For advanced features like the **[Describe]** skill, ensure you have a valid GitHub Personal Access Token in your `.env` file. You can find the required variables in `.env.example`.
 
 ## License
 

@@ -45,7 +45,7 @@ export default function Setup() {
 
   async function handleSelectRepo(fullName: string) {
     const [owner, repo] = fullName.split('/');
-    setCredentials(token, owner, repo);
+    setCredentials(owner, repo);
     setConnecting(true);
     await Promise.all([fetchIssues(), fetchLabels(), fetchProjects(), fetchMilestones()]);
     setConnecting(false);

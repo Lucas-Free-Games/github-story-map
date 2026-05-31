@@ -51,7 +51,6 @@ function Led({ state, onClick }: { state: LedState; onClick: () => void }) {
 
 export default function SettingsView() {
   const {
-    token,
     owner,
     repo,
     issues,
@@ -66,7 +65,6 @@ export default function SettingsView() {
   const [activeTab, setActiveTab] = useState<Tab>('general');
 
   // General tab state
-  const [ghToken, setGhToken] = useState(token);
   const [ghOwner, setGhOwner] = useState(owner);
   const [ghRepo, setGhRepo] = useState(repo);
 
@@ -145,9 +143,9 @@ export default function SettingsView() {
 
   function handleSave() {
     if (activeTab === 'general') {
-      const credentialsChanged = ghToken !== token || ghOwner !== owner || ghRepo !== repo;
+      const credentialsChanged = ghOwner !== owner || ghRepo !== repo;
       if (credentialsChanged) {
-        setCredentials(ghToken.trim(), ghOwner.trim(), ghRepo.trim());
+        setCredentials(ghOwner.trim(), ghRepo.trim());
         fetchIssues();
         fetchLabels();
         fetchProjects().then(() => fetchAllProjectStatuses());
@@ -211,22 +209,6 @@ export default function SettingsView() {
               <div>
                 <h2 className="text-base font-semibold text-gray-900 mb-4">GitHub Connection</h2>
                 <div className="space-y-4">
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">
-                      Personal Access Token
-                    </label>
-                    <input
-                      type="password"
-                      value={ghToken}
-                      onChange={(e) => setGhToken(e.target.value)}
-                      placeholder="ghp_…"
-                      className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-                    />
-                    <p className="text-xs text-gray-400 mt-1">
-                      Classic PAT with <code>repo</code> and <code>project</code> scopes. Stored in
-                      localStorage only.
-                    </p>
-                  </div>
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-1">Owner</label>
                     <input
