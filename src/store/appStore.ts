@@ -639,8 +639,9 @@ export const useAppStore = create<AppState>((set, get) => ({
     const { token, owner, repo, layout } = get();
     if (!token || !owner) return;
 
+    type IssueContent = { number: number; repository: { nameWithOwner: string } };
     type ProjectNode = GitHubProject & {
-      items: { nodes: Array<{ content: { number: number } | null }> };
+      items: { nodes: Array<{ content: IssueContent | null }> };
     };
 
     const data = await gql<{
@@ -652,7 +653,7 @@ export const useAppStore = create<AppState>((set, get) => ({
             projectsV2(first: 50) {
               nodes {
                 id number title shortDescription url closed
-                items(first: 100) { nodes { content { ... on Issue { number } } } }
+                items(first: 100) { nodes { content { ... on Issue { number repository { nameWithOwner } } } } }
               }
             }
           }
@@ -660,7 +661,7 @@ export const useAppStore = create<AppState>((set, get) => ({
             projectsV2(first: 50) {
               nodes {
                 id number title shortDescription url closed
-                items(first: 100) { nodes { content { ... on Issue { number } } } }
+                items(first: 100) { nodes { content { ... on Issue { number repository { nameWithOwner } } } } }
               }
             }
           }
@@ -668,13 +669,17 @@ export const useAppStore = create<AppState>((set, get) => ({
       }
     `, { login: owner });
 
+    const repoFullName = `${owner}/${repo}`;
     const nodes = data.repositoryOwner?.projectsV2?.nodes ?? [];
     const projects: GitHubProject[] = nodes.map(({ items: _items, ...p }) => p);
     const projectIssues: Record<string, number[]> = {};
     for (const node of nodes) {
       projectIssues[node.id] = node.items.nodes
-        .map((item) => item.content?.number)
-        .filter((n): n is number => n !== undefined);
+        .map((item) => item.content)
+        .filter((c): c is IssueContent =>
+          !!c && c.repository?.nameWithOwner === repoFullName,
+        )
+        .map((c) => c.number);
     }
 
     // Sync userActivityOrder with current project numbers (preserving saved order, appending new)
