@@ -1,7 +1,7 @@
 import { useState, useRef, useEffect, useMemo, type RefObject } from 'react';
 import { useAppStore } from '../store/appStore';
 import type { GitHubIssue } from '../types';
-import { generateDescription, loadGeminiSettings } from '../lib/gemini';
+import { generateDescription, loadGeminiSettings, GEMINI_MODELS } from '../lib/gemini';
 import type { IssueContext } from '../lib/gemini';
 import { fetchIssueImplementation, parseImagesFromBody } from '../lib/github';
 import ImageAttacher, { type AttachedImage } from './ImageAttacher';
@@ -205,6 +205,10 @@ export default function EditIssueModal({ issue, onClose, initialTab = 'descripti
   const [error, setError] = useState('');
   const [generating, setGenerating] = useState(false);
 
+  // Gemini model selection
+  const geminiSettings = loadGeminiSettings();
+  const [geminiModel, setGeminiModel] = useState(geminiSettings.model);
+
   // AI coding
   const [aiLinks, setAiLinks] = useState<AiLinks>({});
   const [aiLinksLoading, setAiLinksLoading] = useState(false);
@@ -226,7 +230,7 @@ export default function EditIssueModal({ issue, onClose, initialTab = 'descripti
   useEffect(() => () => { abortRef.current?.abort(); }, []);
 
   const openProjects = projects.filter((p) => !p.closed);
-  const hasGeminiKey = Boolean(loadGeminiSettings().apiKey);
+  const hasGeminiKey = Boolean(geminiSettings.apiKey);
   const anthropicSettings = loadAnthropicSettings();
   const hasAnthropicSettings = Boolean(
     anthropicSettings.apiKey &&
@@ -392,7 +396,7 @@ export default function EditIssueModal({ issue, onClose, initialTab = 'descripti
         waveName: wave?.title,
         waveDescription: wave?.description ?? undefined,
       };
-      const result = await generateDescription(token, owner, repo, title.trim(), body.trim(), context);
+      const result = await generateDescription(token, owner, repo, title.trim(), body.trim(), context, geminiModel);
       setBody(result);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Generation failed');
@@ -513,14 +517,26 @@ export default function EditIssueModal({ issue, onClose, initialTab = 'descripti
               <div className="h-full flex flex-col">
                 <div className="flex justify-end mb-1">
                   {hasGeminiKey && (
-                    <button
-                      type="button"
-                      onClick={handleGenerate}
-                      disabled={generating || !title.trim()}
-                      className="flex items-center justify-center gap-1.5 w-36 px-2.5 py-1 text-xs font-medium text-purple-700 bg-purple-50 border border-purple-200 rounded-lg hover:bg-purple-100 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
-                    >
-                      {generating ? <><Spinner />Generating…</> : <>✦ Generate with AI</>}
-                    </button>
+                    <div className="flex items-center gap-2">
+                      <select
+                        value={geminiModel}
+                        onChange={(e) => setGeminiModel(e.target.value)}
+                        className="text-xs border border-purple-200 rounded-lg px-2 py-1 text-purple-700 bg-purple-50 focus:outline-none focus:ring-2 focus:ring-purple-400 cursor-pointer"
+                        title="Select Gemini model"
+                      >
+                        {GEMINI_MODELS.map((m) => (
+                          <option key={m} value={m}>{m}</option>
+                        ))}
+                      </select>
+                      <button
+                        type="button"
+                        onClick={handleGenerate}
+                        disabled={generating || !title.trim()}
+                        className="flex items-center justify-center gap-1.5 w-36 px-2.5 py-1 text-xs font-medium text-purple-700 bg-purple-50 border border-purple-200 rounded-lg hover:bg-purple-100 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+                      >
+                        {generating ? <><Spinner />Generating…</> : <>✦ Generate with AI</>}
+                      </button>
+                    </div>
                   )}
                 </div>
                 <textarea

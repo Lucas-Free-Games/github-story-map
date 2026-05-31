@@ -61,6 +61,7 @@ Labels are created automatically on GitHub when you add them through the **User 
 - Real-time sync with GitHub Issues API
 - Resizable columns in both Grid and Kanban views (see below)
 - Describe with AI uses the user activity, the wave, the issue title, example issues, the code and additional instructions to create the issue's spec
+- **Gemini model selector** — choose the exact Gemini model to use for each AI generation request directly from the issue modal (see below)
 - Code with AI delegate issue implementation to a Claude Managed Agent (creates branch, writes code, opens PR)
 
 ## Read-only issue view
@@ -149,6 +150,29 @@ All values are stored in `localStorage` only.
 - **Build:** Vite
 
 ## Changelog
+
+### Gemini Models Dropdown (#74)
+
+Users can now select the exact Gemini model used for AI-assisted issue description generation without leaving the issue modal:
+
+- **`src/lib/gemini.ts`**
+  - Added `GEMINI_MODELS` constant — an exported `as const` array of the 8 supported models: `gemini-3.5-flash`, `gemini-3.1-pro-preview`, `gemini-3.1-flash-lite`, `gemini-3-flash-preview`, `gemini-2.5-pro`, `gemini-2.5-flash`, `gemini-2.5-flash-lite`, `gemini-3.1-flash-live-preview`.
+  - Changed `DEFAULT_GEMINI_MODEL` to `gemini-2.5-flash` (fast, production-ready default).
+  - Added optional `modelOverride` parameter to `generateDescription()` — when provided it takes precedence over the value stored in `localStorage`, so per-request model selection works without mutating global settings.
+
+- **`src/components/CreateIssueModal.tsx`**
+  - Added `geminiModel` state initialized from `loadGeminiSettings().model`.
+  - A `<select>` dropdown listing all 8 models from `GEMINI_MODELS` appears inline next to the **✦ Generate with AI** button when a Gemini API key is configured.
+  - The dropdown uses the same purple styling as the Generate button to maintain visual coherence.
+  - `handleGenerate` passes the selected model as the `modelOverride` argument to `generateDescription`.
+
+- **`src/components/EditIssueModal.tsx`**
+  - Same changes as `CreateIssueModal` — `geminiModel` state, inline model selector dropdown, and `modelOverride` passed to `generateDescription`.
+  - The dropdown appears in the **Description** tab toolbar alongside the Generate button.
+
+- **`src/components/SettingsView.tsx`**
+  - The free-text **Model** input in **Settings → Describing** has been replaced with a `<select>` dropdown populated from `GEMINI_MODELS`, giving a consistent experience between the settings page and the inline modal selector.
+  - Added a helper note explaining that the settings value is the default, which can be overridden per-request in the modal.
 
 ### Table View (#5)
 

@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useAppStore } from '../store/appStore';
-import { loadGeminiSettings, saveGeminiSettings, testGeminiConnection, DEFAULT_GEMINI_MODEL } from '../lib/gemini';
+import { loadGeminiSettings, saveGeminiSettings, testGeminiConnection, DEFAULT_GEMINI_MODEL, GEMINI_MODELS } from '../lib/gemini';
 import { loadAnthropicSettings, saveAnthropicSettings, testAnthropicConnection } from '../lib/anthropic';
 import { loadUserProfile, saveUserProfile } from '../lib/firebase';
 
@@ -101,7 +101,7 @@ export default function SettingsView() {
   // Describing tab state
   const savedGemini = loadGeminiSettings();
   const [apiKey, setApiKey] = useState(savedGemini.apiKey);
-  const [model, setModel] = useState(savedGemini.model);
+  const [model, setModel] = useState(savedGemini.model || DEFAULT_GEMINI_MODEL);
   const [exampleNumbers, setExampleNumbers] = useState<number[]>(savedGemini.exampleIssueNumbers);
   const [extraInstructions, setExtraInstructions] = useState(savedGemini.extraInstructions);
   const [search, setSearch] = useState('');
@@ -348,17 +348,22 @@ export default function SettingsView() {
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Model</label>
-                <input
-                  type="text"
+                <label className="block text-sm font-medium text-gray-700 mb-1">Default Model</label>
+                <select
                   value={model}
                   onChange={(e) => {
                     setModel(e.target.value);
                     setLedState('idle');
                   }}
-                  placeholder={DEFAULT_GEMINI_MODEL}
-                  className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 font-mono"
-                />
+                  className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white font-mono"
+                >
+                  {GEMINI_MODELS.map((m) => (
+                    <option key={m} value={m}>{m}</option>
+                  ))}
+                </select>
+                <p className="text-xs text-gray-400 mt-1">
+                  The default model used for AI generation. Can be overridden per-request in the issue modal.
+                </p>
               </div>
 
               <div>

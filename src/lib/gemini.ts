@@ -1,5 +1,17 @@
 const GEMINI_BASE = 'https://generativelanguage.googleapis.com/v1beta/models';
-export const DEFAULT_GEMINI_MODEL = 'gemini-3.1-pro-preview';
+export const DEFAULT_GEMINI_MODEL = 'gemini-2.5-flash';
+
+/** Supported Gemini models available for selection in the UI. */
+export const GEMINI_MODELS = [
+  'gemini-3.5-flash',
+  'gemini-3.1-pro-preview',
+  'gemini-3.1-flash-lite',
+  'gemini-3-flash-preview',
+  'gemini-2.5-pro',
+  'gemini-2.5-flash',
+  'gemini-2.5-flash-lite',
+  'gemini-3.1-flash-live-preview',
+] as const;
 
 export interface GeminiSettings {
   apiKey: string;
@@ -56,9 +68,11 @@ export async function generateDescription(
   title: string,
   existingBody: string,
   context: IssueContext = {},
+  modelOverride?: string,
 ): Promise<string> {
-  const { apiKey, model, exampleIssueNumbers, extraInstructions } = loadGeminiSettings();
+  const { apiKey, model: savedModel, exampleIssueNumbers, extraInstructions } = loadGeminiSettings();
   if (!apiKey) throw new Error('No Gemini API key configured. Add one in Settings.');
+  const model = modelOverride ?? savedModel;
 
   // Fetch README
   let readme = '';
