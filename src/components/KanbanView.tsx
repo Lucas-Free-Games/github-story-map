@@ -108,9 +108,15 @@ export default function KanbanView() {
             className="text-sm border border-gray-200 rounded-md px-2 py-1 bg-white text-gray-700 focus:outline-none focus:ring-2 focus:ring-green-400 disabled:opacity-50"
           >
             <option value="">All Waves</option>
-            {milestones.map((m) => (
-              <option key={m.number} value={m.number}>{m.title}</option>
-            ))}
+            {milestones
+              .filter((m) =>
+                kanbanShowClosedIssues ||
+                m.number === kanbanMilestoneNumber ||
+                issues.some((i) => i.state === 'open' && i.milestone?.number === m.number),
+              )
+              .map((m) => (
+                <option key={m.number} value={m.number}>{m.title}</option>
+              ))}
           </select>
         </div>
       )}

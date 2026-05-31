@@ -160,8 +160,11 @@ export default function StoryMap() {
   const cols = sortedProjects(projects, layout.userActivityOrder).filter((p) =>
     layout.includedProjects ? layout.includedProjects.includes(p.number) : !p.closed
   );
-  const orderedMilestones = sortedMilestones(milestones, layout.milestoneOrder);
   const visibleIssues = showClosedIssues ? issues : issues.filter((i) => i.state === 'open');
+  const orderedMilestones = sortedMilestones(milestones, layout.milestoneOrder).filter(
+    (m) => showClosedIssues || visibleIssues.some((i) => i.milestone?.number === m.number),
+  );
+  const showNoWaveRow = showClosedIssues || visibleIssues.some((i) => i.milestone === null);
 
   function cellIssues(projectId: string, milestoneNumber: number | null): GitHubIssue[] {
     const inProject = new Set(projectIssues[projectId] ?? []);
@@ -415,6 +418,7 @@ export default function StoryMap() {
                   {provided.placeholder}
 
                   {/* "No Wave" row — always last, not draggable */}
+                  {showNoWaveRow && (
                   <tr key="no-wave">
                     <th className="sticky left-0 z-10 bg-gray-50 border border-gray-200 px-2 py-2 text-xs font-semibold text-gray-500 text-right align-top pt-3 w-[200px] min-w-[200px] max-w-[200px]">
                       {addingWave ? (
@@ -470,6 +474,7 @@ export default function StoryMap() {
                       />
                     </td>
                   </tr>
+                  )}
                 </tbody>
               )}
             </Droppable>
