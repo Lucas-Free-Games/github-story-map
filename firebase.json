@@ -15,7 +15,10 @@
     "rewrites": [
       {
         "source": "/anthropic-api/**",
-        "function": "anthropicProxy"
+        "function": {
+          "functionId": "anthropicProxy",
+          "region": "us-central1"
+        }
       },
       {
         "source": "**",
