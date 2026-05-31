@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useAppStore } from '../store/appStore';
-import { generateDescription, loadGeminiSettings } from '../lib/gemini';
+import { generateDescription, loadGeminiSettings, GEMINI_MODELS } from '../lib/gemini';
 import type { IssueContext } from '../lib/gemini';
 import ImageAttacher, { type AttachedImage } from './ImageAttacher';
 
@@ -24,8 +24,11 @@ export default function CreateIssueModal({ defaultProjectId, defaultMilestoneNum
   const [generating, setGenerating] = useState(false);
   const [error, setError] = useState('');
 
+  const geminiSettings = loadGeminiSettings();
+  const hasGeminiKey = Boolean(geminiSettings.apiKey);
+  const [geminiModel, setGeminiModel] = useState(geminiSettings.model);
+
   const openProjects = projects.filter((p) => !p.closed);
-  const hasGeminiKey = Boolean(loadGeminiSettings().apiKey);
 
   async function handleGenerate() {
     if (!title.trim()) { setError('Add a title before generating.'); return; }
@@ -40,7 +43,7 @@ export default function CreateIssueModal({ defaultProjectId, defaultMilestoneNum
         waveName: wave?.title,
         waveDescription: wave?.description ?? undefined,
       };
-      const result = await generateDescription(token, owner, repo, title.trim(), body.trim(), context);
+      const result = await generateDescription(token, owner, repo, title.trim(), body.trim(), context, geminiModel);
       setBody(result);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Generation failed');
@@ -108,24 +111,36 @@ export default function CreateIssueModal({ defaultProjectId, defaultMilestoneNum
                 Description <span className="text-gray-400 font-normal">(optional)</span>
               </label>
               {hasGeminiKey && (
-                <button
-                  type="button"
-                  onClick={handleGenerate}
-                  disabled={generating || !title.trim()}
-                  className="flex items-center gap-1.5 px-2.5 py-1 text-xs font-medium text-purple-700 bg-purple-50 border border-purple-200 rounded-lg hover:bg-purple-100 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
-                >
-                  {generating ? (
-                    <>
-                      <svg className="w-3 h-3 animate-spin" viewBox="0 0 24 24" fill="none">
-                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
-                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z" />
-                      </svg>
-                      Generating…
-                    </>
-                  ) : (
-                    <>✦ Generate with AI</>
-                  )}
-                </button>
+                <div className="flex items-center gap-2">
+                  <select
+                    value={geminiModel}
+                    onChange={(e) => setGeminiModel(e.target.value)}
+                    className="text-xs border border-purple-200 rounded-lg px-2 py-1 text-purple-700 bg-purple-50 focus:outline-none focus:ring-2 focus:ring-purple-400 cursor-pointer"
+                    title="Select Gemini model"
+                  >
+                    {GEMINI_MODELS.map((m) => (
+                      <option key={m} value={m}>{m}</option>
+                    ))}
+                  </select>
+                  <button
+                    type="button"
+                    onClick={handleGenerate}
+                    disabled={generating || !title.trim()}
+                    className="flex items-center gap-1.5 px-2.5 py-1 text-xs font-medium text-purple-700 bg-purple-50 border border-purple-200 rounded-lg hover:bg-purple-100 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+                  >
+                    {generating ? (
+                      <>
+                        <svg className="w-3 h-3 animate-spin" viewBox="0 0 24 24" fill="none">
+                          <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                          <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z" />
+                        </svg>
+                        Generating…
+                      </>
+                    ) : (
+                      <>✦ Generate with AI</>
+                    )}
+                  </button>
+                </div>
               )}
             </div>
             <textarea
