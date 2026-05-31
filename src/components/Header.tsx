@@ -14,7 +14,7 @@ const VIEW_LABELS: Record<string, string> = {
 };
 
 export default function Header() {
-  const { owner, repo, fetchIssues, fetchProjects, fetchMilestones, fetchAllProjectStatuses, reset, loading, view, setView, showClosedIssues, toggleShowClosedIssues, kanbanShowClosedIssues, toggleKanbanShowClosedIssues } = useAppStore();
+  const { owner, repo, fetchIssues, fetchProjects, fetchMilestones, fetchAllProjectStatuses, signOut, loading, view, setView, showClosedIssues, toggleShowClosedIssues, kanbanShowClosedIssues, toggleKanbanShowClosedIssues } = useAppStore();
   const activeShowClosed = (view === 'kanban' || view === 'table') ? kanbanShowClosedIssues : showClosedIssues;
   const activeToggleClosed = (view === 'kanban' || view === 'table') ? toggleKanbanShowClosedIssues : toggleShowClosedIssues;
   const [showCreate, setShowCreate] = useState(false);
@@ -104,10 +104,10 @@ export default function Header() {
               </span>
             </div>
 
-            {/* Disconnect */}
+            {/* Sign out */}
             <div className="relative group">
               <button
-                onClick={reset}
+                onClick={() => { void signOut(); }}
                 className="p-2 rounded-lg bg-red-500 text-white hover:bg-red-600 transition-colors"
               >
                 <svg xmlns="http://www.w3.org/2000/svg" className="w-4 h-4" viewBox="0 0 20 20" fill="currentColor">
@@ -115,7 +115,7 @@ export default function Header() {
                 </svg>
               </button>
               <span className="pointer-events-none absolute top-full left-1/2 -translate-x-1/2 mt-2 z-50 whitespace-nowrap rounded bg-gray-900 px-2 py-1 text-xs text-white opacity-0 group-hover:opacity-100 transition-opacity">
-                Disconnect
+                Sign out
               </span>
             </div>
           </div>

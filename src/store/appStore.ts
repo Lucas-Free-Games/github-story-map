@@ -2,11 +2,19 @@ import { create } from 'zustand';
 import { Octokit } from '@octokit/rest';
 import type { GitHubIssue, GitHubMilestone, GitHubProject, StoryMapLayout } from '../types';
 import { loadLayout, saveLayout, loadUserProfile, saveUserProfile } from '../lib/firebase';
+import {
+  signInWithGithub,
+  signOutFromFirebase,
+  getCachedGithubToken,
+  clearCachedGithubToken,
+} from '../lib/auth';
 
 interface AppState {
   token: string;
   owner: string;
   repo: string;
+  authStatus: 'loading' | 'signed-in' | 'signed-out';
+  authError: string | null;
   issues: GitHubIssue[];
   layout: StoryMapLayout;
   loading: boolean;
@@ -37,6 +45,11 @@ interface AppState {
   kanbanStatusColors: Record<string, string>;
 
   setCredentials: (token: string, owner: string, repo: string) => void;
+  signInWithGithub: () => Promise<void>;
+  signOut: () => Promise<void>;
+  setAuthSignedIn: (token: string, login: string) => void;
+  setAuthSignedOut: () => void;
+  clearAuthError: () => void;
   fetchIssues: () => Promise<void>;
   toggleShowClosedIssues: () => void;
   toggleKanbanShowClosedIssues: () => void;
@@ -144,9 +157,11 @@ async function ensureLabel(
 }
 
 export const useAppStore = create<AppState>((set, get) => ({
-  token: localStorage.getItem('gh_token') ?? import.meta.env.VITE_GITHUB_TOKEN ?? '',
+  token: getCachedGithubToken() || (import.meta.env.VITE_GITHUB_TOKEN ?? ''),
   owner: localStorage.getItem('gh_owner') ?? import.meta.env.VITE_GITHUB_OWNER ?? '',
   repo: localStorage.getItem('gh_repo') ?? import.meta.env.VITE_GITHUB_REPO ?? '',
+  authStatus: 'loading',
+  authError: null,
   issues: [],
   layout: emptyLayout,
   loading: false,
@@ -176,6 +191,50 @@ export const useAppStore = create<AppState>((set, get) => ({
     set({ token, owner, repo, issues: [], layout: emptyLayout, error: null, milestones: [], statusLabels: [], projects: [], projectIssues: {}, kanbanMilestoneNumber: null, kanbanStatusColumns: [], kanbanIssueStatuses: {}, kanbanProjectStatusFields: {}, kanbanItemIds: {}, kanbanStatusColors: {} });
   },
 
+  signInWithGithub: async () => {
+    set({ authError: null });
+    try {
+      const { githubToken } = await signInWithGithub();
+      set({ token: githubToken, authStatus: 'signed-in' });
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : 'GitHub sign-in failed.';
+      set({ authError: msg });
+      throw e;
+    }
+  },
+
+  signOut: async () => {
+    try {
+      await signOutFromFirebase();
+    } finally {
+      localStorage.removeItem('gh_owner');
+      localStorage.removeItem('gh_repo');
+      set({
+        token: '', owner: '', repo: '',
+        authStatus: 'signed-out', authError: null,
+        issues: [], layout: emptyLayout, error: null, milestones: [], statusLabels: [],
+        projects: [], projectIssues: {}, kanbanMilestoneNumber: null,
+        kanbanStatusColumns: [], kanbanIssueStatuses: {}, kanbanProjectStatusFields: {},
+        kanbanItemIds: {}, kanbanStatusColors: {},
+      });
+    }
+  },
+
+  setAuthSignedIn: (token, login) => {
+    set((state) => ({
+      authStatus: 'signed-in',
+      token: token || state.token,
+      owner: state.owner || login,
+    }));
+  },
+
+  setAuthSignedOut: () => {
+    clearCachedGithubToken();
+    set({ authStatus: 'signed-out', token: '', authError: null });
+  },
+
+  clearAuthError: () => set({ authError: null }),
+
   reset: () => {
     localStorage.removeItem('gh_token');
     localStorage.removeItem('gh_owner');
@@ -187,19 +246,17 @@ export const useAppStore = create<AppState>((set, get) => ({
 
   setTimelineGranularity: (g) => {
     set({ timelineGranularity: g });
-    const { owner } = get();
-    if (owner) saveUserProfile(owner, { timelineGranularity: g }).catch(() => {});
+    saveUserProfile({ timelineGranularity: g }).catch(() => {});
   },
 
   toggleTimelineShowIssues: () => {
     const next = !get().timelineShowIssues;
     set({ timelineShowIssues: next });
-    const { owner } = get();
-    if (owner) saveUserProfile(owner, { timelineShowIssues: next }).catch(() => {});
+    saveUserProfile({ timelineShowIssues: next }).catch(() => {});
   },
 
   reorderTimelineMilestones: (fromIndex, toIndex) => {
-    const { timelineMilestoneOrder, milestones, layout, owner } = get();
+    const { timelineMilestoneOrder, milestones, layout } = get();
     const base = timelineMilestoneOrder.length
       ? timelineMilestoneOrder
       : [...milestones].sort((a, b) => {
@@ -214,7 +271,7 @@ export const useAppStore = create<AppState>((set, get) => ({
     const [moved] = newOrder.splice(fromIndex, 1);
     newOrder.splice(toIndex, 0, moved);
     set({ timelineMilestoneOrder: newOrder });
-    if (owner) saveUserProfile(owner, { timelineMilestoneOrder: newOrder }).catch(() => {});
+    saveUserProfile({ timelineMilestoneOrder: newOrder }).catch(() => {});
   },
 
   setWaveDate: async (milestoneNumber, start, end) => {
@@ -379,7 +436,7 @@ export const useAppStore = create<AppState>((set, get) => ({
       try {
         [savedLayout, userProfile] = await Promise.all([
           loadLayout(owner, repo),
-          loadUserProfile(owner),
+          loadUserProfile(),
         ]);
       } catch (firestoreErr) {
         console.warn('Firestore unavailable, building layout from issues', firestoreErr);
@@ -931,8 +988,7 @@ export const useAppStore = create<AppState>((set, get) => ({
 
   setKanbanMilestone: (milestoneNumber) => {
     set({ kanbanMilestoneNumber: milestoneNumber });
-    const { owner } = get();
-    if (owner) saveUserProfile(owner, { kanbanMilestoneNumber: milestoneNumber ?? null }).catch(() => {});
+    saveUserProfile({ kanbanMilestoneNumber: milestoneNumber ?? null }).catch(() => {});
   },
 
   fetchAllProjectStatuses: async () => {
