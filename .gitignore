@@ -4,3 +4,4 @@ dist
 .env.local
 *.local
 .firebase
+.DS_Store
