@@ -13,7 +13,7 @@ interface AppState {
   error: string | null;
   milestones: GitHubMilestone[];
   statusLabels: string[]; // values without prefix, e.g. ["Todo", "In Progress", "Done"]
-  view: 'grid' | 'kanban' | 'waves' | 'user-activities' | 'roadmap' | 'timeline' | 'settings';
+  view: 'grid' | 'kanban' | 'table' | 'waves' | 'user-activities' | 'roadmap' | 'timeline' | 'settings';
   timelineGranularity: 'day' | 'week' | 'quarter' | 'year';
   timelineShowIssues: boolean;
   timelineMilestoneOrder: number[];
@@ -46,7 +46,7 @@ interface AppState {
   updateMilestone: (number: number, title: string, description: string) => Promise<void>;
   deleteMilestone: (number: number) => Promise<void>;
   addStatusLabel: (name: string) => Promise<void>;
-  setView: (view: 'grid' | 'kanban' | 'waves' | 'user-activities' | 'roadmap' | 'timeline' | 'settings') => void;
+  setView: (view: 'grid' | 'kanban' | 'table' | 'waves' | 'user-activities' | 'roadmap' | 'timeline' | 'settings') => void;
   setTimelineGranularity: (g: 'day' | 'week' | 'quarter' | 'year') => void;
   toggleTimelineShowIssues: () => void;
   reorderTimelineMilestones: (fromIndex: number, toIndex: number) => void;
@@ -364,6 +364,7 @@ export const useAppStore = create<AppState>((set, get) => ({
             state: item.state as 'open' | 'closed',
             html_url: item.html_url,
             created_at: item.created_at,
+            updated_at: item.updated_at,
             closed_at: item.closed_at ?? null,
           } as GitHubIssue));
 
@@ -470,6 +471,7 @@ export const useAppStore = create<AppState>((set, get) => ({
       state: 'open',
       html_url: data.html_url,
       created_at: data.created_at,
+      updated_at: data.updated_at,
       closed_at: null,
     };
 
@@ -498,7 +500,7 @@ export const useAppStore = create<AppState>((set, get) => ({
       : null;
     set({
       issues: issues.map((i) =>
-        i.number === number ? { ...i, title: data.title, body: data.body ?? null, milestone } : i,
+        i.number === number ? { ...i, title: data.title, body: data.body ?? null, milestone, updated_at: data.updated_at } : i,
       ),
     });
   },

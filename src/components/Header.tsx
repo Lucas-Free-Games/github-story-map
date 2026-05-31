@@ -2,10 +2,21 @@ import { useState } from 'react';
 import { useAppStore } from '../store/appStore';
 import CreateIssueModal from './CreateIssueModal';
 
+const VIEW_LABELS: Record<string, string> = {
+  grid: 'Story Map',
+  kanban: 'Kanban',
+  table: 'Table',
+  waves: 'Waves',
+  'user-activities': 'User Activities',
+  roadmap: 'Roadmap',
+  timeline: 'Timeline',
+  settings: 'Settings',
+};
+
 export default function Header() {
   const { owner, repo, fetchIssues, fetchProjects, fetchMilestones, fetchAllProjectStatuses, reset, loading, view, setView, showClosedIssues, toggleShowClosedIssues, kanbanShowClosedIssues, toggleKanbanShowClosedIssues } = useAppStore();
-  const activeShowClosed = view === 'kanban' ? kanbanShowClosedIssues : showClosedIssues;
-  const activeToggleClosed = view === 'kanban' ? toggleKanbanShowClosedIssues : toggleShowClosedIssues;
+  const activeShowClosed = (view === 'kanban' || view === 'table') ? kanbanShowClosedIssues : showClosedIssues;
+  const activeToggleClosed = (view === 'kanban' || view === 'table') ? toggleKanbanShowClosedIssues : toggleShowClosedIssues;
   const [showCreate, setShowCreate] = useState(false);
 
   return (
@@ -22,7 +33,7 @@ export default function Header() {
             >
               {owner}/{repo}
             </a>
-            {(['grid', 'kanban', 'roadmap', 'timeline', 'waves', 'user-activities', 'settings'] as const).map((v) => (
+            {(['grid', 'kanban', 'table', 'roadmap', 'timeline', 'waves', 'user-activities', 'settings'] as const).map((v) => (
               <button
                 key={v}
                 onClick={() => setView(v)}
@@ -32,7 +43,7 @@ export default function Header() {
                     : 'text-gray-500 hover:text-gray-700'
                 }`}
               >
-                {v === 'grid' ? 'Story Map' : v === 'kanban' ? 'Kanban' : v === 'waves' ? 'Waves' : v === 'user-activities' ? 'User Activities' : v === 'roadmap' ? 'Roadmap' : v === 'timeline' ? 'Timeline' : 'Settings'}
+                {VIEW_LABELS[v]}
               </button>
             ))}
           </div>

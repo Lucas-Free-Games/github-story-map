@@ -22,6 +22,16 @@ Issues are organized as a standard Kanban with swimlanes:
 
 A "No Status" column and "No Wave" swimlane catch any untagged issues.
 
+### Table view
+Issues are displayed in a dense, spreadsheet-like tabular layout:
+- **Columns**: #, Title, Status, User Activity, Wave (Milestone), Assignees, Updated Date, Actions
+- **Sortable** by any column — click a column header to sort ascending/descending
+- **Filter bar** at the top to instantly search across title, number, wave, and user activity
+- **Click any row** to open the standard read-only issue modal
+- **Inline actions** (Edit, Close/Reopen, Delete) appear on each row on hover
+- Respects the show/hide closed issues toggle in the toolbar
+- Reacts instantly to all issue state changes without a page refresh
+
 ## Label conventions
 
 All structure comes from GitHub labels with these prefixes:
@@ -40,7 +50,8 @@ Labels are created automatically on GitHub when you add them through the **User 
 - Connect to any GitHub repository via personal access token
 - Grid view: user activity × wave matrix with per-cell issue creation
 - Kanban view: status columns with wave swimlanes
-- Grid/Kanban toggle in the toolbar
+- **Table view**: dense, sortable, filterable spreadsheet of all issues
+- Grid/Kanban/Table toggle in the toolbar
 - Create issues with pre-filled user activity, wave, and status from any cell
 - **Read-only issue view** — clicking an issue card opens a formatted read-only modal (see below)
 - Edit, close, reopen, and permanently delete issues inline
@@ -138,6 +149,30 @@ All values are stored in `localStorage` only.
 - **Build:** Vite
 
 ## Changelog
+
+### Table View (#5)
+
+A new **Table** tab is now available in the main toolbar, providing a high-density spreadsheet-style view of all issues:
+
+- **`src/components/TableView.tsx`** — new component rendering issues as a dense HTML table with eight columns:
+  | Column | Description |
+  |--------|-------------|
+  | # | Issue number badge, linked to GitHub |
+  | Title | Issue title (truncated to one line) |
+  | Status | Native project status badge (color-coded) |
+  | User Activity | Project / user activity the issue belongs to |
+  | Wave | Milestone / wave the issue is assigned to |
+  | Assignees | Assignee avatars + login names |
+  | Updated | Last-updated date |
+  | Actions | Hover-to-reveal Edit, Close/Reopen, Delete buttons |
+- **Sortable columns** — click any column header to sort ascending/descending; an arrow indicator shows the current sort.
+- **Filter bar** — real-time text filter across title, number, wave, and user activity.
+- **Row click → read modal** — clicking any table row opens the existing `IssueReadModal`, keeping the full action toolbar (Edit, Close/Reopen, Delete, AI actions) accessible.
+- **Inline actions on hover** — the Actions column reveals Edit, Close/Reopen, and Delete buttons on row hover, matching the behavior of other views.
+- **`src/types/index.ts`** — added `updated_at: string` field to `GitHubIssue`.
+- **`src/store/appStore.ts`** — added `'table'` to the `view` union type and mapped `updated_at` in `fetchIssues` and `createIssue`/`updateIssue` responses.
+- **`src/components/Header.tsx`** — added the `table` tab to the view toggle strip; the show/hide closed issues button now also applies to the Table view.
+- **`src/App.tsx`** — imports and renders `TableView` when `view === 'table'`.
 
 ### Issue Reopen (#30)
 
