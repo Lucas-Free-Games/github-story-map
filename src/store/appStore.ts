@@ -142,6 +142,26 @@ async function gql<T>(
   return json.data as T;
 }
 
+function includedProjectsKey(owner: string, repo: string): string {
+  return `included_projects_${owner}__${repo}`;
+}
+
+function loadIncludedProjects(owner: string, repo: string): number[] | undefined {
+  if (!owner || !repo) return undefined;
+  const raw = localStorage.getItem(includedProjectsKey(owner, repo));
+  if (!raw) return undefined;
+  try {
+    const parsed = JSON.parse(raw);
+    if (Array.isArray(parsed) && parsed.every((n) => typeof n === 'number')) return parsed;
+  } catch { /* fall through */ }
+  return undefined;
+}
+
+function saveIncludedProjects(owner: string, repo: string, list: number[]): void {
+  if (!owner || !repo) return;
+  localStorage.setItem(includedProjectsKey(owner, repo), JSON.stringify(list));
+}
+
 async function ensureLabel(
   octokit: Octokit,
   owner: string,
@@ -471,6 +491,9 @@ export const useAppStore = create<AppState>((set, get) => ({
           try { await saveLayout(owner, repo, layout); } catch { /* offline */ }
         }
       }
+
+      const cachedIncluded = loadIncludedProjects(owner, repo);
+      if (cachedIncluded) layout = { ...layout, includedProjects: cachedIncluded };
 
       set({ issues: allItems, layout, loading: false });
     } catch (err: unknown) {
@@ -1208,6 +1231,7 @@ export const useAppStore = create<AppState>((set, get) => ({
     }
     const newLayout = { ...layout, includedProjects: nextIncluded };
     set({ layout: newLayout });
+    saveIncludedProjects(owner, repo, nextIncluded);
     try {
       await saveLayout(owner, repo, newLayout);
     } catch (err) {
