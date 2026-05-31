@@ -1,4 +1,5 @@
 import { initializeApp } from 'firebase/app';
+import { getAuth } from 'firebase/auth';
 import { getFirestore, doc, getDoc, setDoc } from 'firebase/firestore';
 import type { StoryMapLayout } from '../types';
 
@@ -26,6 +27,7 @@ const firebaseConfig = {
 
 const app = initializeApp(firebaseConfig);
 export const db = getFirestore(app);
+export const auth = getAuth(app);
 
 function repoKey(owner: string, repo: string) {
   return `${owner}__${repo}`;
@@ -49,13 +51,17 @@ export async function saveLayout(
   await setDoc(ref, layout);
 }
 
-export async function loadUserProfile(owner: string): Promise<UserProfile | null> {
-  const ref = doc(db, 'userProfiles', owner);
+export async function loadUserProfile(): Promise<UserProfile | null> {
+  const uid = auth.currentUser?.uid;
+  if (!uid) return null;
+  const ref = doc(db, 'userProfiles', uid);
   const snap = await getDoc(ref);
   return snap.exists() ? (snap.data() as UserProfile) : null;
 }
 
-export async function saveUserProfile(owner: string, profile: UserProfile): Promise<void> {
-  const ref = doc(db, 'userProfiles', owner);
+export async function saveUserProfile(profile: UserProfile): Promise<void> {
+  const uid = auth.currentUser?.uid;
+  if (!uid) return;
+  const ref = doc(db, 'userProfiles', uid);
   await setDoc(ref, profile, { merge: true });
 }

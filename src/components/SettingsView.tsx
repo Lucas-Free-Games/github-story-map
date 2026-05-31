@@ -78,8 +78,7 @@ export default function SettingsView() {
   const [notes, setNotes] = useState('');
 
   useEffect(() => {
-    if (!owner) return;
-    loadUserProfile(owner).then((profile) => {
+    loadUserProfile().then((profile) => {
       if (!profile) return;
       if (profile.address) setAddress(profile.address);
       if (profile.phone) setPhone(profile.phone);
@@ -87,7 +86,7 @@ export default function SettingsView() {
       if (profile.dateOfBirth) setDateOfBirth(profile.dateOfBirth);
       if (profile.notes) setNotes(profile.notes);
     }).catch(() => {});
-  }, [owner]);
+  }, []);
 
   const calculatedAge = (() => {
     if (!dateOfBirth) return null;
@@ -154,17 +153,14 @@ export default function SettingsView() {
         fetchProjects().then(() => fetchAllProjectStatuses());
         fetchMilestones();
       }
-      const currentOwner = ghOwner.trim() || owner;
-      if (currentOwner) {
-        saveUserProfile(currentOwner, {
-          address: address.trim() || undefined,
-          phone: phone.trim() || undefined,
-          signupDate: signupDate || undefined,
-          dateOfBirth: dateOfBirth || undefined,
-          age: calculatedAge ?? undefined,
-          notes: notes.trim() || undefined,
-        }).catch(() => {});
-      }
+      saveUserProfile({
+        address: address.trim() || undefined,
+        phone: phone.trim() || undefined,
+        signupDate: signupDate || undefined,
+        dateOfBirth: dateOfBirth || undefined,
+        age: calculatedAge ?? undefined,
+        notes: notes.trim() || undefined,
+      }).catch(() => {});
     } else if (activeTab === 'describing') {
       saveGeminiSettings({ apiKey, model, exampleIssueNumbers: exampleNumbers, extraInstructions });
     } else if (activeTab === 'coding') {

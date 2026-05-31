@@ -1,5 +1,7 @@
 import { useEffect } from 'react';
 import { useAppStore } from './store/appStore';
+import { observeAuth, getCachedGithubToken } from './lib/auth';
+import Login from './components/Login';
 import Setup from './components/Setup';
 import Header from './components/Header';
 import StoryMap from './components/StoryMap';
@@ -12,18 +14,46 @@ import TimelineView from './components/TimelineView';
 import SettingsView from './components/SettingsView';
 
 export default function App() {
-  const { token, owner, repo, issues, loading, error, fetchIssues, fetchLabels, fetchProjects, fetchMilestones, fetchAllProjectStatuses, view } = useAppStore();
+  const {
+    token, owner, repo, issues, loading, error,
+    fetchIssues, fetchLabels, fetchProjects, fetchMilestones, fetchAllProjectStatuses,
+    view, authStatus, setAuthSignedIn, setAuthSignedOut,
+  } = useAppStore();
+
+  useEffect(() => {
+    const unsub = observeAuth((user) => {
+      if (user) {
+        const cachedToken = getCachedGithubToken();
+        const login =
+          user.providerData.find((p) => p.providerId === 'github.com')?.displayName ?? '';
+        setAuthSignedIn(cachedToken, login);
+      } else {
+        setAuthSignedOut();
+      }
+    });
+    return unsub;
+  }, [setAuthSignedIn, setAuthSignedOut]);
 
   const isConfigured = Boolean(token && owner && repo);
 
   useEffect(() => {
-    if (isConfigured && issues.length === 0) {
+    if (authStatus === 'signed-in' && isConfigured && issues.length === 0) {
       fetchIssues();
       fetchLabels();
       fetchProjects().then(() => fetchAllProjectStatuses());
       fetchMilestones();
     }
-  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [authStatus, isConfigured]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  if (authStatus === 'loading') {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <div className="text-gray-400 text-sm">Loading…</div>
+      </div>
+    );
+  }
+
+  if (authStatus === 'signed-out' || !token) return <Login />;
 
   if (!isConfigured) return <Setup />;
 
