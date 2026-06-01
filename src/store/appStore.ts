@@ -585,53 +585,33 @@ export const useAppStore = create<AppState>((set, get) => ({
   },
 
   closeIssue: async (number) => {
-    const { token, owner, repo, issues, layout } = get();
+    const { token, owner, repo, issues } = get();
     const octokit = new Octokit({ auth: token });
-    await octokit.rest.issues.update({ owner, repo, issue_number: number, state: 'closed' });
+    const { data } = await octokit.rest.issues.update({ owner, repo, issue_number: number, state: 'closed' });
 
-    const newStoryOrder = Object.fromEntries(
-      Object.entries(layout.storyOrder).map(([key, nums]) => [key, nums.filter((n) => n !== number)]),
-    );
-    const newLayout: StoryMapLayout = {
-      userActivityOrder: layout.userActivityOrder.filter((n) => n !== number),
-      milestoneOrder: layout.milestoneOrder ?? [],
-      storyOrder: newStoryOrder,
-    };
-
-    set({ issues: issues.filter((i) => i.number !== number), layout: newLayout });
-    saveLayout(owner, repo, newLayout).catch(() => { /* offline */ });
+    set({
+      issues: issues.map((i) =>
+        i.number === number
+          ? { ...i, state: 'closed' as const, closed_at: data.closed_at ?? new Date().toISOString() }
+          : i,
+      ),
+    });
   },
 
   reopenIssue: async (number) => {
-    const { token, owner, repo, issues, layout } = get();
+    const { token, owner, repo, issues } = get();
     const octokit = new Octokit({ auth: token });
     await octokit.rest.issues.update({ owner, repo, issue_number: number, state: 'open' });
 
-    // Update the issue's state to open in the local cache
-    const updatedIssues = issues.map((i) =>
-      i.number === number ? { ...i, state: 'open' as const } : i,
-    );
-
-    // If the issue was removed from the layout when it was closed inline,
-    // add it back to the backlog so it reappears on the board
-    const allInLayout = new Set(Object.values(layout.storyOrder).flat());
-    let newLayout = layout;
-    if (!allInLayout.has(number)) {
-      newLayout = {
-        ...layout,
-        storyOrder: {
-          ...layout.storyOrder,
-          backlog: [...(layout.storyOrder.backlog ?? []), number],
-        },
-      };
-      saveLayout(owner, repo, newLayout).catch(() => { /* offline */ });
-    }
-
-    set({ issues: updatedIssues, layout: newLayout });
+    set({
+      issues: issues.map((i) =>
+        i.number === number ? { ...i, state: 'open' as const, closed_at: null } : i,
+      ),
+    });
   },
 
   deleteIssue: async (number, nodeId) => {
-    const { token, owner, repo, issues, layout } = get();
+    const { token, owner, repo, issues, projectIssues, layout } = get();
 
     const res = await fetch('https://api.github.com/graphql', {
       method: 'POST',
@@ -647,13 +627,16 @@ export const useAppStore = create<AppState>((set, get) => ({
     const newStoryOrder = Object.fromEntries(
       Object.entries(layout.storyOrder).map(([key, nums]) => [key, nums.filter((n) => n !== number)]),
     );
-    const newLayout: StoryMapLayout = {
-      userActivityOrder: layout.userActivityOrder.filter((n) => n !== number),
-      milestoneOrder: layout.milestoneOrder ?? [],
-      storyOrder: newStoryOrder,
-    };
+    const newProjectIssues = Object.fromEntries(
+      Object.entries(projectIssues).map(([pid, nums]) => [pid, nums.filter((n) => n !== number)]),
+    );
+    const newLayout: StoryMapLayout = { ...layout, storyOrder: newStoryOrder };
 
-    set({ issues: issues.filter((i) => i.number !== number), layout: newLayout });
+    set({
+      issues: issues.filter((i) => i.number !== number),
+      projectIssues: newProjectIssues,
+      layout: newLayout,
+    });
     saveLayout(owner, repo, newLayout).catch(() => { /* offline */ });
   },
 
