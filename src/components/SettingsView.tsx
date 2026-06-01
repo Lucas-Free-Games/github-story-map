@@ -54,6 +54,9 @@ export default function SettingsView() {
     owner,
     repo,
     issues,
+    projects,
+    linkedProjectIds,
+    setProjectLinked,
     setCredentials,
     fetchIssues,
     fetchLabels,
@@ -67,6 +70,7 @@ export default function SettingsView() {
   // General tab state
   const [ghOwner, setGhOwner] = useState(owner);
   const [ghRepo, setGhRepo] = useState(repo);
+  const [whitelistSearch, setWhitelistSearch] = useState('');
 
   // User details state
   const [address, setAddress] = useState('');
@@ -238,6 +242,67 @@ export default function SettingsView() {
                   Layout data (user activity order, wave order, story positions) is automatically synced to
                   Firestore when available. No configuration required.
                 </p>
+              </div>
+
+              <div className="border-t border-gray-200 pt-6">
+                <div className="flex items-baseline justify-between mb-1">
+                  <h2 className="text-base font-semibold text-gray-900">User Activity Whitelist</h2>
+                  <span className="text-xs text-gray-400 font-mono truncate ml-3">{owner}/{repo}</span>
+                </div>
+                <p className="text-sm text-gray-500 mb-3">
+                  Check a project to link it to this repository. Only linked projects appear in the Story Map, Kanban, and Roadmap views, and changes persist on GitHub.
+                </p>
+                {(() => {
+                  const linkedSet = new Set(linkedProjectIds);
+                  const linkedCount = projects.filter((p) => linkedSet.has(p.id)).length;
+                  const filtered = projects.filter((p) =>
+                    p.title.toLowerCase().includes(whitelistSearch.toLowerCase()),
+                  );
+                  return (
+                    <>
+                      <div className="flex items-center justify-between mb-2 gap-2">
+                        <input
+                          type="text"
+                          value={whitelistSearch}
+                          onChange={(e) => setWhitelistSearch(e.target.value)}
+                          placeholder="Search user activities…"
+                          className="flex-1 border border-gray-300 rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        />
+                      </div>
+                      <div className="text-xs text-gray-400 mb-2">
+                        {linkedCount} of {projects.length} linked to {repo}
+                      </div>
+                      <ul className="border border-gray-200 rounded-lg divide-y divide-gray-100 max-h-72 overflow-y-auto bg-white">
+                        {projects.length === 0 ? (
+                          <li className="px-3 py-3 text-sm text-gray-400 italic">No user activities found for this organization.</li>
+                        ) : filtered.length === 0 ? (
+                          <li className="px-3 py-3 text-sm text-gray-400 italic">No matches.</li>
+                        ) : (
+                          filtered.map((p) => {
+                            const checked = linkedSet.has(p.id);
+                            return (
+                              <li key={p.id}>
+                                <label className="w-full flex items-center gap-2 px-3 py-2 text-sm cursor-pointer hover:bg-gray-50">
+                                  <input
+                                    type="checkbox"
+                                    checked={checked}
+                                    onChange={() => setProjectLinked(p.id, !checked)}
+                                    className="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
+                                  />
+                                  <span className="text-gray-400 tabular-nums shrink-0 text-xs font-mono">#{p.number}</span>
+                                  <span className="truncate text-gray-800">{p.title}</span>
+                                  {p.closed && (
+                                    <span className="ml-auto px-1.5 py-0.5 rounded text-xs bg-gray-100 text-gray-500 shrink-0">closed</span>
+                                  )}
+                                </label>
+                              </li>
+                            );
+                          })
+                        )}
+                      </ul>
+                    </>
+                  );
+                })()}
               </div>
 
               <div className="border-t border-gray-200 pt-6">

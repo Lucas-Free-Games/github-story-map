@@ -209,14 +209,14 @@ function sortedMilestones(milestones: GitHubMilestone[], order: number[]): GitHu
 
 export default function RoadmapView() {
   const {
-    issues, projects, milestones, projectIssues, layout,
+    issues, projects, milestones, projectIssues, layout, linkedProjectIds,
     kanbanIssueStatuses, kanbanStatusColors, kanbanStatusColumns,
   } = useAppStore();
 
   const [cellMode, setCellMode] = useState<CellMode>('donut');
 
   const rows = sortedProjects(projects, layout.userActivityOrder).filter((p) =>
-    layout.includedProjects ? layout.includedProjects.includes(p.number) : !p.closed
+    linkedProjectIds.includes(p.id),
   );
   const cols = sortedMilestones(milestones, layout.milestoneOrder ?? []);
 

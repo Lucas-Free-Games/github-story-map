@@ -77,7 +77,7 @@ function SidebarItem({
 }
 
 export default function UserActivitiesView() {
-  const { projects, issues, projectIssues, createProject, updateProject, deleteProject, layout, toggleProjectInclusion, repo } = useAppStore();
+  const { projects, issues, projectIssues, createProject, updateProject, deleteProject, linkedProjectIds, setProjectLinked, repo } = useAppStore();
   const [selectedId, setSelectedId] = useState<string | null>(
     projects.length > 0 ? projects[0].id : null,
   );
@@ -182,9 +182,7 @@ export default function UserActivitiesView() {
             <p className="px-3 py-3 text-xs text-gray-400 italic">No user activities yet</p>
           ) : (
             projects.map((p) => {
-              const isIncluded = layout.includedProjects
-                ? layout.includedProjects.includes(p.number)
-                : !p.closed;
+              const isIncluded = linkedProjectIds.includes(p.id);
               return (
                 <SidebarItem
                   key={p.id}
@@ -194,7 +192,7 @@ export default function UserActivitiesView() {
                   openCount={issueCounts[p.id]?.open ?? 0}
                   closedCount={issueCounts[p.id]?.closed ?? 0}
                   isIncluded={isIncluded}
-                  onToggleInclusion={() => toggleProjectInclusion(p.number)}
+                  onToggleInclusion={() => setProjectLinked(p.id, !isIncluded)}
                 />
               );
             })
@@ -326,8 +324,8 @@ export default function UserActivitiesView() {
                     <label className="relative inline-flex items-center cursor-pointer">
                       <input
                         type="checkbox"
-                        checked={layout.includedProjects ? layout.includedProjects.includes(selected.number) : !selected.closed}
-                        onChange={() => toggleProjectInclusion(selected.number)}
+                        checked={linkedProjectIds.includes(selected.id)}
+                        onChange={() => setProjectLinked(selected.id, !linkedProjectIds.includes(selected.id))}
                         className="sr-only peer"
                       />
                       <div className="w-9 h-5 bg-gray-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-blue-600"></div>

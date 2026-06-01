@@ -43,6 +43,10 @@ interface AppState {
   kanbanItemIds: Record<number, string>;
   /** status option name → GitHub color enum string (e.g. "YELLOW", "GREEN"). */
   kanbanStatusColors: Record<string, string>;
+  /** GraphQL node ID for the currently selected repository, used to (un)link projects. */
+  repositoryId: string | null;
+  /** GraphQL node IDs of org projects currently linked to the active repository. */
+  linkedProjectIds: string[];
 
   setCredentials: (owner: string, repo: string) => void;
   signInWithGithub: () => Promise<void>;
@@ -118,7 +122,8 @@ interface AppState {
     fromProjectId: string | null,
     toProjectId: string | null,
   ) => Promise<void>;
-  toggleProjectInclusion: (projectNumber: number) => Promise<void>;
+  /** Link or unlink a GitHub Project from the active repository. */
+  setProjectLinked: (projectId: string, linked: boolean) => Promise<void>;
 }
 
 const emptyLayout: StoryMapLayout = { userActivityOrder: [], milestoneOrder: [], storyOrder: { backlog: [] } };
@@ -140,26 +145,6 @@ async function gql<T>(
     throw new Error(`${message}${location}`);
   }
   return json.data as T;
-}
-
-function includedProjectsKey(owner: string, repo: string): string {
-  return `included_projects_${owner}__${repo}`;
-}
-
-function loadIncludedProjects(owner: string, repo: string): number[] | undefined {
-  if (!owner || !repo) return undefined;
-  const raw = localStorage.getItem(includedProjectsKey(owner, repo));
-  if (!raw) return undefined;
-  try {
-    const parsed = JSON.parse(raw);
-    if (Array.isArray(parsed) && parsed.every((n) => typeof n === 'number')) return parsed;
-  } catch { /* fall through */ }
-  return undefined;
-}
-
-function saveIncludedProjects(owner: string, repo: string, list: number[]): void {
-  if (!owner || !repo) return;
-  localStorage.setItem(includedProjectsKey(owner, repo), JSON.stringify(list));
 }
 
 async function ensureLabel(
@@ -203,11 +188,13 @@ export const useAppStore = create<AppState>((set, get) => ({
   kanbanProjectStatusFields: {},
   kanbanItemIds: {},
   kanbanStatusColors: {},
+  repositoryId: null,
+  linkedProjectIds: [],
 
   setCredentials: (owner, repo) => {
     localStorage.setItem('gh_owner', owner);
     localStorage.setItem('gh_repo', repo);
-    set({ owner, repo, issues: [], layout: emptyLayout, error: null, milestones: [], statusLabels: [], projects: [], projectIssues: {}, kanbanMilestoneNumber: null, kanbanStatusColumns: [], kanbanIssueStatuses: {}, kanbanProjectStatusFields: {}, kanbanItemIds: {}, kanbanStatusColors: {} });
+    set({ owner, repo, issues: [], layout: emptyLayout, error: null, milestones: [], statusLabels: [], projects: [], projectIssues: {}, kanbanMilestoneNumber: null, kanbanStatusColumns: [], kanbanIssueStatuses: {}, kanbanProjectStatusFields: {}, kanbanItemIds: {}, kanbanStatusColors: {}, repositoryId: null, linkedProjectIds: [] });
   },
 
   signInWithGithub: async () => {
@@ -235,6 +222,7 @@ export const useAppStore = create<AppState>((set, get) => ({
         projects: [], projectIssues: {}, kanbanMilestoneNumber: null,
         kanbanStatusColumns: [], kanbanIssueStatuses: {}, kanbanProjectStatusFields: {},
         kanbanItemIds: {}, kanbanStatusColors: {},
+        repositoryId: null, linkedProjectIds: [],
       });
     }
   },
@@ -258,7 +246,7 @@ export const useAppStore = create<AppState>((set, get) => ({
     localStorage.removeItem('gh_token');
     localStorage.removeItem('gh_owner');
     localStorage.removeItem('gh_repo');
-    set({ token: '', owner: '', repo: '', issues: [], layout: emptyLayout, error: null, milestones: [], statusLabels: [], projects: [], projectIssues: {}, kanbanMilestoneNumber: null, kanbanStatusColumns: [], kanbanIssueStatuses: {}, kanbanProjectStatusFields: {}, kanbanItemIds: {}, kanbanStatusColors: {} });
+    set({ token: '', owner: '', repo: '', issues: [], layout: emptyLayout, error: null, milestones: [], statusLabels: [], projects: [], projectIssues: {}, kanbanMilestoneNumber: null, kanbanStatusColumns: [], kanbanIssueStatuses: {}, kanbanProjectStatusFields: {}, kanbanItemIds: {}, kanbanStatusColors: {}, repositoryId: null, linkedProjectIds: [] });
   },
 
   setView: (view) => set({ view }),
@@ -491,9 +479,6 @@ export const useAppStore = create<AppState>((set, get) => ({
         }
       }
 
-      const cachedIncluded = loadIncludedProjects(owner, repo);
-      if (cachedIncluded) layout = { ...layout, includedProjects: cachedIncluded };
-
       set({ issues: allItems, layout, loading: false });
     } catch (err: unknown) {
       const message = err instanceof Error ? err.message : 'Failed to fetch issues';
@@ -651,8 +636,9 @@ export const useAppStore = create<AppState>((set, get) => ({
 
     const data = await gql<{
       repositoryOwner: { projectsV2?: { nodes: ProjectNode[] } } | null;
+      repository: { id: string; projectsV2: { nodes: Array<{ id: string }> } } | null;
     }>(token, `
-      query($login: String!) {
+      query($login: String!, $owner: String!, $repo: String!) {
         repositoryOwner(login: $login) {
           ... on User {
             projectsV2(first: 50) {
@@ -671,8 +657,12 @@ export const useAppStore = create<AppState>((set, get) => ({
             }
           }
         }
+        repository(owner: $owner, name: $repo) {
+          id
+          projectsV2(first: 50) { nodes { id } }
+        }
       }
-    `, { login: owner });
+    `, { login: owner, owner, repo });
 
     const repoFullName = `${owner}/${repo}`;
     const nodes = data.repositoryOwner?.projectsV2?.nodes ?? [];
@@ -687,6 +677,9 @@ export const useAppStore = create<AppState>((set, get) => ({
         .map((c) => c.number);
     }
 
+    const repositoryId = data.repository?.id ?? null;
+    const linkedProjectIds = (data.repository?.projectsV2.nodes ?? []).map((n) => n.id);
+
     // Sync userActivityOrder with current project numbers (preserving saved order, appending new)
     const projectNumbers = projects.map((p) => p.number);
     const preserved = layout.userActivityOrder.filter((n) => projectNumbers.includes(n));
@@ -697,10 +690,10 @@ export const useAppStore = create<AppState>((set, get) => ({
 
     if (orderChanged) {
       const newLayout = { ...layout, userActivityOrder: newUserActivityOrder };
-      set({ projects, projectIssues, layout: newLayout });
+      set({ projects, projectIssues, layout: newLayout, repositoryId, linkedProjectIds });
       saveLayout(owner, repo, newLayout).catch(() => { /* offline */ });
     } else {
-      set({ projects, projectIssues });
+      set({ projects, projectIssues, repositoryId, linkedProjectIds });
     }
   },
 
@@ -816,7 +809,11 @@ export const useAppStore = create<AppState>((set, get) => ({
       }
     `, { projectId: project.id, repositoryId });
 
-    set({ projects: [project, ...projects] });
+    const { linkedProjectIds } = get();
+    set({
+      projects: [project, ...projects],
+      linkedProjectIds: linkedProjectIds.includes(project.id) ? linkedProjectIds : [...linkedProjectIds, project.id],
+    });
   },
 
   updateProject: async (id, title, description) => {
@@ -836,7 +833,7 @@ export const useAppStore = create<AppState>((set, get) => ({
   },
 
   deleteProject: async (id) => {
-    const { token, projects } = get();
+    const { token, projects, linkedProjectIds } = get();
     await gql(token, `
       mutation($projectId: ID!) {
         deleteProjectV2(input: { projectId: $projectId }) {
@@ -844,7 +841,10 @@ export const useAppStore = create<AppState>((set, get) => ({
         }
       }
     `, { projectId: id });
-    set({ projects: projects.filter((p) => p.id !== id) });
+    set({
+      projects: projects.filter((p) => p.id !== id),
+      linkedProjectIds: linkedProjectIds.filter((pid) => pid !== id),
+    });
   },
 
   reorderProjects: (fromIndex, toIndex) => {
@@ -1202,22 +1202,37 @@ export const useAppStore = create<AppState>((set, get) => ({
     }
   },
 
-  toggleProjectInclusion: async (projectNumber) => {
-    const { layout, owner, repo, projects } = get();
-    const currentIncluded = layout.includedProjects ?? projects.filter(p => !p.closed).map(p => p.number);
-    let nextIncluded: number[];
-    if (currentIncluded.includes(projectNumber)) {
-      nextIncluded = currentIncluded.filter((n) => n !== projectNumber);
-    } else {
-      nextIncluded = [...currentIncluded, projectNumber];
-    }
-    const newLayout = { ...layout, includedProjects: nextIncluded };
-    set({ layout: newLayout });
-    saveIncludedProjects(owner, repo, nextIncluded);
+  setProjectLinked: async (projectId, linked) => {
+    const { token, repositoryId, linkedProjectIds } = get();
+    if (!token || !repositoryId) return;
+
+    const snapshot = linkedProjectIds;
+    const nextLinked = linked
+      ? (linkedProjectIds.includes(projectId) ? linkedProjectIds : [...linkedProjectIds, projectId])
+      : linkedProjectIds.filter((id) => id !== projectId);
+    set({ linkedProjectIds: nextLinked });
+
     try {
-      await saveLayout(owner, repo, newLayout);
+      if (linked) {
+        await gql(token, `
+          mutation($projectId: ID!, $repositoryId: ID!) {
+            linkProjectV2ToRepository(input: { projectId: $projectId, repositoryId: $repositoryId }) {
+              repository { id }
+            }
+          }
+        `, { projectId, repositoryId });
+      } else {
+        await gql(token, `
+          mutation($projectId: ID!, $repositoryId: ID!) {
+            unlinkProjectV2FromRepository(input: { projectId: $projectId, repositoryId: $repositoryId }) {
+              repository { id }
+            }
+          }
+        `, { projectId, repositoryId });
+      }
     } catch (err) {
-      console.warn('Failed to persist layout change to Firebase', err);
+      set({ linkedProjectIds: snapshot });
+      throw err;
     }
   },
 }));
