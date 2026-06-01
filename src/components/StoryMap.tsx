@@ -102,7 +102,7 @@ function CardCell({ droppableId, items, onAdd, addColor = 'blue' }: CardCellProp
 
 export default function StoryMap() {
   const {
-    issues, projects, projectIssues, milestones, layout,
+    issues, projects, projectIssues, milestones, layout, linkedProjectIds,
     reorderProjects, reorderMilestones, moveIssueInGrid, showClosedIssues,
     createProject, createMilestone,
     columnWidths, setColumnWidth,
@@ -158,7 +158,7 @@ export default function StoryMap() {
   }
 
   const cols = sortedProjects(projects, layout.userActivityOrder).filter((p) =>
-    layout.includedProjects ? layout.includedProjects.includes(p.number) : !p.closed
+    linkedProjectIds.includes(p.id),
   );
   const visibleIssues = showClosedIssues ? issues : issues.filter((i) => i.state === 'open');
   const orderedMilestones = sortedMilestones(milestones, layout.milestoneOrder).filter(
