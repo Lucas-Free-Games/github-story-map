@@ -33,32 +33,36 @@ var __importStar = (this && this.__importStar) || (function () {
     };
 })();
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.geminiProxy = exports.anthropicProxy = void 0;
+exports.getUserKeyStatus = exports.deleteUserKey = exports.saveUserKey = exports.geminiProxy = exports.anthropicProxy = void 0;
 const https_1 = require("firebase-functions/v2/https");
-const params_1 = require("firebase-functions/params");
 const app_1 = require("firebase-admin/app");
 const auth_1 = require("firebase-admin/auth");
+const firestore_1 = require("firebase-admin/firestore");
 const https = __importStar(require("https"));
 const url_1 = require("url");
 if (!(0, app_1.getApps)().length)
     (0, app_1.initializeApp)();
-const ANTHROPIC_API_KEY = (0, params_1.defineSecret)('ANTHROPIC_API_KEY');
-const GEMINI_API_KEY = (0, params_1.defineSecret)('GEMINI_API_KEY');
-async function requireSignedInUser(req, res) {
+async function getUserKey(uid, provider) {
+    var _a;
+    const snap = await (0, firestore_1.getFirestore)().doc(`userKeys/${uid}`).get();
+    const data = snap.data();
+    return ((_a = data === null || data === void 0 ? void 0 : data[provider]) === null || _a === void 0 ? void 0 : _a.trim()) || null;
+}
+async function requireSignedInUid(req, res) {
     var _a;
     const header = (_a = req.headers.authorization) !== null && _a !== void 0 ? _a : '';
     const match = /^Bearer\s+(.+)$/.exec(header);
     if (!match) {
         res.status(401).json({ error: 'Missing Authorization: Bearer <Firebase ID token>' });
-        return false;
+        return null;
     }
     try {
-        await (0, auth_1.getAuth)().verifyIdToken(match[1]);
-        return true;
+        const decoded = await (0, auth_1.getAuth)().verifyIdToken(match[1]);
+        return decoded.uid;
     }
     catch (_b) {
         res.status(401).json({ error: 'Invalid or expired Firebase ID token' });
-        return false;
+        return null;
     }
 }
 function pipeUpstream(res, options, body) {
@@ -79,9 +83,15 @@ function pipeUpstream(res, options, body) {
         proxyReq.write(body);
     proxyReq.end();
 }
-exports.anthropicProxy = (0, https_1.onRequest)({ secrets: [ANTHROPIC_API_KEY], timeoutSeconds: 3600, cors: false }, async (req, res) => {
-    if (!(await requireSignedInUser(req, res)))
+exports.anthropicProxy = (0, https_1.onRequest)({ timeoutSeconds: 3600, cors: false }, async (req, res) => {
+    const uid = await requireSignedInUid(req, res);
+    if (!uid)
         return;
+    const apiKey = await getUserKey(uid, 'anthropic');
+    if (!apiKey) {
+        res.status(400).json({ error: 'No Anthropic API key configured. Add one in Settings.' });
+        return;
+    }
     const targetPath = req.path.replace(/^\/anthropic-api/, '') || '/';
     const targetUrl = new url_1.URL(`https://api.anthropic.com${targetPath}`);
     if (req.query) {
@@ -96,7 +106,7 @@ exports.anthropicProxy = (0, https_1.onRequest)({ secrets: [ANTHROPIC_API_KEY], 
             continue;
         forwardHeaders[key] = value;
     }
-    forwardHeaders['x-api-key'] = ANTHROPIC_API_KEY.value();
+    forwardHeaders['x-api-key'] = apiKey;
     const body = Buffer.isBuffer(req.body)
         ? req.body
         : req.body
@@ -109,9 +119,15 @@ exports.anthropicProxy = (0, https_1.onRequest)({ secrets: [ANTHROPIC_API_KEY], 
         headers: forwardHeaders,
     }, body);
 });
-exports.geminiProxy = (0, https_1.onRequest)({ secrets: [GEMINI_API_KEY], timeoutSeconds: 540, cors: false }, async (req, res) => {
-    if (!(await requireSignedInUser(req, res)))
+exports.geminiProxy = (0, https_1.onRequest)({ timeoutSeconds: 540, cors: false }, async (req, res) => {
+    const uid = await requireSignedInUid(req, res);
+    if (!uid)
         return;
+    const apiKey = await getUserKey(uid, 'gemini');
+    if (!apiKey) {
+        res.status(400).json({ error: 'No Gemini API key configured. Add one in Settings.' });
+        return;
+    }
     const targetPath = req.path.replace(/^\/gemini-api/, '') || '/';
     const targetUrl = new url_1.URL(`https://generativelanguage.googleapis.com${targetPath}`);
     if (req.query) {
@@ -121,7 +137,7 @@ exports.geminiProxy = (0, https_1.onRequest)({ secrets: [GEMINI_API_KEY], timeou
             targetUrl.searchParams.set(k, String(v));
         });
     }
-    targetUrl.searchParams.set('key', GEMINI_API_KEY.value());
+    targetUrl.searchParams.set('key', apiKey);
     const forwardHeaders = {};
     for (const [key, value] of Object.entries(req.headers)) {
         const k = key.toLowerCase();
@@ -140,5 +156,42 @@ exports.geminiProxy = (0, https_1.onRequest)({ secrets: [GEMINI_API_KEY], timeou
         method: req.method,
         headers: forwardHeaders,
     }, body);
+});
+function assertProvider(value) {
+    if (value !== 'anthropic' && value !== 'gemini') {
+        throw new https_1.HttpsError('invalid-argument', 'provider must be "anthropic" or "gemini"');
+    }
+}
+exports.saveUserKey = (0, https_1.onCall)(async (request) => {
+    var _a;
+    if (!request.auth)
+        throw new https_1.HttpsError('unauthenticated', 'Sign in required.');
+    const { provider, apiKey } = ((_a = request.data) !== null && _a !== void 0 ? _a : {});
+    assertProvider(provider);
+    if (typeof apiKey !== 'string' || apiKey.trim().length < 8) {
+        throw new https_1.HttpsError('invalid-argument', 'apiKey is required.');
+    }
+    await (0, firestore_1.getFirestore)().doc(`userKeys/${request.auth.uid}`).set({ [provider]: apiKey.trim() }, { merge: true });
+    return { ok: true };
+});
+exports.deleteUserKey = (0, https_1.onCall)(async (request) => {
+    var _a;
+    if (!request.auth)
+        throw new https_1.HttpsError('unauthenticated', 'Sign in required.');
+    const { provider } = ((_a = request.data) !== null && _a !== void 0 ? _a : {});
+    assertProvider(provider);
+    await (0, firestore_1.getFirestore)().doc(`userKeys/${request.auth.uid}`).set({ [provider]: firestore_1.FieldValue.delete() }, { merge: true });
+    return { ok: true };
+});
+exports.getUserKeyStatus = (0, https_1.onCall)(async (request) => {
+    var _a;
+    if (!request.auth)
+        throw new https_1.HttpsError('unauthenticated', 'Sign in required.');
+    const snap = await (0, firestore_1.getFirestore)().doc(`userKeys/${request.auth.uid}`).get();
+    const data = ((_a = snap.data()) !== null && _a !== void 0 ? _a : {});
+    return {
+        anthropic: !!data.anthropic,
+        gemini: !!data.gemini,
+    };
 });
 //# sourceMappingURL=index.js.map

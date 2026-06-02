@@ -1,7 +1,7 @@
-import { onRequest, type Request } from 'firebase-functions/v2/https';
-import { defineSecret } from 'firebase-functions/params';
+import { onRequest, onCall, HttpsError, type Request } from 'firebase-functions/v2/https';
 import { initializeApp, getApps } from 'firebase-admin/app';
 import { getAuth } from 'firebase-admin/auth';
+import { getFirestore, FieldValue } from 'firebase-admin/firestore';
 import * as https from 'https';
 import * as http from 'http';
 import type { Response } from 'express';
@@ -9,22 +9,32 @@ import { URL } from 'url';
 
 if (!getApps().length) initializeApp();
 
-const ANTHROPIC_API_KEY = defineSecret('ANTHROPIC_API_KEY');
-const GEMINI_API_KEY = defineSecret('GEMINI_API_KEY');
+type Provider = 'anthropic' | 'gemini';
 
-async function requireSignedInUser(req: Request, res: Response): Promise<boolean> {
+interface UserKeysDoc {
+  anthropic?: string;
+  gemini?: string;
+}
+
+async function getUserKey(uid: string, provider: Provider): Promise<string | null> {
+  const snap = await getFirestore().doc(`userKeys/${uid}`).get();
+  const data = snap.data() as UserKeysDoc | undefined;
+  return data?.[provider]?.trim() || null;
+}
+
+async function requireSignedInUid(req: Request, res: Response): Promise<string | null> {
   const header = req.headers.authorization ?? '';
   const match = /^Bearer\s+(.+)$/.exec(header);
   if (!match) {
     res.status(401).json({ error: 'Missing Authorization: Bearer <Firebase ID token>' });
-    return false;
+    return null;
   }
   try {
-    await getAuth().verifyIdToken(match[1]);
-    return true;
+    const decoded = await getAuth().verifyIdToken(match[1]);
+    return decoded.uid;
   } catch {
     res.status(401).json({ error: 'Invalid or expired Firebase ID token' });
-    return false;
+    return null;
   }
 }
 
@@ -49,9 +59,16 @@ function pipeUpstream(
 }
 
 export const anthropicProxy = onRequest(
-  { secrets: [ANTHROPIC_API_KEY], timeoutSeconds: 3600, cors: false },
+  { timeoutSeconds: 3600, cors: false },
   async (req, res) => {
-    if (!(await requireSignedInUser(req, res))) return;
+    const uid = await requireSignedInUid(req, res);
+    if (!uid) return;
+
+    const apiKey = await getUserKey(uid, 'anthropic');
+    if (!apiKey) {
+      res.status(400).json({ error: 'No Anthropic API key configured. Add one in Settings.' });
+      return;
+    }
 
     const targetPath = req.path.replace(/^\/anthropic-api/, '') || '/';
     const targetUrl = new URL(`https://api.anthropic.com${targetPath}`);
@@ -67,7 +84,7 @@ export const anthropicProxy = onRequest(
       if (k === 'host' || k === 'authorization' || k === 'x-api-key') continue;
       forwardHeaders[key] = value;
     }
-    forwardHeaders['x-api-key'] = ANTHROPIC_API_KEY.value();
+    forwardHeaders['x-api-key'] = apiKey;
 
     const body = Buffer.isBuffer(req.body)
       ? req.body
@@ -85,9 +102,16 @@ export const anthropicProxy = onRequest(
 );
 
 export const geminiProxy = onRequest(
-  { secrets: [GEMINI_API_KEY], timeoutSeconds: 540, cors: false },
+  { timeoutSeconds: 540, cors: false },
   async (req, res) => {
-    if (!(await requireSignedInUser(req, res))) return;
+    const uid = await requireSignedInUid(req, res);
+    if (!uid) return;
+
+    const apiKey = await getUserKey(uid, 'gemini');
+    if (!apiKey) {
+      res.status(400).json({ error: 'No Gemini API key configured. Add one in Settings.' });
+      return;
+    }
 
     const targetPath = req.path.replace(/^\/gemini-api/, '') || '/';
     const targetUrl = new URL(`https://generativelanguage.googleapis.com${targetPath}`);
@@ -97,7 +121,7 @@ export const geminiProxy = onRequest(
         targetUrl.searchParams.set(k, String(v));
       });
     }
-    targetUrl.searchParams.set('key', GEMINI_API_KEY.value());
+    targetUrl.searchParams.set('key', apiKey);
 
     const forwardHeaders: http.OutgoingHttpHeaders = {};
     for (const [key, value] of Object.entries(req.headers)) {
@@ -120,3 +144,44 @@ export const geminiProxy = onRequest(
     }, body);
   },
 );
+
+function assertProvider(value: unknown): asserts value is Provider {
+  if (value !== 'anthropic' && value !== 'gemini') {
+    throw new HttpsError('invalid-argument', 'provider must be "anthropic" or "gemini"');
+  }
+}
+
+export const saveUserKey = onCall(async (request) => {
+  if (!request.auth) throw new HttpsError('unauthenticated', 'Sign in required.');
+  const { provider, apiKey } = (request.data ?? {}) as { provider?: unknown; apiKey?: unknown };
+  assertProvider(provider);
+  if (typeof apiKey !== 'string' || apiKey.trim().length < 8) {
+    throw new HttpsError('invalid-argument', 'apiKey is required.');
+  }
+  await getFirestore().doc(`userKeys/${request.auth.uid}`).set(
+    { [provider]: apiKey.trim() },
+    { merge: true },
+  );
+  return { ok: true };
+});
+
+export const deleteUserKey = onCall(async (request) => {
+  if (!request.auth) throw new HttpsError('unauthenticated', 'Sign in required.');
+  const { provider } = (request.data ?? {}) as { provider?: unknown };
+  assertProvider(provider);
+  await getFirestore().doc(`userKeys/${request.auth.uid}`).set(
+    { [provider]: FieldValue.delete() },
+    { merge: true },
+  );
+  return { ok: true };
+});
+
+export const getUserKeyStatus = onCall(async (request) => {
+  if (!request.auth) throw new HttpsError('unauthenticated', 'Sign in required.');
+  const snap = await getFirestore().doc(`userKeys/${request.auth.uid}`).get();
+  const data = (snap.data() ?? {}) as UserKeysDoc;
+  return {
+    anthropic: !!data.anthropic,
+    gemini: !!data.gemini,
+  };
+});
