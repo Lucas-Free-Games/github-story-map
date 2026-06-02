@@ -230,10 +230,9 @@ export default function EditIssueModal({ issue, onClose, initialTab = 'descripti
   useEffect(() => () => { abortRef.current?.abort(); }, []);
 
   const openProjects = projects.filter((p) => !p.closed);
-  const hasGeminiKey = Boolean(geminiSettings.apiKey);
+  const hasGeminiKey = true;
   const anthropicSettings = loadAnthropicSettings();
   const hasAnthropicSettings = Boolean(
-    anthropicSettings.apiKey &&
     anthropicSettings.agentId &&
     anthropicSettings.envId &&
     anthropicSettings.vaultId,
@@ -262,7 +261,6 @@ export default function EditIssueModal({ issue, onClose, initialTab = 'descripti
       // Open the SSE stream FIRST (GET /stream), then send the task message.
       // Per the docs: the stream must be open before sending to avoid race conditions.
       const streamPromise = streamEvents(
-        anthropicSettings.apiKey,
         sessionId,
         (event: AgentEvent) => {
           switch (event.type) {
@@ -358,7 +356,6 @@ export default function EditIssueModal({ issue, onClose, initialTab = 'descripti
 
       pushLog('status', '▶ Sending task…');
       await sendTaskMessage(
-        anthropicSettings.apiKey,
         sessionId,
         `implement issue #${issue.number} for ${owner}/${repo}`,
       );
@@ -379,7 +376,7 @@ export default function EditIssueModal({ issue, onClose, initialTab = 'descripti
       pushLog('error', `✗ ${msg}`);
       setCodingState('error');
     } finally {
-      if (sessionId) archiveSession(anthropicSettings.apiKey, sessionId).catch(() => {});
+      if (sessionId) archiveSession(sessionId).catch(() => {});
     }
   }
 

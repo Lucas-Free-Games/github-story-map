@@ -52,3 +52,9 @@ export async function signOutFromFirebase(): Promise<void> {
 export function observeAuth(cb: (user: User | null) => void): () => void {
   return onAuthStateChanged(auth, cb);
 }
+
+export async function getFirebaseIdToken(): Promise<string> {
+  const user = auth.currentUser;
+  if (!user) throw new Error('Not signed in.');
+  return user.getIdToken();
+}

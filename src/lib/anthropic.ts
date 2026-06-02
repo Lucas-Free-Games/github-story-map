@@ -1,5 +1,8 @@
-// Requests go through a local proxy (Vite dev) or Firebase Function (production)
-// to avoid browser CORS restrictions on api.anthropic.com
+// All requests go through /anthropic-api/* — a Firebase Function that
+// injects the Anthropic API key server-side and verifies the caller's
+// Firebase ID token. The browser never holds the key.
+import { getFirebaseIdToken } from './auth';
+
 const BASE = '/anthropic-api/v1';
 // Session lifecycle uses managed-agents only; events/stream use agent-api only
 const BETA_SESSIONS = 'managed-agents-2026-04-01';
@@ -9,7 +12,6 @@ const VERSION = '2023-06-01';
 // --- Settings ---
 
 export interface AnthropicSettings {
-  apiKey: string;
   agentId: string;
   envId: string;
   vaultId: string;
@@ -17,7 +19,6 @@ export interface AnthropicSettings {
 
 export function loadAnthropicSettings(): AnthropicSettings {
   return {
-    apiKey:  localStorage.getItem('anthropic_api_key')  ?? import.meta.env.VITE_ANTHROPIC_API_KEY  ?? '',
     agentId: localStorage.getItem('anthropic_agent_id') ?? import.meta.env.VITE_ANTHROPIC_AGENT_ID ?? '',
     envId:   localStorage.getItem('anthropic_env_id')   ?? import.meta.env.VITE_ANTHROPIC_ENV_ID   ?? '',
     vaultId: localStorage.getItem('anthropic_vault_id') ?? import.meta.env.VITE_ANTHROPIC_VAULT_ID ?? '',
@@ -25,7 +26,6 @@ export function loadAnthropicSettings(): AnthropicSettings {
 }
 
 export function saveAnthropicSettings(s: AnthropicSettings): void {
-  localStorage.setItem('anthropic_api_key',  s.apiKey.trim());
   localStorage.setItem('anthropic_agent_id', s.agentId.trim());
   localStorage.setItem('anthropic_env_id',   s.envId.trim());
   localStorage.setItem('anthropic_vault_id', s.vaultId.trim());
@@ -33,9 +33,10 @@ export function saveAnthropicSettings(s: AnthropicSettings): void {
 
 // --- HTTP helpers ---
 
-function jsonHeaders(apiKey: string, beta = BETA_SESSIONS): Record<string, string> {
+async function jsonHeaders(beta = BETA_SESSIONS): Promise<Record<string, string>> {
+  const idToken = await getFirebaseIdToken();
   return {
-    'x-api-key': apiKey,
+    Authorization: `Bearer ${idToken}`,
     'anthropic-version': VERSION,
     'anthropic-beta': beta,
     'content-type': 'application/json',
@@ -44,15 +45,10 @@ function jsonHeaders(apiKey: string, beta = BETA_SESSIONS): Record<string, strin
 
 // --- Connection test ---
 
-export async function testAnthropicConnection(apiKey: string): Promise<void> {
-  const res = await fetch('https://api.anthropic.com/v1/messages', {
+export async function testAnthropicConnection(): Promise<void> {
+  const res = await fetch(`${BASE}/messages`, {
     method: 'POST',
-    headers: {
-      'x-api-key': apiKey,
-      'anthropic-version': VERSION,
-      'content-type': 'application/json',
-      'anthropic-dangerous-direct-browser-access': 'true',
-    },
+    headers: await jsonHeaders(),
     body: JSON.stringify({
       model: 'claude-haiku-4-5-20251001',
       max_tokens: 1,
@@ -61,7 +57,7 @@ export async function testAnthropicConnection(apiKey: string): Promise<void> {
   });
   if (!res.ok) {
     const err = await res.json().catch(() => ({})) as { error?: { message?: string } };
-    throw new Error(err?.error?.message ?? `Anthropic API error ${res.status}`);
+    throw new Error(err?.error?.message ?? `Anthropic proxy error ${res.status}`);
   }
 }
 
@@ -74,7 +70,7 @@ export async function createSession(
   console.log('[anthropic] POST', url);
   const res = await fetch(url, {
     method: 'POST',
-    headers: jsonHeaders(settings.apiKey),
+    headers: await jsonHeaders(),
     body: JSON.stringify({
       agent: { type: 'agent', id: settings.agentId },
       environment_id: settings.envId,
@@ -95,7 +91,6 @@ export async function createSession(
 
 /** Send a task message to the session (POST /sessions/:id/events). */
 export async function sendTaskMessage(
-  apiKey: string,
   sessionId: string,
   text: string,
 ): Promise<void> {
@@ -103,7 +98,7 @@ export async function sendTaskMessage(
   console.log('[anthropic] POST events', url);
   const res = await fetch(url, {
     method: 'POST',
-    headers: jsonHeaders(apiKey, BETA_EVENTS),
+    headers: await jsonHeaders(BETA_EVENTS),
     body: JSON.stringify({
       events: [{ type: 'user', content: [{ type: 'text', text }] }],
     }),
@@ -118,10 +113,10 @@ export async function sendTaskMessage(
   }
 }
 
-export async function archiveSession(apiKey: string, sessionId: string): Promise<void> {
+export async function archiveSession(sessionId: string): Promise<void> {
   await fetch(`${BASE}/sessions/${sessionId}/archive`, {
     method: 'POST',
-    headers: jsonHeaders(apiKey, BETA_EVENTS),
+    headers: await jsonHeaders(BETA_EVENTS),
     body: '{}',
   });
 }
@@ -147,7 +142,6 @@ export interface AgentEvent {
  * The stream stays alive until session.status_idle or session.status_terminated.
  */
 export async function streamEvents(
-  apiKey: string,
   sessionId: string,
   onEvent: (e: AgentEvent) => void,
   onRaw: (line: string) => void,
@@ -156,9 +150,10 @@ export async function streamEvents(
   // Correct endpoint: /stream (live SSE feed), NOT /events (history list)
   const url = `${BASE}/sessions/${sessionId}/stream?beta=true`;
   console.log('[anthropic] GET (SSE stream)', url);
+  const idToken = await getFirebaseIdToken();
   const res = await fetch(url, {
     headers: {
-      'x-api-key': apiKey,
+      Authorization: `Bearer ${idToken}`,
       'anthropic-version': VERSION,
       'anthropic-beta': BETA_EVENTS,
       accept: 'text/event-stream',

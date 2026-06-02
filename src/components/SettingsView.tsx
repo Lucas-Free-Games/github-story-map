@@ -102,7 +102,6 @@ export default function SettingsView() {
 
   // Describing tab state
   const savedGemini = loadGeminiSettings();
-  const [apiKey, setApiKey] = useState(savedGemini.apiKey);
   const [model, setModel] = useState(savedGemini.model || DEFAULT_GEMINI_MODEL);
   const [exampleNumbers, setExampleNumbers] = useState<number[]>(savedGemini.exampleIssueNumbers);
   const [extraInstructions, setExtraInstructions] = useState(savedGemini.extraInstructions);
@@ -111,7 +110,6 @@ export default function SettingsView() {
 
   // Coding tab state
   const savedAnthropic = loadAnthropicSettings();
-  const [anthropicKey, setAnthropicKey] = useState(savedAnthropic.apiKey);
   const [agentId, setAgentId] = useState(savedAnthropic.agentId);
   const [envId, setEnvId] = useState(savedAnthropic.envId);
   const [vaultId, setVaultId] = useState(savedAnthropic.vaultId);
@@ -121,8 +119,6 @@ export default function SettingsView() {
   const [saved_, setSaved_] = useState(false);
 
   async function handleTest() {
-    if (!apiKey.trim()) return;
-    saveGeminiSettings({ apiKey, model, exampleIssueNumbers: exampleNumbers, extraInstructions });
     setLedState('testing');
     try {
       await testGeminiConnection();
@@ -133,11 +129,10 @@ export default function SettingsView() {
   }
 
   async function handleAnthropicTest() {
-    if (!anthropicKey.trim()) return;
     setAnthropicLedState('testing');
     setAnthropicError(null);
     try {
-      await testAnthropicConnection(anthropicKey.trim());
+      await testAnthropicConnection();
       setAnthropicLedState('success');
     } catch (e) {
       setAnthropicLedState('error');
@@ -164,9 +159,9 @@ export default function SettingsView() {
         notes: notes.trim() || undefined,
       }).catch(() => {});
     } else if (activeTab === 'describing') {
-      saveGeminiSettings({ apiKey, model, exampleIssueNumbers: exampleNumbers, extraInstructions });
+      saveGeminiSettings({ model, exampleIssueNumbers: exampleNumbers, extraInstructions });
     } else if (activeTab === 'coding') {
-      saveAnthropicSettings({ apiKey: anthropicKey, agentId, envId, vaultId });
+      saveAnthropicSettings({ agentId, envId, vaultId });
     }
     setSaved_(true);
     setTimeout(() => setSaved_(false), 2000);
@@ -376,21 +371,11 @@ export default function SettingsView() {
             <>
               <div>
                 <div className="flex items-center justify-between mb-1">
-                  <label className="block text-sm font-medium text-gray-700">Gemini API Key</label>
+                  <span className="block text-sm font-medium text-gray-700">Gemini Connection</span>
                   <Led state={ledState} onClick={handleTest} />
                 </div>
-                <input
-                  type="password"
-                  value={apiKey}
-                  onChange={(e) => {
-                    setApiKey(e.target.value);
-                    setLedState('idle');
-                  }}
-                  placeholder="AIza…"
-                  className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-                />
                 <p className="text-xs text-gray-400 mt-1">
-                  Stored in localStorage only. Used to auto-generate issue descriptions via Gemini.
+                  The Gemini API key is held server-side in Secret Manager and never reaches the browser. Click the LED to verify the proxy works for your account.
                 </p>
               </div>
 
@@ -535,18 +520,12 @@ export default function SettingsView() {
               <div className="space-y-4">
                 <div>
                   <div className="flex items-center justify-between mb-1">
-                    <label className="block text-sm font-medium text-gray-700">
-                      Anthropic API Key
-                    </label>
+                    <span className="block text-sm font-medium text-gray-700">Anthropic Connection</span>
                     <Led state={anthropicLedState} onClick={handleAnthropicTest} />
                   </div>
-                  <input
-                    type="password"
-                    value={anthropicKey}
-                    onChange={(e) => { setAnthropicKey(e.target.value); setAnthropicLedState('idle'); setAnthropicError(null); }}
-                    placeholder="sk-ant-…"
-                    className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-orange-400 font-mono"
-                  />
+                  <p className="text-xs text-gray-400">
+                    The Anthropic API key is held server-side in Secret Manager and never reaches the browser. Click the LED to verify the proxy.
+                  </p>
                   {anthropicError && (
                     <p className="text-xs text-red-600 mt-1 break-words">{anthropicError}</p>
                   )}

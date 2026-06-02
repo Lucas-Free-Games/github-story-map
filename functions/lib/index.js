@@ -33,39 +33,38 @@ var __importStar = (this && this.__importStar) || (function () {
     };
 })();
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.anthropicProxy = void 0;
-const functions = __importStar(require("firebase-functions"));
+exports.geminiProxy = exports.anthropicProxy = void 0;
+const https_1 = require("firebase-functions/v2/https");
+const params_1 = require("firebase-functions/params");
+const app_1 = require("firebase-admin/app");
+const auth_1 = require("firebase-admin/auth");
 const https = __importStar(require("https"));
 const url_1 = require("url");
-/**
- * Proxies requests from /anthropic-api/* to https://api.anthropic.com/*
- * so the browser avoids CORS restrictions.
- */
-exports.anthropicProxy = functions.https.onRequest((req, res) => {
-    // Strip the /anthropic-api prefix
-    const targetPath = req.path.replace(/^\/anthropic-api/, '') || '/';
-    const targetUrl = new url_1.URL(`https://api.anthropic.com${targetPath}`);
-    if (req.query) {
-        Object.entries(req.query).forEach(([k, v]) => {
-            targetUrl.searchParams.set(k, String(v));
-        });
+if (!(0, app_1.getApps)().length)
+    (0, app_1.initializeApp)();
+const ANTHROPIC_API_KEY = (0, params_1.defineSecret)('ANTHROPIC_API_KEY');
+const GEMINI_API_KEY = (0, params_1.defineSecret)('GEMINI_API_KEY');
+async function requireSignedInUser(req, res) {
+    var _a;
+    const header = (_a = req.headers.authorization) !== null && _a !== void 0 ? _a : '';
+    const match = /^Bearer\s+(.+)$/.exec(header);
+    if (!match) {
+        res.status(401).json({ error: 'Missing Authorization: Bearer <Firebase ID token>' });
+        return false;
     }
-    // Forward all headers except host
-    const forwardHeaders = {};
-    for (const [key, value] of Object.entries(req.headers)) {
-        if (key.toLowerCase() !== 'host')
-            forwardHeaders[key] = value;
+    try {
+        await (0, auth_1.getAuth)().verifyIdToken(match[1]);
+        return true;
     }
-    const options = {
-        hostname: targetUrl.hostname,
-        path: targetUrl.pathname + targetUrl.search,
-        method: req.method,
-        headers: forwardHeaders,
-    };
+    catch (_b) {
+        res.status(401).json({ error: 'Invalid or expired Firebase ID token' });
+        return false;
+    }
+}
+function pipeUpstream(res, options, body) {
     const proxyReq = https.request(options, (proxyRes) => {
         var _a;
         res.status((_a = proxyRes.statusCode) !== null && _a !== void 0 ? _a : 502);
-        // Forward response headers (needed for SSE)
         for (const [key, value] of Object.entries(proxyRes.headers)) {
             if (value !== undefined)
                 res.setHeader(key, value);
@@ -76,12 +75,70 @@ exports.anthropicProxy = functions.https.onRequest((req, res) => {
         console.error('Proxy error:', err);
         res.status(502).json({ error: err.message });
     });
-    if (req.body && Buffer.isBuffer(req.body)) {
-        proxyReq.write(req.body);
-    }
-    else if (req.body) {
-        proxyReq.write(JSON.stringify(req.body));
-    }
+    if (body)
+        proxyReq.write(body);
     proxyReq.end();
+}
+exports.anthropicProxy = (0, https_1.onRequest)({ secrets: [ANTHROPIC_API_KEY], timeoutSeconds: 3600, cors: false }, async (req, res) => {
+    if (!(await requireSignedInUser(req, res)))
+        return;
+    const targetPath = req.path.replace(/^\/anthropic-api/, '') || '/';
+    const targetUrl = new url_1.URL(`https://api.anthropic.com${targetPath}`);
+    if (req.query) {
+        Object.entries(req.query).forEach(([k, v]) => {
+            targetUrl.searchParams.set(k, String(v));
+        });
+    }
+    const forwardHeaders = {};
+    for (const [key, value] of Object.entries(req.headers)) {
+        const k = key.toLowerCase();
+        if (k === 'host' || k === 'authorization' || k === 'x-api-key')
+            continue;
+        forwardHeaders[key] = value;
+    }
+    forwardHeaders['x-api-key'] = ANTHROPIC_API_KEY.value();
+    const body = Buffer.isBuffer(req.body)
+        ? req.body
+        : req.body
+            ? JSON.stringify(req.body)
+            : undefined;
+    pipeUpstream(res, {
+        hostname: targetUrl.hostname,
+        path: targetUrl.pathname + targetUrl.search,
+        method: req.method,
+        headers: forwardHeaders,
+    }, body);
+});
+exports.geminiProxy = (0, https_1.onRequest)({ secrets: [GEMINI_API_KEY], timeoutSeconds: 540, cors: false }, async (req, res) => {
+    if (!(await requireSignedInUser(req, res)))
+        return;
+    const targetPath = req.path.replace(/^\/gemini-api/, '') || '/';
+    const targetUrl = new url_1.URL(`https://generativelanguage.googleapis.com${targetPath}`);
+    if (req.query) {
+        Object.entries(req.query).forEach(([k, v]) => {
+            if (k.toLowerCase() === 'key')
+                return;
+            targetUrl.searchParams.set(k, String(v));
+        });
+    }
+    targetUrl.searchParams.set('key', GEMINI_API_KEY.value());
+    const forwardHeaders = {};
+    for (const [key, value] of Object.entries(req.headers)) {
+        const k = key.toLowerCase();
+        if (k === 'host' || k === 'authorization')
+            continue;
+        forwardHeaders[key] = value;
+    }
+    const body = Buffer.isBuffer(req.body)
+        ? req.body
+        : req.body
+            ? JSON.stringify(req.body)
+            : undefined;
+    pipeUpstream(res, {
+        hostname: targetUrl.hostname,
+        path: targetUrl.pathname + targetUrl.search,
+        method: req.method,
+        headers: forwardHeaders,
+    }, body);
 });
 //# sourceMappingURL=index.js.map

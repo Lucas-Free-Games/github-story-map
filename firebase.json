@@ -21,6 +21,13 @@
         }
       },
       {
+        "source": "/gemini-api/**",
+        "function": {
+          "functionId": "geminiProxy",
+          "region": "us-central1"
+        }
+      },
+      {
         "source": "**",
         "destination": "/index.html"
       }
