@@ -56,8 +56,11 @@ export async function testAnthropicConnection(): Promise<void> {
     }),
   });
   if (!res.ok) {
-    const err = await res.json().catch(() => ({})) as { error?: { message?: string } };
-    throw new Error(err?.error?.message ?? `Anthropic proxy error ${res.status}`);
+    const err = await res.json().catch(() => ({})) as { error?: { message?: string } | string };
+    const msg =
+      typeof err?.error === 'string' ? err.error :
+      err?.error?.message ?? `Anthropic proxy error ${res.status}`;
+    throw new Error(msg);
   }
 }
 

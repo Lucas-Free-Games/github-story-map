@@ -82,10 +82,17 @@ export const anthropicProxy = onRequest(
     const forwardHeaders: http.OutgoingHttpHeaders = {};
     for (const [key, value] of Object.entries(req.headers)) {
       const k = key.toLowerCase();
-      if (k === 'host' || k === 'authorization' || k === 'x-api-key') continue;
+      // Drop browser-origin fingerprints so Anthropic doesn't classify this
+      // as a direct browser call and demand the dangerous-access header.
+      if (
+        k === 'host' || k === 'authorization' || k === 'x-api-key' ||
+        k === 'origin' || k === 'referer' || k === 'user-agent' ||
+        k.startsWith('sec-') || k === 'cookie'
+      ) continue;
       forwardHeaders[key] = value;
     }
     forwardHeaders['x-api-key'] = apiKey;
+    forwardHeaders['user-agent'] = 'github-story-map';
 
     const body = Buffer.isBuffer(req.body)
       ? req.body

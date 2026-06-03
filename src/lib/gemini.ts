@@ -50,8 +50,11 @@ export async function testGeminiConnection(): Promise<void> {
     body: JSON.stringify({ contents: [{ parts: [{ text: 'Say OK' }] }] }),
   });
   if (!res.ok) {
-    const err = await res.json().catch(() => ({})) as { error?: { message?: string } };
-    throw new Error(err?.error?.message ?? `Gemini proxy error ${res.status}`);
+    const err = await res.json().catch(() => ({})) as { error?: { message?: string } | string };
+    const msg =
+      typeof err?.error === 'string' ? err.error :
+      err?.error?.message ?? `Gemini proxy error ${res.status}`;
+    throw new Error(msg);
   }
 }
 
@@ -156,8 +159,11 @@ export async function generateDescription(
   });
 
   if (!res.ok) {
-    const err = await res.json().catch(() => ({})) as { error?: { message?: string } };
-    throw new Error(err?.error?.message ?? `Gemini proxy error ${res.status}`);
+    const err = await res.json().catch(() => ({})) as { error?: { message?: string } | string };
+    const msg =
+      typeof err?.error === 'string' ? err.error :
+      err?.error?.message ?? `Gemini proxy error ${res.status}`;
+    throw new Error(msg);
   }
 
   const data = await res.json() as { candidates?: { content?: { parts?: { text?: string }[] } }[] };

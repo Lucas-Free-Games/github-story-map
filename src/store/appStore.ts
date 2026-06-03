@@ -17,16 +17,14 @@ localStorage.removeItem('gh_token');
 // looks up the user's stored GitHub token in Firestore, and injects it
 // server-side. The browser never holds the GitHub token.
 function makeOctokit(): Octokit {
-  return new Octokit({
+  const octokit = new Octokit({
     baseUrl: `${window.location.origin}/github-api`,
-    request: {
-      hook: async (request: (opts: unknown) => unknown, options: { headers?: Record<string, string> }) => {
-        const idToken = await getFirebaseIdToken();
-        options.headers = { ...(options.headers ?? {}), authorization: `Bearer ${idToken}` };
-        return request(options);
-      },
-    },
   });
+  octokit.hook.before('request', async (options) => {
+    const idToken = await getFirebaseIdToken();
+    options.headers = { ...options.headers, authorization: `Bearer ${idToken}` };
+  });
+  return octokit;
 }
 
 interface AppState {
