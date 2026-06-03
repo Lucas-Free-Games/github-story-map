@@ -12,7 +12,7 @@ interface Props {
 }
 
 export default function CreateIssueModal({ defaultProjectId, defaultMilestoneNumber, defaultStatusLabel, onClose }: Props) {
-  const { token, owner, repo, projects, milestones, statusLabels, createIssue } = useAppStore();
+  const { owner, repo, projects, milestones, statusLabels, createIssue } = useAppStore();
 
   const [title, setTitle] = useState('');
   const [body, setBody] = useState('');
@@ -43,7 +43,7 @@ export default function CreateIssueModal({ defaultProjectId, defaultMilestoneNum
         waveName: wave?.title,
         waveDescription: wave?.description ?? undefined,
       };
-      const result = await generateDescription(token, owner, repo, title.trim(), body.trim(), context, geminiModel);
+      const result = await generateDescription(owner, repo, title.trim(), body.trim(), context, geminiModel);
       setBody(result);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Generation failed');
@@ -151,7 +151,6 @@ export default function CreateIssueModal({ defaultProjectId, defaultMilestoneNum
               className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none"
             />
             <ImageAttacher
-              token={token}
               owner={owner}
               repo={repo}
               images={attachedImages}

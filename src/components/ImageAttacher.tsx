@@ -14,7 +14,6 @@ interface Props {
   readOnly?: boolean;
   /** Images at indices 0..lockedCount-1 have no remove button (they're from the saved body). */
   lockedCount?: number;
-  token?: string;
   owner?: string;
   repo?: string;
 }
@@ -39,7 +38,7 @@ async function fileToBase64(file: File): Promise<string> {
 
 export default function ImageAttacher({
   images, onAdd, onRemove, readOnly = false, lockedCount = 0,
-  token = '', owner = '', repo = '',
+  owner = '', repo = '',
 }: Props) {
   const [uploading, setUploading] = useState(false);
   const [uploadError, setUploadError] = useState('');
@@ -61,7 +60,7 @@ export default function ImageAttacher({
     try {
       for (const file of imageFiles) {
         const base64 = await fileToBase64(file);
-        const url = await uploadImageToRepo(token, owner, repo, file.name, base64);
+        const url = await uploadImageToRepo(owner, repo, file.name, base64);
         onAddRef.current({ url, name: file.name });
       }
     } catch (err) {
@@ -69,7 +68,7 @@ export default function ImageAttacher({
     } finally {
       setUploading(false);
     }
-  }, [token, owner, repo, readOnly]);
+  }, [owner, repo, readOnly]);
 
   const handleFilesRef = useRef(handleFiles);
   useEffect(() => { handleFilesRef.current = handleFiles; }, [handleFiles]);

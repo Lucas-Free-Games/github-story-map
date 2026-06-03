@@ -28,6 +28,13 @@
         }
       },
       {
+        "source": "/github-api/**",
+        "function": {
+          "functionId": "githubProxy",
+          "region": "us-central1"
+        }
+      },
+      {
         "source": "**",
         "destination": "/index.html"
       }

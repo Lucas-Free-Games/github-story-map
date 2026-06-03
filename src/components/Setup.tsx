@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useAppStore } from '../store/appStore';
+import { getFirebaseIdToken } from '../lib/auth';
 
 interface Repo {
   full_name: string;
@@ -8,7 +9,7 @@ interface Repo {
 }
 
 export default function Setup() {
-  const { token, setCredentials, signOut, fetchIssues, fetchLabels, fetchProjects, fetchMilestones } = useAppStore();
+  const { setCredentials, signOut, fetchIssues, fetchLabels, fetchProjects, fetchMilestones } = useAppStore();
   const [repos, setRepos] = useState<Repo[]>([]);
   const [fetchingRepos, setFetchingRepos] = useState(false);
   const [repoError, setRepoError] = useState('');
@@ -16,17 +17,17 @@ export default function Setup() {
   const [connecting, setConnecting] = useState(false);
 
   useEffect(() => {
-    if (!token) return;
     setFetchingRepos(true);
     setRepoError('');
     (async () => {
       try {
+        const idToken = await getFirebaseIdToken();
         const all: Repo[] = [];
         let page = 1;
         while (true) {
           const res = await fetch(
-            `https://api.github.com/user/repos?per_page=100&page=${page}&sort=updated`,
-            { headers: { Authorization: `token ${token}`, Accept: 'application/vnd.github.v3+json' } },
+            `/github-api/user/repos?per_page=100&page=${page}&sort=updated`,
+            { headers: { Authorization: `Bearer ${idToken}`, Accept: 'application/vnd.github.v3+json' } },
           );
           if (!res.ok) throw new Error('GitHub returned ' + res.status + ' — your session may have expired. Sign out and back in.');
           const data: Repo[] = await res.json();
@@ -41,7 +42,7 @@ export default function Setup() {
         setFetchingRepos(false);
       }
     })();
-  }, [token]);
+  }, []);
 
   async function handleSelectRepo(fullName: string) {
     const [owner, repo] = fullName.split('/');

@@ -5,12 +5,31 @@ import { loadLayout, saveLayout, loadUserProfile, saveUserProfile } from '../lib
 import {
   signInWithGithub,
   signOutFromFirebase,
-  getCachedGithubToken,
-  clearCachedGithubToken,
+  getFirebaseIdToken,
 } from '../lib/auth';
 
+// One-shot migration: drop any GitHub OAuth token still cached locally
+// from the pre-proxy flow.
+localStorage.removeItem('gh_token');
+
+// All GitHub calls go through /github-api/** which is rewritten to the
+// githubProxy Cloud Function. The proxy verifies the Firebase ID token,
+// looks up the user's stored GitHub token in Firestore, and injects it
+// server-side. The browser never holds the GitHub token.
+function makeOctokit(): Octokit {
+  return new Octokit({
+    baseUrl: `${window.location.origin}/github-api`,
+    request: {
+      hook: async (request: (opts: unknown) => unknown, options: { headers?: Record<string, string> }) => {
+        const idToken = await getFirebaseIdToken();
+        options.headers = { ...(options.headers ?? {}), authorization: `Bearer ${idToken}` };
+        return request(options);
+      },
+    },
+  });
+}
+
 interface AppState {
-  token: string;
   owner: string;
   repo: string;
   authStatus: 'loading' | 'signed-in' | 'signed-out';
@@ -51,7 +70,7 @@ interface AppState {
   setCredentials: (owner: string, repo: string) => void;
   signInWithGithub: () => Promise<void>;
   signOut: () => Promise<void>;
-  setAuthSignedIn: (token: string, login: string) => void;
+  setAuthSignedIn: (login: string) => void;
   setAuthSignedOut: () => void;
   clearAuthError: () => void;
   fetchIssues: () => Promise<void>;
@@ -129,13 +148,13 @@ interface AppState {
 const emptyLayout: StoryMapLayout = { userActivityOrder: [], milestoneOrder: [], storyOrder: { backlog: [] } };
 
 async function gql<T>(
-  token: string,
   query: string,
   variables?: Record<string, unknown>,
 ): Promise<T> {
-  const res = await fetch('https://api.github.com/graphql', {
+  const idToken = await getFirebaseIdToken();
+  const res = await fetch('/github-api/graphql', {
     method: 'POST',
-    headers: { Authorization: `bearer ${token}`, 'Content-Type': 'application/json' },
+    headers: { Authorization: `Bearer ${idToken}`, 'Content-Type': 'application/json' },
     body: JSON.stringify({ query, variables }),
   });
   const json = await res.json() as { data?: T; errors?: { message: string; path?: string[] }[] };
@@ -162,7 +181,6 @@ async function ensureLabel(
 }
 
 export const useAppStore = create<AppState>((set, get) => ({
-  token: getCachedGithubToken(),
   owner: localStorage.getItem('gh_owner') ?? import.meta.env.VITE_GITHUB_OWNER ?? '',
   repo: localStorage.getItem('gh_repo') ?? import.meta.env.VITE_GITHUB_REPO ?? '',
   authStatus: 'loading',
@@ -200,8 +218,8 @@ export const useAppStore = create<AppState>((set, get) => ({
   signInWithGithub: async () => {
     set({ authError: null });
     try {
-      const { githubToken } = await signInWithGithub();
-      set({ token: githubToken, authStatus: 'signed-in' });
+      await signInWithGithub();
+      set({ authStatus: 'signed-in' });
     } catch (e) {
       const msg = e instanceof Error ? e.message : 'GitHub sign-in failed.';
       set({ authError: msg });
@@ -216,7 +234,7 @@ export const useAppStore = create<AppState>((set, get) => ({
       localStorage.removeItem('gh_owner');
       localStorage.removeItem('gh_repo');
       set({
-        token: '', owner: '', repo: '',
+        owner: '', repo: '',
         authStatus: 'signed-out', authError: null,
         issues: [], layout: emptyLayout, error: null, milestones: [], statusLabels: [],
         projects: [], projectIssues: {}, kanbanMilestoneNumber: null,
@@ -227,17 +245,15 @@ export const useAppStore = create<AppState>((set, get) => ({
     }
   },
 
-  setAuthSignedIn: (token, login) => {
+  setAuthSignedIn: (login) => {
     set((state) => ({
       authStatus: 'signed-in',
-      token: token || state.token,
       owner: state.owner || login,
     }));
   },
 
   setAuthSignedOut: () => {
-    clearCachedGithubToken();
-    set({ authStatus: 'signed-out', token: '', authError: null });
+    set({ authStatus: 'signed-out', authError: null });
   },
 
   clearAuthError: () => set({ authError: null }),
@@ -246,7 +262,7 @@ export const useAppStore = create<AppState>((set, get) => ({
     localStorage.removeItem('gh_token');
     localStorage.removeItem('gh_owner');
     localStorage.removeItem('gh_repo');
-    set({ token: '', owner: '', repo: '', issues: [], layout: emptyLayout, error: null, milestones: [], statusLabels: [], projects: [], projectIssues: {}, kanbanMilestoneNumber: null, kanbanStatusColumns: [], kanbanIssueStatuses: {}, kanbanProjectStatusFields: {}, kanbanItemIds: {}, kanbanStatusColors: {}, repositoryId: null, linkedProjectIds: [] });
+    set({ owner: '', repo: '', issues: [], layout: emptyLayout, error: null, milestones: [], statusLabels: [], projects: [], projectIssues: {}, kanbanMilestoneNumber: null, kanbanStatusColumns: [], kanbanIssueStatuses: {}, kanbanProjectStatusFields: {}, kanbanItemIds: {}, kanbanStatusColors: {}, repositoryId: null, linkedProjectIds: [] });
   },
 
   setView: (view) => set({ view }),
@@ -282,33 +298,31 @@ export const useAppStore = create<AppState>((set, get) => ({
   },
 
   setWaveDate: async (milestoneNumber, start, end) => {
-    const { token, owner, repo, layout, milestones } = get();
+    const {owner, repo, layout, milestones } = get();
     const newLayout = {
       ...layout,
       waveDates: { ...(layout.waveDates ?? {}), [milestoneNumber]: { start, end } },
     };
     set({ layout: newLayout });
     saveLayout(owner, repo, newLayout).catch(() => {});
-    if (token) {
-      try {
-        const octokit = new Octokit({ auth: token });
-        await octokit.rest.issues.updateMilestone({
-          owner, repo,
-          milestone_number: milestoneNumber,
-          due_on: `${end}T00:00:00Z`,
-        });
-        set({ milestones: milestones.map((m) => m.number === milestoneNumber ? { ...m, due_on: end } : m) });
-      } catch { /* silently ignore */ }
-    }
+    try {
+      const octokit = makeOctokit();
+      await octokit.rest.issues.updateMilestone({
+        owner, repo,
+        milestone_number: milestoneNumber,
+        due_on: `${end}T00:00:00Z`,
+      });
+      set({ milestones: milestones.map((m) => m.number === milestoneNumber ? { ...m, due_on: end } : m) });
+    } catch { /* silently ignore */ }
   },
 
   toggleShowClosedIssues: () => set((state) => ({ showClosedIssues: !state.showClosedIssues })),
   toggleKanbanShowClosedIssues: () => set((state) => ({ kanbanShowClosedIssues: !state.kanbanShowClosedIssues })),
 
   fetchLabels: async () => {
-    const { token, owner, repo } = get();
-    if (!token || !owner || !repo) return;
-    const octokit = new Octokit({ auth: token });
+    const {owner, repo } = get();
+    if (!owner || !repo) return;
+    const octokit = makeOctokit();
     const allLabels: string[] = [];
     let page = 1;
     while (true) {
@@ -322,9 +336,9 @@ export const useAppStore = create<AppState>((set, get) => ({
   },
 
   fetchMilestones: async () => {
-    const { token, owner, repo, layout } = get();
-    if (!token || !owner || !repo) return;
-    const octokit = new Octokit({ auth: token });
+    const {owner, repo, layout } = get();
+    if (!owner || !repo) return;
+    const octokit = makeOctokit();
     const { data } = await octokit.rest.issues.listMilestones({ owner, repo, state: 'open', per_page: 100 });
     const milestones: GitHubMilestone[] = data.map((m) => ({
       number: m.number,
@@ -351,8 +365,8 @@ export const useAppStore = create<AppState>((set, get) => ({
   },
 
   createMilestone: async (title, description) => {
-    const { token, owner, repo, milestones } = get();
-    const octokit = new Octokit({ auth: token });
+    const {owner, repo, milestones } = get();
+    const octokit = makeOctokit();
     const { data } = await octokit.rest.issues.createMilestone({ owner, repo, title, description: description || undefined });
     set({
       milestones: [...milestones, {
@@ -366,33 +380,33 @@ export const useAppStore = create<AppState>((set, get) => ({
   },
 
   updateMilestone: async (number, title, description) => {
-    const { token, owner, repo, milestones } = get();
-    const octokit = new Octokit({ auth: token });
+    const {owner, repo, milestones } = get();
+    const octokit = makeOctokit();
     await octokit.rest.issues.updateMilestone({ owner, repo, milestone_number: number, title, description: description || undefined });
     set({ milestones: milestones.map((m) => m.number === number ? { ...m, title, description: description || null } : m) });
   },
 
   deleteMilestone: async (number) => {
-    const { token, owner, repo, milestones } = get();
-    const octokit = new Octokit({ auth: token });
+    const {owner, repo, milestones } = get();
+    const octokit = makeOctokit();
     await octokit.rest.issues.deleteMilestone({ owner, repo, milestone_number: number });
     set({ milestones: milestones.filter((m) => m.number !== number) });
   },
 
   addStatusLabel: async (name) => {
-    const { token, owner, repo, statusLabels } = get();
-    const octokit = new Octokit({ auth: token });
+    const {owner, repo, statusLabels } = get();
+    const octokit = makeOctokit();
     await ensureLabel(octokit, owner, repo, `s_${name}`, '0e8a16');
     set({ statusLabels: [...statusLabels, name] });
   },
 
   fetchIssues: async () => {
-    const { token, owner, repo } = get();
-    if (!token || !owner || !repo) return;
+    const {owner, repo } = get();
+    if (!owner || !repo) return;
 
     set({ loading: true, error: null });
     try {
-      const octokit = new Octokit({ auth: token });
+      const octokit = makeOctokit();
       const allItems: GitHubIssue[] = [];
       let page = 1;
 
@@ -501,8 +515,8 @@ export const useAppStore = create<AppState>((set, get) => ({
   },
 
   createIssue: async (title, body, projectId, milestoneNumber, statusLabel) => {
-    const { token, owner, repo, issues } = get();
-    const octokit = new Octokit({ auth: token });
+    const {owner, repo, issues } = get();
+    const octokit = makeOctokit();
 
     const labelNames: string[] = [];
     if (statusLabel?.trim()) {
@@ -547,8 +561,8 @@ export const useAppStore = create<AppState>((set, get) => ({
   },
 
   updateIssue: async (number, title, body, milestoneNumber) => {
-    const { token, owner, repo, issues, milestones } = get();
-    const octokit = new Octokit({ auth: token });
+    const {owner, repo, issues, milestones } = get();
+    const octokit = makeOctokit();
     const { data } = await octokit.rest.issues.update({
       owner, repo, issue_number: number, title, body,
       ...(milestoneNumber !== undefined ? { milestone: milestoneNumber ?? null } : {}),
@@ -570,8 +584,8 @@ export const useAppStore = create<AppState>((set, get) => ({
   },
 
   closeIssue: async (number) => {
-    const { token, owner, repo, issues } = get();
-    const octokit = new Octokit({ auth: token });
+    const {owner, repo, issues } = get();
+    const octokit = makeOctokit();
     const { data } = await octokit.rest.issues.update({ owner, repo, issue_number: number, state: 'closed' });
 
     set({
@@ -584,8 +598,8 @@ export const useAppStore = create<AppState>((set, get) => ({
   },
 
   reopenIssue: async (number) => {
-    const { token, owner, repo, issues } = get();
-    const octokit = new Octokit({ auth: token });
+    const {owner, repo, issues } = get();
+    const octokit = makeOctokit();
     await octokit.rest.issues.update({ owner, repo, issue_number: number, state: 'open' });
 
     set({
@@ -596,18 +610,12 @@ export const useAppStore = create<AppState>((set, get) => ({
   },
 
   deleteIssue: async (number, nodeId) => {
-    const { token, owner, repo, issues, projectIssues, layout } = get();
+    const { owner, repo, issues, projectIssues, layout } = get();
 
-    const res = await fetch('https://api.github.com/graphql', {
-      method: 'POST',
-      headers: { Authorization: `bearer ${token}`, 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        query: `mutation DeleteIssue($id: ID!) { deleteIssue(input: {issueId: $id}) { repository { id } } }`,
-        variables: { id: nodeId },
-      }),
-    });
-    const json = await res.json() as { errors?: { message: string }[] };
-    if (json.errors?.length) throw new Error(json.errors[0].message);
+    await gql(
+      `mutation DeleteIssue($id: ID!) { deleteIssue(input: {issueId: $id}) { repository { id } } }`,
+      { id: nodeId },
+    );
 
     const newStoryOrder = Object.fromEntries(
       Object.entries(layout.storyOrder).map(([key, nums]) => [key, nums.filter((n) => n !== number)]),
@@ -626,8 +634,8 @@ export const useAppStore = create<AppState>((set, get) => ({
   },
 
   fetchProjects: async () => {
-    const { token, owner, repo, layout } = get();
-    if (!token || !owner) return;
+    const {owner, repo, layout } = get();
+    if (!owner) return;
 
     type IssueContent = { number: number; repository: { nameWithOwner: string } };
     type ProjectNode = GitHubProject & {
@@ -637,7 +645,7 @@ export const useAppStore = create<AppState>((set, get) => ({
     const data = await gql<{
       repositoryOwner: { projectsV2?: { nodes: ProjectNode[] } } | null;
       repository: { id: string; projectsV2: { nodes: Array<{ id: string }> } } | null;
-    }>(token, `
+    }>(`
       query($login: String!, $owner: String!, $repo: String!) {
         repositoryOwner(login: $login) {
           ... on User {
@@ -698,8 +706,8 @@ export const useAppStore = create<AppState>((set, get) => ({
   },
 
   addIssueToProject: async (issueNodeId, projectId) => {
-    const { token, projectIssues, issues } = get();
-    await gql(token, `
+    const {projectIssues, issues } = get();
+    await gql(`
       mutation($projectId: ID!, $contentId: ID!) {
         addProjectV2ItemById(input: { projectId: $projectId, contentId: $contentId }) {
           item { id }
@@ -719,12 +727,12 @@ export const useAppStore = create<AppState>((set, get) => ({
   },
 
   removeIssueFromProject: async (issueNodeId, projectId) => {
-    const { token, projectIssues, issues } = get();
+    const {projectIssues, issues } = get();
 
     // Find the ProjectV2Item ID for this issue within the project
     const data = await gql<{
       node: { items: { nodes: Array<{ id: string; content: { id: string } | null }> } } | null;
-    }>(token, `
+    }>(`
       query($projectId: ID!) {
         node(id: $projectId) {
           ... on ProjectV2 {
@@ -742,7 +750,7 @@ export const useAppStore = create<AppState>((set, get) => ({
     const item = data.node?.items.nodes.find((n) => n.content?.id === issueNodeId);
     if (!item) return;
 
-    await gql(token, `
+    await gql(`
       mutation($projectId: ID!, $itemId: ID!) {
         deleteProjectV2Item(input: { projectId: $projectId, itemId: $itemId }) {
           deletedItemId
@@ -762,11 +770,11 @@ export const useAppStore = create<AppState>((set, get) => ({
   },
 
   createProject: async (title, description) => {
-    const { token, owner, repo, projects } = get();
+    const {owner, repo, projects } = get();
 
     const repoData = await gql<{
       repository: { id: string; owner: { id: string } };
-    }>(token, `
+    }>(`
       query($owner: String!, $repo: String!) {
         repository(owner: $owner, name: $repo) {
           id
@@ -780,7 +788,7 @@ export const useAppStore = create<AppState>((set, get) => ({
 
     const createData = await gql<{
       createProjectV2: { projectV2: GitHubProject };
-    }>(token, `
+    }>(`
       mutation($ownerId: ID!, $title: String!) {
         createProjectV2(input: { ownerId: $ownerId, title: $title }) {
           projectV2 { id number title shortDescription url closed }
@@ -791,7 +799,7 @@ export const useAppStore = create<AppState>((set, get) => ({
     const project = { ...createData.createProjectV2.projectV2 };
 
     if (description.trim()) {
-      await gql(token, `
+      await gql(`
         mutation($projectId: ID!, $desc: String!) {
           updateProjectV2(input: { projectId: $projectId, shortDescription: $desc }) {
             projectV2 { id }
@@ -801,7 +809,7 @@ export const useAppStore = create<AppState>((set, get) => ({
       project.shortDescription = description.trim();
     }
 
-    await gql(token, `
+    await gql(`
       mutation($projectId: ID!, $repositoryId: ID!) {
         linkProjectV2ToRepository(input: { projectId: $projectId, repositoryId: $repositoryId }) {
           repository { id }
@@ -817,8 +825,8 @@ export const useAppStore = create<AppState>((set, get) => ({
   },
 
   updateProject: async (id, title, description) => {
-    const { token, projects } = get();
-    await gql(token, `
+    const {projects } = get();
+    await gql(`
       mutation($projectId: ID!, $title: String!, $desc: String) {
         updateProjectV2(input: { projectId: $projectId, title: $title, shortDescription: $desc }) {
           projectV2 { id }
@@ -833,8 +841,8 @@ export const useAppStore = create<AppState>((set, get) => ({
   },
 
   deleteProject: async (id) => {
-    const { token, projects, linkedProjectIds } = get();
-    await gql(token, `
+    const {projects, linkedProjectIds } = get();
+    await gql(`
       mutation($projectId: ID!) {
         deleteProjectV2(input: { projectId: $projectId }) {
           projectV2 { id }
@@ -868,7 +876,7 @@ export const useAppStore = create<AppState>((set, get) => ({
   },
 
   moveIssueInGrid: async (issueNumber, fromProjectId, toProjectId, fromMilestoneNumber, toMilestoneNumber) => {
-    const { token, owner, repo, issues, projectIssues, milestones } = get();
+    const {owner, repo, issues, projectIssues, milestones } = get();
     const issue = issues.find((i) => i.number === issueNumber);
     if (!issue) return;
 
@@ -906,7 +914,7 @@ export const useAppStore = create<AppState>((set, get) => ({
         if (fromProjectId) {
           const data = await gql<{
             node: { items: { nodes: Array<{ id: string; content: { id: string } | null }> } } | null;
-          }>(token, `
+          }>(`
             query($projectId: ID!) {
               node(id: $projectId) {
                 ... on ProjectV2 {
@@ -919,7 +927,7 @@ export const useAppStore = create<AppState>((set, get) => ({
           `, { projectId: fromProjectId });
           const item = data.node?.items.nodes.find((n) => n.content?.id === issue.node_id);
           if (item) {
-            await gql(token, `
+            await gql(`
               mutation($projectId: ID!, $itemId: ID!) {
                 deleteProjectV2Item(input: { projectId: $projectId, itemId: $itemId }) { deletedItemId }
               }
@@ -927,7 +935,7 @@ export const useAppStore = create<AppState>((set, get) => ({
           }
         }
         if (toProjectId) {
-          await gql(token, `
+          await gql(`
             mutation($projectId: ID!, $contentId: ID!) {
               addProjectV2ItemById(input: { projectId: $projectId, contentId: $contentId }) { item { id } }
             }
@@ -935,7 +943,7 @@ export const useAppStore = create<AppState>((set, get) => ({
         }
       }
       if (fromMilestoneNumber !== toMilestoneNumber) {
-        const octokit = new Octokit({ auth: token });
+        const octokit = makeOctokit();
         await octokit.rest.issues.update({
           owner, repo, issue_number: issueNumber,
           milestone: toMilestoneNumber,
@@ -948,7 +956,7 @@ export const useAppStore = create<AppState>((set, get) => ({
   },
 
   moveIssueInKanban: async (issueNumber, fromStatus, toStatus, fromMilestoneNumber, toMilestoneNumber) => {
-    const { token, owner, repo, issues, milestones } = get();
+    const {owner, repo, issues, milestones } = get();
     const issue = issues.find((i) => i.number === issueNumber);
     if (!issue) return;
 
@@ -970,7 +978,7 @@ export const useAppStore = create<AppState>((set, get) => ({
     });
 
     try {
-      const octokit = new Octokit({ auth: token });
+      const octokit = makeOctokit();
       if (fromStatus !== toStatus) {
         if (toStatus) await ensureLabel(octokit, owner, repo, `s_${toStatus}`, '0e8a16');
         await octokit.rest.issues.setLabels({
@@ -1002,8 +1010,8 @@ export const useAppStore = create<AppState>((set, get) => ({
   },
 
   fetchAllProjectStatuses: async () => {
-    const { token, projects } = get();
-    if (!token) return;
+    const {projects } = get();
+    /* auth handled by proxy */
     const openProjects = projects.filter((p) => !p.closed);
     if (openProjects.length === 0) return;
 
@@ -1017,7 +1025,7 @@ export const useAppStore = create<AppState>((set, get) => ({
 
     const results = await Promise.all(
       openProjects.map((p) =>
-        gql<ProjectData>(token, `
+        gql<ProjectData>(`
           query($projectId: ID!) {
             node(id: $projectId) {
               ... on ProjectV2 {
@@ -1093,7 +1101,7 @@ export const useAppStore = create<AppState>((set, get) => ({
   },
 
   moveIssueInKanbanByProject: async (issueNumber, fromStatus, toStatus, fromProjectId, toProjectId) => {
-    const { token, issues, projectIssues, kanbanIssueStatuses, kanbanProjectStatusFields, kanbanItemIds } = get();
+    const {issues, projectIssues, kanbanIssueStatuses, kanbanProjectStatusFields, kanbanItemIds } = get();
     const issue = issues.find((i) => i.number === issueNumber);
     if (!issue) return;
 
@@ -1127,7 +1135,7 @@ export const useAppStore = create<AppState>((set, get) => ({
         if (fromProjectId) {
           const data = await gql<{
             node: { items: { nodes: Array<{ id: string; content: { id: string } | null }> } } | null;
-          }>(token, `
+          }>(`
             query($projectId: ID!) {
               node(id: $projectId) {
                 ... on ProjectV2 {
@@ -1138,7 +1146,7 @@ export const useAppStore = create<AppState>((set, get) => ({
           `, { projectId: fromProjectId });
           const item = data.node?.items.nodes.find((n) => n.content?.id === issue.node_id);
           if (item) {
-            await gql(token, `
+            await gql(`
               mutation($projectId: ID!, $itemId: ID!) {
                 deleteProjectV2Item(input: { projectId: $projectId, itemId: $itemId }) { deletedItemId }
               }
@@ -1146,7 +1154,7 @@ export const useAppStore = create<AppState>((set, get) => ({
           }
         }
         if (toProjectId) {
-          const addResult = await gql<{ addProjectV2ItemById: { item: { id: string } } }>(token, `
+          const addResult = await gql<{ addProjectV2ItemById: { item: { id: string } } }>(`
             mutation($projectId: ID!, $contentId: ID!) {
               addProjectV2ItemById(input: { projectId: $projectId, contentId: $contentId }) { item { id } }
             }
@@ -1158,7 +1166,7 @@ export const useAppStore = create<AppState>((set, get) => ({
             const field = kanbanProjectStatusFields[toProjectId];
             const option = field?.options.find((o) => o.name === toStatus);
             if (field && option) {
-              await gql(token, `
+              await gql(`
                 mutation($projectId: ID!, $itemId: ID!, $fieldId: ID!, $optionId: String!) {
                   updateProjectV2ItemFieldValue(input: {
                     projectId: $projectId itemId: $itemId fieldId: $fieldId
@@ -1176,7 +1184,7 @@ export const useAppStore = create<AppState>((set, get) => ({
           if (toStatus) {
             const option = field.options.find((o) => o.name === toStatus);
             if (option) {
-              await gql(token, `
+              await gql(`
                 mutation($projectId: ID!, $itemId: ID!, $fieldId: ID!, $optionId: String!) {
                   updateProjectV2ItemFieldValue(input: {
                     projectId: $projectId itemId: $itemId fieldId: $fieldId
@@ -1186,7 +1194,7 @@ export const useAppStore = create<AppState>((set, get) => ({
               `, { projectId: toProjectId, itemId, fieldId: field.fieldId, optionId: option.id });
             }
           } else {
-            await gql(token, `
+            await gql(`
               mutation($projectId: ID!, $itemId: ID!, $fieldId: ID!) {
                 clearProjectV2ItemFieldValue(input: {
                   projectId: $projectId itemId: $itemId fieldId: $fieldId
@@ -1203,8 +1211,8 @@ export const useAppStore = create<AppState>((set, get) => ({
   },
 
   setProjectLinked: async (projectId, linked) => {
-    const { token, repositoryId, linkedProjectIds } = get();
-    if (!token || !repositoryId) return;
+    const {repositoryId, linkedProjectIds } = get();
+    if (!repositoryId) return;
 
     const snapshot = linkedProjectIds;
     const nextLinked = linked
@@ -1214,7 +1222,7 @@ export const useAppStore = create<AppState>((set, get) => ({
 
     try {
       if (linked) {
-        await gql(token, `
+        await gql(`
           mutation($projectId: ID!, $repositoryId: ID!) {
             linkProjectV2ToRepository(input: { projectId: $projectId, repositoryId: $repositoryId }) {
               repository { id }
@@ -1222,7 +1230,7 @@ export const useAppStore = create<AppState>((set, get) => ({
           }
         `, { projectId, repositoryId });
       } else {
-        await gql(token, `
+        await gql(`
           mutation($projectId: ID!, $repositoryId: ID!) {
             unlinkProjectV2FromRepository(input: { projectId: $projectId, repositoryId: $repositoryId }) {
               repository { id }

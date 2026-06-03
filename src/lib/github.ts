@@ -1,4 +1,5 @@
 import type { AiLinks } from './anthropic';
+import { getFirebaseIdToken } from './auth';
 
 export interface ParsedImage { url: string; name: string; }
 
@@ -12,8 +13,11 @@ export function parseImagesFromBody(body: string): ParsedImage[] {
   return images;
 }
 
+async function bearerHeader(): Promise<string> {
+  return `Bearer ${await getFirebaseIdToken()}`;
+}
+
 export async function uploadImageToRepo(
-  token: string,
   owner: string,
   repo: string,
   filename: string,
@@ -22,11 +26,11 @@ export async function uploadImageToRepo(
   const safeName = filename.replace(/[^a-zA-Z0-9._-]/g, '_');
   const path = `.github/assets/${Date.now()}-${safeName}`;
   const res = await fetch(
-    `https://api.github.com/repos/${owner}/${repo}/contents/${path}`,
+    `/github-api/repos/${owner}/${repo}/contents/${path}`,
     {
       method: 'PUT',
       headers: {
-        Authorization: `Bearer ${token}`,
+        Authorization: await bearerHeader(),
         Accept: 'application/vnd.github.v3+json',
         'Content-Type': 'application/json',
       },
@@ -49,13 +53,12 @@ export async function uploadImageToRepo(
  * 3. Fall back to GraphQL linkedBranches if no PR found
  */
 export async function fetchIssueImplementation(
-  token: string,
   owner: string,
   repo: string,
   issueNumber: number,
 ): Promise<AiLinks> {
   const headers: Record<string, string> = {
-    Authorization: `Bearer ${token}`,
+    Authorization: await bearerHeader(),
     Accept: 'application/vnd.github.v3+json',
   };
 
@@ -66,7 +69,7 @@ export async function fetchIssueImplementation(
   }
 
   // Step 2: no PR found — try GraphQL linkedBranches only
-  const branch = await fetchLinkedBranch(token, owner, repo, issueNumber);
+  const branch = await fetchLinkedBranch(owner, repo, issueNumber);
   return { branch };
 }
 
@@ -85,7 +88,7 @@ async function findLinkedPR(
   try {
     const q = encodeURIComponent(`repo:${owner}/${repo} is:pr #${issueNumber}`);
     const res = await fetch(
-      `https://api.github.com/search/issues?q=${q}&per_page=5&sort=updated`,
+      `/github-api/search/issues?q=${q}&per_page=5&sort=updated`,
       { headers },
     );
     const json = await res.json() as { items?: PRSearchItem[] };
@@ -94,7 +97,7 @@ async function findLinkedPR(
 
     // Fetch full PR to get head.ref (branch name)
     const prRes = await fetch(
-      `https://api.github.com/repos/${owner}/${repo}/pulls/${item.number}`,
+      `/github-api/repos/${owner}/${repo}/pulls/${item.number}`,
       { headers },
     );
     const pr = await prRes.json() as { html_url: string; head?: { ref: string } };
@@ -112,16 +115,15 @@ async function findLinkedPR(
 }
 
 async function fetchLinkedBranch(
-  token: string,
   owner: string,
   repo: string,
   issueNumber: number,
 ): Promise<string | undefined> {
   try {
-    const res = await fetch('https://api.github.com/graphql', {
+    const res = await fetch('/github-api/graphql', {
       method: 'POST',
       headers: {
-        Authorization: `Bearer ${token}`,
+        Authorization: await bearerHeader(),
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({

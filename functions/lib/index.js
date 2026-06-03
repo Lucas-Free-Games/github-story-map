@@ -33,7 +33,7 @@ var __importStar = (this && this.__importStar) || (function () {
     };
 })();
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.getUserKeyStatus = exports.deleteUserKey = exports.saveUserKey = exports.geminiProxy = exports.anthropicProxy = void 0;
+exports.githubProxy = exports.getUserKeyStatus = exports.deleteUserKey = exports.saveUserKey = exports.geminiProxy = exports.anthropicProxy = void 0;
 const https_1 = require("firebase-functions/v2/https");
 const app_1 = require("firebase-admin/app");
 const auth_1 = require("firebase-admin/auth");
@@ -158,8 +158,8 @@ exports.geminiProxy = (0, https_1.onRequest)({ timeoutSeconds: 540, cors: false 
     }, body);
 });
 function assertProvider(value) {
-    if (value !== 'anthropic' && value !== 'gemini') {
-        throw new https_1.HttpsError('invalid-argument', 'provider must be "anthropic" or "gemini"');
+    if (value !== 'anthropic' && value !== 'gemini' && value !== 'github') {
+        throw new https_1.HttpsError('invalid-argument', 'provider must be "anthropic", "gemini", or "github"');
     }
 }
 exports.saveUserKey = (0, https_1.onCall)(async (request) => {
@@ -192,6 +192,45 @@ exports.getUserKeyStatus = (0, https_1.onCall)(async (request) => {
     return {
         anthropic: !!data.anthropic,
         gemini: !!data.gemini,
+        github: !!data.github,
     };
+});
+exports.githubProxy = (0, https_1.onRequest)({ timeoutSeconds: 540, cors: false }, async (req, res) => {
+    const uid = await requireSignedInUid(req, res);
+    if (!uid)
+        return;
+    const token = await getUserKey(uid, 'github');
+    if (!token) {
+        res.status(400).json({ error: 'No GitHub token stored. Sign in with GitHub to refresh it.' });
+        return;
+    }
+    const targetPath = req.path.replace(/^\/github-api/, '') || '/';
+    const targetUrl = new url_1.URL(`https://api.github.com${targetPath}`);
+    if (req.query) {
+        Object.entries(req.query).forEach(([k, v]) => {
+            targetUrl.searchParams.set(k, String(v));
+        });
+    }
+    const forwardHeaders = {};
+    for (const [key, value] of Object.entries(req.headers)) {
+        const k = key.toLowerCase();
+        if (k === 'host' || k === 'authorization')
+            continue;
+        forwardHeaders[key] = value;
+    }
+    forwardHeaders['authorization'] = `Bearer ${token}`;
+    if (!forwardHeaders['user-agent'])
+        forwardHeaders['user-agent'] = 'github-story-map';
+    const body = Buffer.isBuffer(req.body)
+        ? req.body
+        : req.body
+            ? JSON.stringify(req.body)
+            : undefined;
+    pipeUpstream(res, {
+        hostname: targetUrl.hostname,
+        path: targetUrl.pathname + targetUrl.search,
+        method: req.method,
+        headers: forwardHeaders,
+    }, body);
 });
 //# sourceMappingURL=index.js.map

@@ -176,7 +176,7 @@ function AiImplementationPanel({
 }
 
 export default function EditIssueModal({ issue, onClose, initialTab = 'description' }: Props) {
-  const { token, owner, repo, projects, projectIssues, milestones, updateIssue, addIssueToProject, removeIssueFromProject } = useAppStore();
+  const { owner, repo, projects, projectIssues, milestones, updateIssue, addIssueToProject, removeIssueFromProject } = useAppStore();
 
   const [title, setTitle] = useState(issue.title);
 
@@ -393,7 +393,7 @@ export default function EditIssueModal({ issue, onClose, initialTab = 'descripti
         waveName: wave?.title,
         waveDescription: wave?.description ?? undefined,
       };
-      const result = await generateDescription(token, owner, repo, title.trim(), body.trim(), context, geminiModel);
+      const result = await generateDescription(owner, repo, title.trim(), body.trim(), context, geminiModel);
       setBody(result);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Generation failed');
@@ -492,7 +492,7 @@ export default function EditIssueModal({ issue, onClose, initialTab = 'descripti
                     return;
                   }
                   setAiLinksLoading(true);
-                  fetchIssueImplementation(token, owner, repo, issue.number)
+                  fetchIssueImplementation(owner, repo, issue.number)
                     .then(setAiLinks)
                     .finally(() => setAiLinksLoading(false));
                 }}
@@ -543,7 +543,6 @@ export default function EditIssueModal({ issue, onClose, initialTab = 'descripti
                 />
                 <div className="shrink-0 mt-2">
                   <ImageAttacher
-                    token={token}
                     owner={owner}
                     repo={repo}
                     images={attachedImages}
