@@ -25,7 +25,7 @@ export default function CreateIssueModal({ defaultProjectId, defaultMilestoneNum
   const [error, setError] = useState('');
 
   const geminiSettings = loadGeminiSettings();
-  const hasGeminiKey = Boolean(geminiSettings.apiKey);
+  const hasGeminiKey = true;
   const [geminiModel, setGeminiModel] = useState(geminiSettings.model);
 
   const openProjects = projects.filter((p) => !p.closed);

@@ -3,6 +3,7 @@ import { useAppStore } from '../store/appStore';
 import { loadGeminiSettings, saveGeminiSettings, testGeminiConnection, DEFAULT_GEMINI_MODEL, GEMINI_MODELS } from '../lib/gemini';
 import { loadAnthropicSettings, saveAnthropicSettings, testAnthropicConnection } from '../lib/anthropic';
 import { loadUserProfile, saveUserProfile } from '../lib/firebase';
+import { saveUserKey, deleteUserKey, getUserKeyStatus } from '../lib/userKeys';
 
 type Tab = 'general' | 'describing' | 'coding';
 type LedState = 'idle' | 'testing' | 'success' | 'error';
@@ -102,27 +103,98 @@ export default function SettingsView() {
 
   // Describing tab state
   const savedGemini = loadGeminiSettings();
-  const [apiKey, setApiKey] = useState(savedGemini.apiKey);
   const [model, setModel] = useState(savedGemini.model || DEFAULT_GEMINI_MODEL);
   const [exampleNumbers, setExampleNumbers] = useState<number[]>(savedGemini.exampleIssueNumbers);
   const [extraInstructions, setExtraInstructions] = useState(savedGemini.extraInstructions);
   const [search, setSearch] = useState('');
   const [ledState, setLedState] = useState<LedState>('idle');
+  const [geminiKeyInput, setGeminiKeyInput] = useState('');
+  const [geminiKeyStored, setGeminiKeyStored] = useState(false);
+  const [geminiKeyBusy, setGeminiKeyBusy] = useState(false);
+  const [geminiKeyError, setGeminiKeyError] = useState<string | null>(null);
 
   // Coding tab state
   const savedAnthropic = loadAnthropicSettings();
-  const [anthropicKey, setAnthropicKey] = useState(savedAnthropic.apiKey);
   const [agentId, setAgentId] = useState(savedAnthropic.agentId);
   const [envId, setEnvId] = useState(savedAnthropic.envId);
   const [vaultId, setVaultId] = useState(savedAnthropic.vaultId);
   const [anthropicLedState, setAnthropicLedState] = useState<LedState>('idle');
   const [anthropicError, setAnthropicError] = useState<string | null>(null);
+  const [anthropicKeyInput, setAnthropicKeyInput] = useState('');
+  const [anthropicKeyStored, setAnthropicKeyStored] = useState(false);
+  const [anthropicKeyBusy, setAnthropicKeyBusy] = useState(false);
+  const [anthropicKeyError, setAnthropicKeyError] = useState<string | null>(null);
+
+  useEffect(() => {
+    getUserKeyStatus()
+      .then((status) => {
+        setGeminiKeyStored(status.gemini);
+        setAnthropicKeyStored(status.anthropic);
+      })
+      .catch(() => { /* signed-out or transient */ });
+  }, []);
+
+  async function handleSaveGeminiKey() {
+    if (!geminiKeyInput.trim()) return;
+    setGeminiKeyBusy(true);
+    setGeminiKeyError(null);
+    try {
+      await saveUserKey('gemini', geminiKeyInput.trim());
+      setGeminiKeyStored(true);
+      setGeminiKeyInput('');
+    } catch (e) {
+      setGeminiKeyError(e instanceof Error ? e.message : 'Failed to save key');
+    } finally {
+      setGeminiKeyBusy(false);
+    }
+  }
+
+  async function handleDeleteGeminiKey() {
+    setGeminiKeyBusy(true);
+    setGeminiKeyError(null);
+    try {
+      await deleteUserKey('gemini');
+      setGeminiKeyStored(false);
+      setLedState('idle');
+    } catch (e) {
+      setGeminiKeyError(e instanceof Error ? e.message : 'Failed to remove key');
+    } finally {
+      setGeminiKeyBusy(false);
+    }
+  }
+
+  async function handleSaveAnthropicKey() {
+    if (!anthropicKeyInput.trim()) return;
+    setAnthropicKeyBusy(true);
+    setAnthropicKeyError(null);
+    try {
+      await saveUserKey('anthropic', anthropicKeyInput.trim());
+      setAnthropicKeyStored(true);
+      setAnthropicKeyInput('');
+    } catch (e) {
+      setAnthropicKeyError(e instanceof Error ? e.message : 'Failed to save key');
+    } finally {
+      setAnthropicKeyBusy(false);
+    }
+  }
+
+  async function handleDeleteAnthropicKey() {
+    setAnthropicKeyBusy(true);
+    setAnthropicKeyError(null);
+    try {
+      await deleteUserKey('anthropic');
+      setAnthropicKeyStored(false);
+      setAnthropicLedState('idle');
+    } catch (e) {
+      setAnthropicKeyError(e instanceof Error ? e.message : 'Failed to remove key');
+    } finally {
+      setAnthropicKeyBusy(false);
+    }
+  }
 
   const [saved_, setSaved_] = useState(false);
 
   async function handleTest() {
-    if (!apiKey.trim()) return;
-    saveGeminiSettings({ apiKey, model, exampleIssueNumbers: exampleNumbers, extraInstructions });
     setLedState('testing');
     try {
       await testGeminiConnection();
@@ -133,11 +205,10 @@ export default function SettingsView() {
   }
 
   async function handleAnthropicTest() {
-    if (!anthropicKey.trim()) return;
     setAnthropicLedState('testing');
     setAnthropicError(null);
     try {
-      await testAnthropicConnection(anthropicKey.trim());
+      await testAnthropicConnection();
       setAnthropicLedState('success');
     } catch (e) {
       setAnthropicLedState('error');
@@ -164,9 +235,9 @@ export default function SettingsView() {
         notes: notes.trim() || undefined,
       }).catch(() => {});
     } else if (activeTab === 'describing') {
-      saveGeminiSettings({ apiKey, model, exampleIssueNumbers: exampleNumbers, extraInstructions });
+      saveGeminiSettings({ model, exampleIssueNumbers: exampleNumbers, extraInstructions });
     } else if (activeTab === 'coding') {
-      saveAnthropicSettings({ apiKey: anthropicKey, agentId, envId, vaultId });
+      saveAnthropicSettings({ agentId, envId, vaultId });
     }
     setSaved_(true);
     setTimeout(() => setSaved_(false), 2000);
@@ -379,18 +450,36 @@ export default function SettingsView() {
                   <label className="block text-sm font-medium text-gray-700">Gemini API Key</label>
                   <Led state={ledState} onClick={handleTest} />
                 </div>
-                <input
-                  type="password"
-                  value={apiKey}
-                  onChange={(e) => {
-                    setApiKey(e.target.value);
-                    setLedState('idle');
-                  }}
-                  placeholder="AIza…"
-                  className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-                />
+                <div className="flex gap-2">
+                  <input
+                    type="password"
+                    value={geminiKeyInput}
+                    onChange={(e) => { setGeminiKeyInput(e.target.value); setGeminiKeyError(null); }}
+                    placeholder={geminiKeyStored ? '••••••••  (key saved server-side)' : 'AIza…'}
+                    className="flex-1 border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  />
+                  <button
+                    type="button"
+                    onClick={handleSaveGeminiKey}
+                    disabled={geminiKeyBusy || !geminiKeyInput.trim()}
+                    className="px-3 py-2 text-sm font-medium bg-gray-900 text-white rounded-lg hover:bg-gray-700 disabled:opacity-40"
+                  >
+                    {geminiKeyStored ? 'Replace' : 'Save'}
+                  </button>
+                  {geminiKeyStored && (
+                    <button
+                      type="button"
+                      onClick={handleDeleteGeminiKey}
+                      disabled={geminiKeyBusy}
+                      className="px-3 py-2 text-sm text-red-600 border border-red-200 rounded-lg hover:bg-red-50 disabled:opacity-40"
+                    >
+                      Remove
+                    </button>
+                  )}
+                </div>
+                {geminiKeyError && <p className="text-xs text-red-600 mt-1 break-words">{geminiKeyError}</p>}
                 <p className="text-xs text-gray-400 mt-1">
-                  Stored in localStorage only. Used to auto-generate issue descriptions via Gemini.
+                  Stored encrypted-at-rest in Firestore under your user ID. The browser never re-downloads it; AI requests are proxied server-side using your key.
                 </p>
               </div>
 
@@ -535,18 +624,40 @@ export default function SettingsView() {
               <div className="space-y-4">
                 <div>
                   <div className="flex items-center justify-between mb-1">
-                    <label className="block text-sm font-medium text-gray-700">
-                      Anthropic API Key
-                    </label>
+                    <label className="block text-sm font-medium text-gray-700">Anthropic API Key</label>
                     <Led state={anthropicLedState} onClick={handleAnthropicTest} />
                   </div>
-                  <input
-                    type="password"
-                    value={anthropicKey}
-                    onChange={(e) => { setAnthropicKey(e.target.value); setAnthropicLedState('idle'); setAnthropicError(null); }}
-                    placeholder="sk-ant-…"
-                    className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-orange-400 font-mono"
-                  />
+                  <div className="flex gap-2">
+                    <input
+                      type="password"
+                      value={anthropicKeyInput}
+                      onChange={(e) => { setAnthropicKeyInput(e.target.value); setAnthropicKeyError(null); }}
+                      placeholder={anthropicKeyStored ? '••••••••  (key saved server-side)' : 'sk-ant-…'}
+                      className="flex-1 border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-orange-400 font-mono"
+                    />
+                    <button
+                      type="button"
+                      onClick={handleSaveAnthropicKey}
+                      disabled={anthropicKeyBusy || !anthropicKeyInput.trim()}
+                      className="px-3 py-2 text-sm font-medium bg-gray-900 text-white rounded-lg hover:bg-gray-700 disabled:opacity-40"
+                    >
+                      {anthropicKeyStored ? 'Replace' : 'Save'}
+                    </button>
+                    {anthropicKeyStored && (
+                      <button
+                        type="button"
+                        onClick={handleDeleteAnthropicKey}
+                        disabled={anthropicKeyBusy}
+                        className="px-3 py-2 text-sm text-red-600 border border-red-200 rounded-lg hover:bg-red-50 disabled:opacity-40"
+                      >
+                        Remove
+                      </button>
+                    )}
+                  </div>
+                  {anthropicKeyError && <p className="text-xs text-red-600 mt-1 break-words">{anthropicKeyError}</p>}
+                  <p className="text-xs text-gray-400 mt-1">
+                    Stored encrypted-at-rest in Firestore under your user ID. The browser never re-downloads it; agent calls are proxied server-side using your key.
+                  </p>
                   {anthropicError && (
                     <p className="text-xs text-red-600 mt-1 break-words">{anthropicError}</p>
                   )}

@@ -7,5 +7,10 @@ service cloud.firestore {
     match /storyMaps/{repoKey} {
       allow read, write: if request.auth != null;
     }
+    // Per-user API keys. Only Cloud Functions (Admin SDK) may touch this
+    // collection; clients route through saveUserKey / deleteUserKey / proxies.
+    match /userKeys/{uid} {
+      allow read, write: if false;
+    }
   }
 }
