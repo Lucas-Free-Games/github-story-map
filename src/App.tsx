@@ -1,6 +1,7 @@
 import { useEffect } from 'react';
 import { useAppStore } from './store/appStore';
-import { observeAuth, getCachedGithubToken } from './lib/auth';
+import { observeAuth } from './lib/auth';
+import { getUserKeyStatus } from './lib/userKeys';
 import Login from './components/Login';
 import Setup from './components/Setup';
 import Header from './components/Header';
@@ -15,26 +16,37 @@ import SettingsView from './components/SettingsView';
 
 export default function App() {
   const {
-    token, owner, repo, issues, loading, error,
+    owner, repo, issues, loading, error,
     fetchIssues, fetchLabels, fetchProjects, fetchMilestones, fetchAllProjectStatuses,
     view, authStatus, setAuthSignedIn, setAuthSignedOut,
   } = useAppStore();
 
   useEffect(() => {
-    const unsub = observeAuth((user) => {
-      if (user) {
-        const cachedToken = getCachedGithubToken();
-        const login =
-          user.providerData.find((p) => p.providerId === 'github.com')?.displayName ?? '';
-        setAuthSignedIn(cachedToken, login);
-      } else {
+    const unsub = observeAuth(async (user) => {
+      if (!user) {
+        setAuthSignedOut();
+        return;
+      }
+      const login =
+        user.providerData.find((p) => p.providerId === 'github.com')?.displayName ?? '';
+      try {
+        const status = await getUserKeyStatus();
+        if (!status.github) {
+          // Firebase says signed in, but no GitHub token in Firestore —
+          // user needs to re-auth to refresh it (e.g., after this rollout
+          // or after a manual delete).
+          setAuthSignedOut();
+          return;
+        }
+        setAuthSignedIn(login);
+      } catch {
         setAuthSignedOut();
       }
     });
     return unsub;
   }, [setAuthSignedIn, setAuthSignedOut]);
 
-  const isConfigured = Boolean(token && owner && repo);
+  const isConfigured = Boolean(owner && repo);
 
   useEffect(() => {
     if (authStatus === 'signed-in' && isConfigured && issues.length === 0) {
@@ -53,7 +65,7 @@ export default function App() {
     );
   }
 
-  if (authStatus === 'signed-out' || !token) return <Login />;
+  if (authStatus === 'signed-out') return <Login />;
 
   if (!isConfigured) return <Setup />;
 

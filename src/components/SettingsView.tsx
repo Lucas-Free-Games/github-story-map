@@ -199,8 +199,9 @@ export default function SettingsView() {
     try {
       await testGeminiConnection();
       setLedState('success');
-    } catch {
+    } catch (e) {
       setLedState('error');
+      setGeminiKeyError(e instanceof Error ? e.message : 'Connection test failed');
     }
   }
 

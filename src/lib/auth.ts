@@ -7,24 +7,10 @@ import {
   type User,
 } from 'firebase/auth';
 import { auth } from './firebase';
-
-const TOKEN_KEY = 'gh_token';
-
-export function getCachedGithubToken(): string {
-  return localStorage.getItem(TOKEN_KEY) ?? '';
-}
-
-export function setCachedGithubToken(token: string): void {
-  localStorage.setItem(TOKEN_KEY, token);
-}
-
-export function clearCachedGithubToken(): void {
-  localStorage.removeItem(TOKEN_KEY);
-}
+import { saveUserKey } from './userKeys';
 
 export interface SignInResult {
   user: User;
-  githubToken: string;
   githubLogin: string;
 }
 
@@ -38,14 +24,14 @@ export async function signInWithGithub(): Promise<SignInResult> {
   if (!githubToken) {
     throw new Error('Sign-in succeeded but no GitHub access token was returned.');
   }
+  // Store the GitHub OAuth token server-side; the browser never holds it.
+  await saveUserKey('github', githubToken);
   const githubLogin =
     (getAdditionalUserInfo(result)?.username as string | undefined) ?? '';
-  setCachedGithubToken(githubToken);
-  return { user: result.user, githubToken, githubLogin };
+  return { user: result.user, githubLogin };
 }
 
 export async function signOutFromFirebase(): Promise<void> {
-  clearCachedGithubToken();
   await signOut(auth);
 }
 

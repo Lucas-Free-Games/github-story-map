@@ -50,8 +50,11 @@ export async function testGeminiConnection(): Promise<void> {
     body: JSON.stringify({ contents: [{ parts: [{ text: 'Say OK' }] }] }),
   });
   if (!res.ok) {
-    const err = await res.json().catch(() => ({})) as { error?: { message?: string } };
-    throw new Error(err?.error?.message ?? `Gemini proxy error ${res.status}`);
+    const err = await res.json().catch(() => ({})) as { error?: { message?: string } | string };
+    const msg =
+      typeof err?.error === 'string' ? err.error :
+      err?.error?.message ?? `Gemini proxy error ${res.status}`;
+    throw new Error(msg);
   }
 }
 
@@ -63,7 +66,6 @@ export interface IssueContext {
 }
 
 export async function generateDescription(
-  token: string,
   owner: string,
   repo: string,
   title: string,
@@ -74,11 +76,14 @@ export async function generateDescription(
   const { model: savedModel, exampleIssueNumbers, extraInstructions } = loadGeminiSettings();
   const model = modelOverride ?? savedModel;
 
+  const idToken = await getFirebaseIdToken();
+  const ghHeaders = { Authorization: `Bearer ${idToken}` };
+
   // Fetch README
   let readme = '';
   try {
-    const res = await fetch(`https://api.github.com/repos/${owner}/${repo}/readme`, {
-      headers: { Authorization: `token ${token}`, Accept: 'application/vnd.github.raw+json' },
+    const res = await fetch(`/github-api/repos/${owner}/${repo}/readme`, {
+      headers: { ...ghHeaders, Accept: 'application/vnd.github.raw+json' },
     });
     if (res.ok) readme = await res.text();
   } catch { /* continue without README */ }
@@ -87,8 +92,8 @@ export async function generateDescription(
   const examples: { title: string; body: string }[] = [];
   for (const num of exampleIssueNumbers.slice(0, 3)) {
     try {
-      const res = await fetch(`https://api.github.com/repos/${owner}/${repo}/issues/${num}`, {
-        headers: { Authorization: `token ${token}`, Accept: 'application/vnd.github.v3+json' },
+      const res = await fetch(`/github-api/repos/${owner}/${repo}/issues/${num}`, {
+        headers: { ...ghHeaders, Accept: 'application/vnd.github.v3+json' },
       });
       if (res.ok) {
         const data = await res.json() as { title: string; body: string | null };
@@ -154,8 +159,11 @@ export async function generateDescription(
   });
 
   if (!res.ok) {
-    const err = await res.json().catch(() => ({})) as { error?: { message?: string } };
-    throw new Error(err?.error?.message ?? `Gemini proxy error ${res.status}`);
+    const err = await res.json().catch(() => ({})) as { error?: { message?: string } | string };
+    const msg =
+      typeof err?.error === 'string' ? err.error :
+      err?.error?.message ?? `Gemini proxy error ${res.status}`;
+    throw new Error(msg);
   }
 
   const data = await res.json() as { candidates?: { content?: { parts?: { text?: string }[] } }[] };

@@ -3,19 +3,22 @@ import { app } from './firebase';
 
 const functions = getFunctions(app, 'us-central1');
 
-export type AiProvider = 'anthropic' | 'gemini';
+export type Provider = 'anthropic' | 'gemini' | 'github';
+/** @deprecated kept for backward-compatible imports. */
+export type AiProvider = Provider;
 
 export interface UserKeyStatus {
   anthropic: boolean;
   gemini: boolean;
+  github: boolean;
 }
 
-export async function saveUserKey(provider: AiProvider, apiKey: string): Promise<void> {
+export async function saveUserKey(provider: Provider, apiKey: string): Promise<void> {
   const call = httpsCallable(functions, 'saveUserKey');
   await call({ provider, apiKey });
 }
 
-export async function deleteUserKey(provider: AiProvider): Promise<void> {
+export async function deleteUserKey(provider: Provider): Promise<void> {
   const call = httpsCallable(functions, 'deleteUserKey');
   await call({ provider });
 }

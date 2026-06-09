@@ -12,6 +12,7 @@ export default defineConfig({
     proxy: {
       '/anthropic-api': { target: 'http://127.0.0.1:5000', changeOrigin: true },
       '/gemini-api':    { target: 'http://127.0.0.1:5000', changeOrigin: true },
+      '/github-api':    { target: 'http://127.0.0.1:5000', changeOrigin: true },
     },
   },
 });

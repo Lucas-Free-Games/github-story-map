@@ -9,11 +9,12 @@ import { URL } from 'url';
 
 if (!getApps().length) initializeApp();
 
-type Provider = 'anthropic' | 'gemini';
+type Provider = 'anthropic' | 'gemini' | 'github';
 
 interface UserKeysDoc {
   anthropic?: string;
   gemini?: string;
+  github?: string;
 }
 
 async function getUserKey(uid: string, provider: Provider): Promise<string | null> {
@@ -81,10 +82,17 @@ export const anthropicProxy = onRequest(
     const forwardHeaders: http.OutgoingHttpHeaders = {};
     for (const [key, value] of Object.entries(req.headers)) {
       const k = key.toLowerCase();
-      if (k === 'host' || k === 'authorization' || k === 'x-api-key') continue;
+      // Drop browser-origin fingerprints so Anthropic doesn't classify this
+      // as a direct browser call and demand the dangerous-access header.
+      if (
+        k === 'host' || k === 'authorization' || k === 'x-api-key' ||
+        k === 'origin' || k === 'referer' || k === 'user-agent' ||
+        k.startsWith('sec-') || k === 'cookie'
+      ) continue;
       forwardHeaders[key] = value;
     }
     forwardHeaders['x-api-key'] = apiKey;
+    forwardHeaders['user-agent'] = 'github-story-map';
 
     const body = Buffer.isBuffer(req.body)
       ? req.body
@@ -146,8 +154,8 @@ export const geminiProxy = onRequest(
 );
 
 function assertProvider(value: unknown): asserts value is Provider {
-  if (value !== 'anthropic' && value !== 'gemini') {
-    throw new HttpsError('invalid-argument', 'provider must be "anthropic" or "gemini"');
+  if (value !== 'anthropic' && value !== 'gemini' && value !== 'github') {
+    throw new HttpsError('invalid-argument', 'provider must be "anthropic", "gemini", or "github"');
   }
 }
 
@@ -183,5 +191,50 @@ export const getUserKeyStatus = onCall(async (request) => {
   return {
     anthropic: !!data.anthropic,
     gemini: !!data.gemini,
+    github: !!data.github,
   };
 });
+
+export const githubProxy = onRequest(
+  { timeoutSeconds: 540, cors: false },
+  async (req, res) => {
+    const uid = await requireSignedInUid(req, res);
+    if (!uid) return;
+
+    const token = await getUserKey(uid, 'github');
+    if (!token) {
+      res.status(400).json({ error: 'No GitHub token stored. Sign in with GitHub to refresh it.' });
+      return;
+    }
+
+    const targetPath = req.path.replace(/^\/github-api/, '') || '/';
+    const targetUrl = new URL(`https://api.github.com${targetPath}`);
+    if (req.query) {
+      Object.entries(req.query).forEach(([k, v]) => {
+        targetUrl.searchParams.set(k, String(v));
+      });
+    }
+
+    const forwardHeaders: http.OutgoingHttpHeaders = {};
+    for (const [key, value] of Object.entries(req.headers)) {
+      const k = key.toLowerCase();
+      if (k === 'host' || k === 'authorization') continue;
+      forwardHeaders[key] = value;
+    }
+    forwardHeaders['authorization'] = `Bearer ${token}`;
+    if (!forwardHeaders['user-agent']) forwardHeaders['user-agent'] = 'github-story-map';
+
+    const body = Buffer.isBuffer(req.body)
+      ? req.body
+      : req.body
+        ? JSON.stringify(req.body)
+        : undefined;
+
+    pipeUpstream(res, {
+      hostname: targetUrl.hostname,
+      path: targetUrl.pathname + targetUrl.search,
+      method: req.method,
+      headers: forwardHeaders,
+    }, body);
+  },
+);
