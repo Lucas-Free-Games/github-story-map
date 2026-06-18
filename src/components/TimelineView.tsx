@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { useAppStore } from '../store/appStore';
 import type { GitHubIssue, GitHubMilestone } from '../types';
 import IssueReadModal from './IssueReadModal';
+import { githubColorToHex, CLOSED_COLOR, NO_STATUS_COLOR } from '../lib/githubColors';
 
 type Granularity = 'day' | 'week' | 'quarter' | 'year';
 
@@ -104,17 +105,6 @@ function sortedMilestones(milestones: GitHubMilestone[], order: number[]): GitHu
     if (bi === -1) return -1;
     return ai - bi;
   });
-}
-
-const GITHUB_COLOR_HEX: Record<string, string> = {
-  GREEN: '#4ade80', YELLOW: '#facc15', ORANGE: '#fb923c', RED: '#f87171',
-  BLUE: '#60a5fa', PURPLE: '#c084fc', PINK: '#f472b6', GRAY: '#9ca3af',
-};
-const CLOSED_COLOR = '#c084fc';
-const NO_STATUS_COLOR = '#e5e7eb';
-
-function githubColorToHex(name: string): string {
-  return GITHUB_COLOR_HEX[name.toUpperCase()] ?? NO_STATUS_COLOR;
 }
 
 function statusSortKey(name: string): number {

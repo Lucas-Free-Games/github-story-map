@@ -5,6 +5,7 @@ import { generateDescription, loadGeminiSettings, GEMINI_MODELS } from '../lib/g
 import type { IssueContext } from '../lib/gemini';
 import { fetchIssueImplementation, parseImagesFromBody } from '../lib/github';
 import ImageAttacher, { type AttachedImage } from './ImageAttacher';
+import Spinner from './Spinner';
 import {
   loadAnthropicSettings,
   createSession,
@@ -33,15 +34,6 @@ interface LogEntry {
 }
 
 type CodingState = 'idle' | 'starting' | 'running' | 'done' | 'error';
-
-function Spinner() {
-  return (
-    <svg className="w-3.5 h-3.5 animate-spin" viewBox="0 0 24 24" fill="none">
-      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
-      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z" />
-    </svg>
-  );
-}
 
 function CopyButton({ text, label = 'Copy' }: { text: string; label?: string }) {
   const [copied, setCopied] = useState(false);
@@ -570,7 +562,7 @@ export default function EditIssueModal({ issue, onClose, initialTab = 'descripti
                     <select
                       value={milestoneNumber}
                       onChange={(e) => setMilestoneNumber(e.target.value)}
-                      className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-purple-500 bg-white"
+                      className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white"
                     >
                       <option value="">— none —</option>
                       {milestones.map((m) => (
@@ -590,7 +582,7 @@ export default function EditIssueModal({ issue, onClose, initialTab = 'descripti
                       type="button"
                       onClick={handleCodeWithAI}
                       disabled={codingState === 'starting' || codingState === 'running'}
-                      className="flex items-center justify-center gap-1.5 w-36 px-2.5 py-1 text-xs font-medium text-orange-700 bg-orange-50 border border-orange-200 rounded-lg hover:bg-orange-100 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                      className="flex items-center justify-center gap-1.5 w-36 px-2.5 py-1 text-xs font-medium text-orange-700 bg-orange-50 border border-orange-200 rounded-lg hover:bg-orange-100 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
                     >
                       {(codingState === 'starting' || codingState === 'running') ? (
                         <><Spinner />Coding…</>
@@ -613,7 +605,7 @@ export default function EditIssueModal({ issue, onClose, initialTab = 'descripti
             </div>{/* end fixed-height tab panel */}
           </div>
 
-          {error && <p className="text-red-500 text-sm shrink-0">{error}</p>}
+          {error && <p className="text-red-500 text-xs shrink-0">{error}</p>}
 
           {/* Footer */}
           <div className="flex justify-end gap-2 pt-1 shrink-0">
@@ -628,7 +620,7 @@ export default function EditIssueModal({ issue, onClose, initialTab = 'descripti
             <button
               type="submit"
               disabled={saving || !title.trim()}
-              className="px-4 py-2 text-sm font-medium bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+              className="px-4 py-2 text-sm font-medium bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
             >
               {saving ? 'Saving…' : 'Save changes'}
             </button>

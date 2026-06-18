@@ -260,7 +260,7 @@ export default function StoryMap() {
                 <button
                   type="submit"
                   disabled={userActivitySaving || !newUserActivityTitle.trim()}
-                  className="px-3 py-1.5 text-xs font-medium bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 transition-colors shrink-0"
+                  className="px-3 py-1.5 text-xs font-medium bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-40 transition-colors shrink-0"
                 >
                   {userActivitySaving ? '…' : 'Create'}
                 </button>

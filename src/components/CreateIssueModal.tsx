@@ -3,6 +3,7 @@ import { useAppStore } from '../store/appStore';
 import { generateDescription, loadGeminiSettings, GEMINI_MODELS } from '../lib/gemini';
 import type { IssueContext } from '../lib/gemini';
 import ImageAttacher, { type AttachedImage } from './ImageAttacher';
+import Spinner from './Spinner';
 
 interface Props {
   defaultProjectId?: string;
@@ -129,13 +130,7 @@ export default function CreateIssueModal({ defaultProjectId, defaultMilestoneNum
                     className="flex items-center gap-1.5 px-2.5 py-1 text-xs font-medium text-purple-700 bg-purple-50 border border-purple-200 rounded-lg hover:bg-purple-100 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
                   >
                     {generating ? (
-                      <>
-                        <svg className="w-3 h-3 animate-spin" viewBox="0 0 24 24" fill="none">
-                          <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
-                          <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z" />
-                        </svg>
-                        Generating…
-                      </>
+                      <><Spinner />Generating…</>
                     ) : (
                       <>✦ Generate with AI</>
                     )}
@@ -179,7 +174,7 @@ export default function CreateIssueModal({ defaultProjectId, defaultMilestoneNum
               <select
                 value={milestoneNumber}
                 onChange={(e) => setMilestoneNumber(e.target.value)}
-                className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-purple-500 bg-white"
+                className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white"
               >
                 <option value="">— none —</option>
                 {milestones.map((m) => (
@@ -195,7 +190,7 @@ export default function CreateIssueModal({ defaultProjectId, defaultMilestoneNum
               <select
                 value={statusLabel}
                 onChange={(e) => setStatusLabel(e.target.value)}
-                className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-green-500 bg-white"
+                className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white"
               >
                 <option value="">— none —</option>
                 {statusLabels.map((l) => (
@@ -205,7 +200,7 @@ export default function CreateIssueModal({ defaultProjectId, defaultMilestoneNum
             </div>
           )}
 
-          {error && <p className="text-red-500 text-sm">{error}</p>}
+          {error && <p className="text-red-500 text-xs">{error}</p>}
 
           <div className="flex justify-end gap-2 pt-1">
             <button
@@ -218,7 +213,7 @@ export default function CreateIssueModal({ defaultProjectId, defaultMilestoneNum
             <button
               type="submit"
               disabled={submitting || !title.trim()}
-              className="px-4 py-2 text-sm font-medium bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+              className="px-4 py-2 text-sm font-medium bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
             >
               {submitting ? 'Creating…' : 'Create issue'}
             </button>

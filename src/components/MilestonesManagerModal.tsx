@@ -56,27 +56,27 @@ function MilestoneRow({
           value={title}
           onChange={(e) => setTitle(e.target.value)}
           placeholder="Wave title"
-          className="w-full border border-gray-300 rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-purple-500"
+          className="w-full border border-gray-300 rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
         />
         <input
           type="text"
           value={description}
           onChange={(e) => setDescription(e.target.value)}
           placeholder="Description (optional)"
-          className="w-full border border-gray-300 rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-purple-500"
+          className="w-full border border-gray-300 rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
         />
         {error && <p className="text-red-500 text-xs">{error}</p>}
         <div className="flex gap-2 justify-end">
           <button
             onClick={() => { setEditing(false); setTitle(milestone.title); setDescription(milestone.description ?? ''); }}
-            className="px-3 py-1.5 text-sm text-gray-600 hover:text-gray-900 rounded-lg hover:bg-gray-100 transition-colors"
+            className="px-4 py-2 text-sm text-gray-600 hover:text-gray-900 rounded-lg hover:bg-gray-100 transition-colors"
           >
             Cancel
           </button>
           <button
             onClick={handleSave}
             disabled={saving || !title.trim()}
-            className="px-3 py-1.5 text-sm font-medium bg-gray-900 text-white rounded-lg hover:bg-gray-700 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+            className="px-4 py-2 text-sm font-medium bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
           >
             {saving ? 'Saving…' : 'Save'}
           </button>
@@ -188,27 +188,27 @@ export default function MilestonesManagerModal({ onClose }: Props) {
                 onChange={(e) => { setNewTitle(e.target.value); setCreateError(''); }}
                 onKeyDown={(e) => e.key === 'Enter' && handleCreate()}
                 placeholder="Wave title"
-                className="w-full border border-gray-300 rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-purple-500"
+                className="w-full border border-gray-300 rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
               />
               <input
                 type="text"
                 value={newDescription}
                 onChange={(e) => setNewDescription(e.target.value)}
                 placeholder="Description (optional)"
-                className="w-full border border-gray-300 rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-purple-500"
+                className="w-full border border-gray-300 rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
               />
               {createError && <p className="text-red-500 text-xs">{createError}</p>}
               <div className="flex gap-2 justify-end">
                 <button
                   onClick={() => { setShowCreate(false); setNewTitle(''); setNewDescription(''); setCreateError(''); }}
-                  className="px-3 py-1.5 text-sm text-gray-600 hover:text-gray-900 rounded-lg hover:bg-gray-100 transition-colors"
+                  className="px-4 py-2 text-sm text-gray-600 hover:text-gray-900 rounded-lg hover:bg-gray-100 transition-colors"
                 >
                   Cancel
                 </button>
                 <button
                   onClick={handleCreate}
                   disabled={creating || !newTitle.trim()}
-                  className="px-3 py-1.5 text-sm font-medium bg-gray-900 text-white rounded-lg hover:bg-gray-700 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+                  className="px-4 py-2 text-sm font-medium bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
                 >
                   {creating ? 'Creating…' : 'Create'}
                 </button>

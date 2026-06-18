@@ -74,12 +74,12 @@ function LabelSection({
           onChange={(e) => { setInput(e.target.value); setError(''); }}
           onKeyDown={(e) => e.key === 'Enter' && handleAdd()}
           placeholder={`New ${title.toLowerCase()}…`}
-          className="flex-1 border border-gray-300 rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+          className="flex-1 border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
         />
         <button
           onClick={handleAdd}
           disabled={adding || !input.trim()}
-          className="px-3 py-1.5 text-sm font-medium bg-gray-900 text-white rounded-lg hover:bg-gray-700 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+          className="px-4 py-2 text-sm font-medium bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
         >
           {adding ? '…' : 'Add'}
         </button>
@@ -102,7 +102,7 @@ export default function LabelsManagerModal({ onClose }: Props) {
       className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4"
       onClick={(e) => e.target === e.currentTarget && onClose()}
     >
-      <div className="bg-white rounded-2xl shadow-xl w-full max-w-md">
+      <div className="bg-white rounded-2xl shadow-xl w-full max-w-md flex flex-col max-h-[80vh]">
         <div className="flex items-center justify-between px-6 pt-5 pb-4 border-b border-gray-100">
           <h2 className="font-semibold text-gray-900">Manage Statuses</h2>
           <button

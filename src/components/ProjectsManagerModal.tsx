@@ -69,14 +69,14 @@ function ProjectRow({
         <div className="flex gap-2 justify-end">
           <button
             onClick={() => { setEditing(false); setTitle(project.title); setDescription(project.shortDescription ?? ''); }}
-            className="px-3 py-1.5 text-sm text-gray-600 hover:text-gray-900 rounded-lg hover:bg-gray-100 transition-colors"
+            className="px-4 py-2 text-sm text-gray-600 hover:text-gray-900 rounded-lg hover:bg-gray-100 transition-colors"
           >
             Cancel
           </button>
           <button
             onClick={handleSave}
             disabled={saving || !title.trim()}
-            className="px-3 py-1.5 text-sm font-medium bg-gray-900 text-white rounded-lg hover:bg-gray-700 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+            className="px-4 py-2 text-sm font-medium bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
           >
             {saving ? 'Saving…' : 'Save'}
           </button>
@@ -177,7 +177,7 @@ export default function ProjectsManagerModal({ onClose }: Props) {
           </button>
         </div>
 
-        <div className="overflow-y-auto flex-1 px-4 py-3">
+        <div className="overflow-y-auto flex-1 px-6 py-4">
           {loading ? (
             <p className="text-sm text-gray-400 text-center py-6">Loading…</p>
           ) : fetchError ? (
@@ -201,7 +201,7 @@ export default function ProjectsManagerModal({ onClose }: Props) {
           )}
         </div>
 
-        <div className="px-4 pb-4 pt-2 border-t border-gray-100 shrink-0">
+        <div className="px-6 pb-4 pt-2 border-t border-gray-100 shrink-0">
           {showCreate ? (
             <div className="space-y-2">
               <input
@@ -224,14 +224,14 @@ export default function ProjectsManagerModal({ onClose }: Props) {
               <div className="flex gap-2 justify-end">
                 <button
                   onClick={() => { setShowCreate(false); setNewTitle(''); setNewDescription(''); setCreateError(''); }}
-                  className="px-3 py-1.5 text-sm text-gray-600 hover:text-gray-900 rounded-lg hover:bg-gray-100 transition-colors"
+                  className="px-4 py-2 text-sm text-gray-600 hover:text-gray-900 rounded-lg hover:bg-gray-100 transition-colors"
                 >
                   Cancel
                 </button>
                 <button
                   onClick={handleCreate}
                   disabled={creating || !newTitle.trim()}
-                  className="px-3 py-1.5 text-sm font-medium bg-gray-900 text-white rounded-lg hover:bg-gray-700 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+                  className="px-4 py-2 text-sm font-medium bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
                 >
                   {creating ? 'Creating…' : 'Create'}
                 </button>

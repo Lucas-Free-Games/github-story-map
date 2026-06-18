@@ -229,14 +229,14 @@ export default function WavesView() {
                 onChange={(e) => { setNewTitle(e.target.value); setCreateError(''); }}
                 onKeyDown={(e) => e.key === 'Enter' && handleCreate()}
                 placeholder="Wave title"
-                className="w-full border border-gray-300 rounded px-2 py-1 text-xs focus:outline-none focus:ring-2 focus:ring-purple-500"
+                className="w-full border border-gray-300 rounded px-2 py-1 text-xs focus:outline-none focus:ring-2 focus:ring-blue-500"
               />
               <input
                 type="text"
                 value={newDescription}
                 onChange={(e) => setNewDescription(e.target.value)}
                 placeholder="Description (optional)"
-                className="w-full border border-gray-300 rounded px-2 py-1 text-xs focus:outline-none focus:ring-2 focus:ring-purple-500"
+                className="w-full border border-gray-300 rounded px-2 py-1 text-xs focus:outline-none focus:ring-2 focus:ring-blue-500"
               />
               {createError && <p className="text-red-500 text-xs">{createError}</p>}
               <div className="flex gap-1 justify-end">
@@ -249,7 +249,7 @@ export default function WavesView() {
                 <button
                   onClick={handleCreate}
                   disabled={creating || !newTitle.trim()}
-                  className="px-2 py-0.5 text-xs font-medium bg-gray-900 text-white rounded hover:bg-gray-700 disabled:opacity-40 transition-colors"
+                  className="px-2 py-0.5 text-xs font-medium bg-blue-600 text-white rounded hover:bg-blue-700 disabled:opacity-40 transition-colors"
                 >
                   {creating ? '…' : 'Create'}
                 </button>
@@ -281,21 +281,21 @@ export default function WavesView() {
                     value={detailTitle}
                     onChange={(e) => setDetailTitle(e.target.value)}
                     placeholder="Wave title"
-                    className="w-full border border-gray-300 rounded-lg px-3 py-2 text-xl font-bold text-gray-900 focus:outline-none focus:ring-2 focus:ring-purple-500"
+                    className="w-full border border-gray-300 rounded-lg px-3 py-2 text-xl font-bold text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500"
                   />
                   <textarea
                     value={detailDescription}
                     onChange={(e) => setDetailDescription(e.target.value)}
                     placeholder="Description (optional)"
                     rows={3}
-                    className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm text-gray-700 focus:outline-none focus:ring-2 focus:ring-purple-500 resize-none"
+                    className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm text-gray-700 focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none"
                   />
                   {saveDetailError && <p className="text-xs text-red-600">{saveDetailError}</p>}
                   <div className="flex gap-2">
                     <button
                       onClick={handleSaveDetail}
                       disabled={savingDetail || !detailTitle.trim()}
-                      className="px-4 py-1.5 text-sm font-medium bg-gray-900 text-white rounded-lg hover:bg-gray-700 disabled:opacity-40 transition-colors"
+                      className="px-4 py-1.5 text-sm font-medium bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-40 transition-colors"
                     >
                       {savingDetail ? 'Saving…' : 'Save'}
                     </button>

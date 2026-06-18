@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { uploadImageToRepo } from '../lib/github';
+import Spinner from './Spinner';
 
 export interface AttachedImage {
   url: string;
@@ -16,15 +17,6 @@ interface Props {
   lockedCount?: number;
   owner?: string;
   repo?: string;
-}
-
-function Spinner() {
-  return (
-    <svg className="w-3 h-3 animate-spin" viewBox="0 0 24 24" fill="none">
-      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
-      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z" />
-    </svg>
-  );
 }
 
 async function fileToBase64(file: File): Promise<string> {
@@ -127,7 +119,7 @@ export default function ImageAttacher({
           >
             <div className="flex items-center justify-center gap-2 text-xs text-gray-400">
               {uploading ? (
-                <span className="flex items-center gap-1.5"><Spinner />Uploading…</span>
+                <span className="flex items-center gap-1.5"><Spinner className="w-3 h-3" />Uploading…</span>
               ) : (
                 <>
                   <span>Drop images here or</span>
@@ -178,7 +170,7 @@ export default function ImageAttacher({
                 type="button"
                 onClick={handleUrlAdd}
                 disabled={!urlInput.trim()}
-                className="px-3 py-1.5 text-xs bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50"
+                className="px-3 py-1.5 text-xs bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-40"
               >
                 Add
               </button>

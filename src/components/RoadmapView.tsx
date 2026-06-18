@@ -1,27 +1,9 @@
 import { useState } from 'react';
 import { useAppStore } from '../store/appStore';
 import type { GitHubIssue, GitHubProject, GitHubMilestone } from '../types';
+import { githubColorToHex, CLOSED_COLOR, NO_STATUS_COLOR } from '../lib/githubColors';
 
 type CellMode = 'donut' | 'dots';
-
-// Map GitHub Project color enum values to hex
-const GITHUB_COLOR_HEX: Record<string, string> = {
-  GREEN:  '#4ade80',
-  YELLOW: '#facc15',
-  ORANGE: '#fb923c',
-  RED:    '#f87171',
-  BLUE:   '#60a5fa',
-  PURPLE: '#c084fc',
-  PINK:   '#f472b6',
-  GRAY:   '#9ca3af',
-};
-
-const CLOSED_COLOR  = '#c084fc';
-const NO_STATUS_COLOR = '#e5e7eb';
-
-function githubColorToHex(name: string): string {
-  return GITHUB_COLOR_HEX[name.toUpperCase()] ?? NO_STATUS_COLOR;
-}
 
 function statusSortKey(name: string): number {
   const n = name.toLowerCase().trim();

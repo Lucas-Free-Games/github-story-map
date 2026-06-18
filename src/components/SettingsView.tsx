@@ -234,7 +234,7 @@ export default function SettingsView() {
                     type="button"
                     onClick={handleSaveGeminiKey}
                     disabled={geminiKeyBusy || !geminiKeyInput.trim()}
-                    className="px-3 py-2 text-sm font-medium bg-gray-900 text-white rounded-lg hover:bg-gray-700 disabled:opacity-40"
+                    className="px-3 py-2 text-sm font-medium bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-40"
                   >
                     {geminiKeyStored ? 'Replace' : 'Save'}
                   </button>
@@ -405,13 +405,13 @@ export default function SettingsView() {
                       value={anthropicKeyInput}
                       onChange={(e) => { setAnthropicKeyInput(e.target.value); setAnthropicKeyError(null); }}
                       placeholder={anthropicKeyStored ? '••••••••  (key saved server-side)' : 'sk-ant-…'}
-                      className="flex-1 border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-orange-400 font-mono"
+                      className="flex-1 border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 font-mono"
                     />
                     <button
                       type="button"
                       onClick={handleSaveAnthropicKey}
                       disabled={anthropicKeyBusy || !anthropicKeyInput.trim()}
-                      className="px-3 py-2 text-sm font-medium bg-gray-900 text-white rounded-lg hover:bg-gray-700 disabled:opacity-40"
+                      className="px-3 py-2 text-sm font-medium bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-40"
                     >
                       {anthropicKeyStored ? 'Replace' : 'Save'}
                     </button>
@@ -441,7 +441,7 @@ export default function SettingsView() {
                     value={agentId}
                     onChange={(e) => setAgentId(e.target.value)}
                     placeholder="agent_…"
-                    className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-orange-400 font-mono"
+                    className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 font-mono"
                   />
                 </div>
                 <div>
@@ -453,7 +453,7 @@ export default function SettingsView() {
                     value={envId}
                     onChange={(e) => setEnvId(e.target.value)}
                     placeholder="env_…"
-                    className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-orange-400 font-mono"
+                    className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 font-mono"
                   />
                 </div>
                 <div>
@@ -463,7 +463,7 @@ export default function SettingsView() {
                     value={vaultId}
                     onChange={(e) => setVaultId(e.target.value)}
                     placeholder="vlt_…"
-                    className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-orange-400 font-mono"
+                    className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 font-mono"
                   />
                   <p className="text-xs text-gray-400 mt-1">
                     The vault holds your GitHub OAuth token — the agent uses it automatically via
@@ -478,7 +478,7 @@ export default function SettingsView() {
             <button
               onClick={handleSave}
               className={`px-4 py-2 text-sm font-medium rounded-lg transition-colors ${
-                saved_ ? 'bg-green-600 text-white' : 'bg-gray-900 text-white hover:bg-gray-700'
+                saved_ ? 'bg-green-600 text-white' : 'bg-blue-600 text-white hover:bg-blue-700'
               }`}
             >
               {saved_ ? 'Saved!' : 'Save'}

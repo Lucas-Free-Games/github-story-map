@@ -3,22 +3,7 @@ import { useAppStore } from '../store/appStore';
 import type { GitHubIssue } from '../types';
 import IssueReadModal from './IssueReadModal';
 import EditIssueModal from './EditIssueModal';
-
-const GH_COLOR_STYLE: Record<string, [string, string, string]> = {
-  GRAY:   ['#f9fafb', '#6b7280', '#e5e7eb'],
-  BLUE:   ['#eff6ff', '#2563eb', '#bfdbfe'],
-  GREEN:  ['#f0fdf4', '#16a34a', '#bbf7d0'],
-  YELLOW: ['#fefce8', '#854d0e', '#fde047'],
-  ORANGE: ['#fff7ed', '#c2410c', '#fed7aa'],
-  RED:    ['#fef2f2', '#dc2626', '#fecaca'],
-  PINK:   ['#fdf2f8', '#be185d', '#fbcfe8'],
-  PURPLE: ['#faf5ff', '#7e22ce', '#e9d5ff'],
-};
-
-function ghStyle(color: string): React.CSSProperties {
-  const [bg, text, border] = GH_COLOR_STYLE[color] ?? GH_COLOR_STYLE.GRAY;
-  return { backgroundColor: bg, color: text, border: `1px solid ${border}` };
-}
+import { ghStyle } from '../lib/githubColors';
 
 function formatDate(iso: string): string {
   const d = new Date(iso);

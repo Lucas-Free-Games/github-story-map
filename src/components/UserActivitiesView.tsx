@@ -229,7 +229,7 @@ export default function UserActivitiesView() {
                 <button
                   onClick={handleCreate}
                   disabled={creating || !newTitle.trim()}
-                  className="px-2 py-0.5 text-xs font-medium bg-gray-900 text-white rounded hover:bg-gray-700 disabled:opacity-40 transition-colors"
+                  className="px-2 py-0.5 text-xs font-medium bg-blue-600 text-white rounded hover:bg-blue-700 disabled:opacity-40 transition-colors"
                 >
                   {creating ? '…' : 'Create'}
                 </button>
@@ -275,7 +275,7 @@ export default function UserActivitiesView() {
                     <button
                       onClick={handleSaveDetail}
                       disabled={savingDetail || !detailTitle.trim()}
-                      className="px-4 py-1.5 text-sm font-medium bg-gray-900 text-white rounded-lg hover:bg-gray-700 disabled:opacity-40 transition-colors"
+                      className="px-4 py-1.5 text-sm font-medium bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-40 transition-colors"
                     >
                       {savingDetail ? 'Saving…' : 'Save'}
                     </button>

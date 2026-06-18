@@ -105,7 +105,7 @@ export default function KanbanView() {
             value={kanbanMilestoneNumber ?? ''}
             onChange={(e) => setKanbanMilestone(e.target.value ? Number(e.target.value) : null)}
             disabled={loading}
-            className="text-sm border border-gray-200 rounded-md px-2 py-1 bg-white text-gray-700 focus:outline-none focus:ring-2 focus:ring-green-400 disabled:opacity-50"
+            className="text-sm border border-gray-200 rounded-md px-2 py-1 bg-white text-gray-700 focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:opacity-40"
           >
             <option value="">All Waves</option>
             {milestones

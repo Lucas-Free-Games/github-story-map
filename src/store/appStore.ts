@@ -365,7 +365,14 @@ export const useAppStore = create<AppState>((set, get) => ({
   createMilestone: async (title, description) => {
     const {owner, repo, milestones } = get();
     const octokit = makeOctokit();
-    const { data } = await octokit.rest.issues.createMilestone({ owner, repo, title, description: description || undefined });
+    let data: Awaited<ReturnType<typeof octokit.rest.issues.createMilestone>>['data'];
+    try {
+      ({ data } = await octokit.rest.issues.createMilestone({ owner, repo, title, description: description || undefined }));
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : '';
+      if (msg.includes('already_exists')) throw new Error(`A wave named "${title}" already exists.`);
+      throw err;
+    }
     set({
       milestones: [...milestones, {
         number: data.number,

@@ -97,7 +97,7 @@ export default function Setup() {
                     <button
                       onClick={() => handleSelectRepo(r.full_name)}
                       disabled={connecting}
-                      className="w-full text-left px-3 py-2.5 hover:bg-blue-50 transition-colors disabled:opacity-50"
+                      className="w-full text-left px-3 py-2.5 hover:bg-blue-50 transition-colors disabled:opacity-40"
                     >
                       <span className="text-sm font-medium text-gray-800">{r.full_name}</span>
                       {r.private && (
