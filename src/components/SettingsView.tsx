@@ -2,14 +2,12 @@ import { useState, useEffect } from 'react';
 import { useAppStore } from '../store/appStore';
 import { loadGeminiSettings, saveGeminiSettings, testGeminiConnection, DEFAULT_GEMINI_MODEL, GEMINI_MODELS } from '../lib/gemini';
 import { loadAnthropicSettings, saveAnthropicSettings, testAnthropicConnection } from '../lib/anthropic';
-import { loadUserProfile, saveUserProfile } from '../lib/firebase';
 import { saveUserKey, deleteUserKey, getUserKeyStatus } from '../lib/userKeys';
 
-type Tab = 'general' | 'describing' | 'coding';
+type Tab = 'describing' | 'coding';
 type LedState = 'idle' | 'testing' | 'success' | 'error';
 
 const TABS: { key: Tab; label: string }[] = [
-  { key: 'general', label: 'General' },
   { key: 'describing', label: 'Describing' },
   { key: 'coding', label: 'Coding' },
 ];
@@ -51,55 +49,9 @@ function Led({ state, onClick }: { state: LedState; onClick: () => void }) {
 }
 
 export default function SettingsView() {
-  const {
-    owner,
-    repo,
-    issues,
-    projects,
-    linkedProjectIds,
-    setProjectLinked,
-    setCredentials,
-    fetchIssues,
-    fetchLabels,
-    fetchProjects,
-    fetchMilestones,
-    fetchAllProjectStatuses,
-  } = useAppStore();
+  const { issues } = useAppStore();
 
-  const [activeTab, setActiveTab] = useState<Tab>('general');
-
-  // General tab state
-  const [ghOwner, setGhOwner] = useState(owner);
-  const [ghRepo, setGhRepo] = useState(repo);
-  const [whitelistSearch, setWhitelistSearch] = useState('');
-
-  // User details state
-  const [address, setAddress] = useState('');
-  const [phone, setPhone] = useState('');
-  const [signupDate, setSignupDate] = useState('');
-  const [dateOfBirth, setDateOfBirth] = useState('');
-  const [notes, setNotes] = useState('');
-
-  useEffect(() => {
-    loadUserProfile().then((profile) => {
-      if (!profile) return;
-      if (profile.address) setAddress(profile.address);
-      if (profile.phone) setPhone(profile.phone);
-      if (profile.signupDate) setSignupDate(profile.signupDate);
-      if (profile.dateOfBirth) setDateOfBirth(profile.dateOfBirth);
-      if (profile.notes) setNotes(profile.notes);
-    }).catch(() => {});
-  }, []);
-
-  const calculatedAge = (() => {
-    if (!dateOfBirth) return null;
-    const today = new Date();
-    const dob = new Date(dateOfBirth);
-    let age = today.getFullYear() - dob.getFullYear();
-    const m = today.getMonth() - dob.getMonth();
-    if (m < 0 || (m === 0 && today.getDate() < dob.getDate())) age--;
-    return age >= 0 ? age : null;
-  })();
+  const [activeTab, setActiveTab] = useState<Tab>('describing');
 
   // Describing tab state
   const savedGemini = loadGeminiSettings();
@@ -218,24 +170,7 @@ export default function SettingsView() {
   }
 
   function handleSave() {
-    if (activeTab === 'general') {
-      const credentialsChanged = ghOwner !== owner || ghRepo !== repo;
-      if (credentialsChanged) {
-        setCredentials(ghOwner.trim(), ghRepo.trim());
-        fetchIssues();
-        fetchLabels();
-        fetchProjects().then(() => fetchAllProjectStatuses());
-        fetchMilestones();
-      }
-      saveUserProfile({
-        address: address.trim() || undefined,
-        phone: phone.trim() || undefined,
-        signupDate: signupDate || undefined,
-        dateOfBirth: dateOfBirth || undefined,
-        age: calculatedAge ?? undefined,
-        notes: notes.trim() || undefined,
-      }).catch(() => {});
-    } else if (activeTab === 'describing') {
+    if (activeTab === 'describing') {
       saveGeminiSettings({ model, exampleIssueNumbers: exampleNumbers, extraInstructions });
     } else if (activeTab === 'coding') {
       saveAnthropicSettings({ agentId, envId, vaultId });
@@ -279,170 +214,6 @@ export default function SettingsView() {
       {/* Content */}
       <div className="flex-1 overflow-y-auto bg-gray-50">
         <div className="max-w-lg mx-auto py-8 px-4 space-y-6">
-          {/* General Tab */}
-          {activeTab === 'general' && (
-            <>
-              <div>
-                <h2 className="text-base font-semibold text-gray-900 mb-4">GitHub Connection</h2>
-                <div className="space-y-4">
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Owner</label>
-                    <input
-                      type="text"
-                      value={ghOwner}
-                      onChange={(e) => setGhOwner(e.target.value)}
-                      placeholder="github-username-or-org"
-                      className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Repository</label>
-                    <input
-                      type="text"
-                      value={ghRepo}
-                      onChange={(e) => setGhRepo(e.target.value)}
-                      placeholder="repo-name"
-                      className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-                    />
-                  </div>
-                </div>
-              </div>
-
-              <div className="border-t border-gray-200 pt-6">
-                <h2 className="text-base font-semibold text-gray-900 mb-2">Firestore Sync</h2>
-                <p className="text-sm text-gray-500">
-                  Layout data (user activity order, wave order, story positions) is automatically synced to
-                  Firestore when available. No configuration required.
-                </p>
-              </div>
-
-              <div className="border-t border-gray-200 pt-6">
-                <div className="flex items-baseline justify-between mb-1">
-                  <h2 className="text-base font-semibold text-gray-900">User Activity Whitelist</h2>
-                  <span className="text-xs text-gray-400 font-mono truncate ml-3">{owner}/{repo}</span>
-                </div>
-                <p className="text-sm text-gray-500 mb-3">
-                  Check a project to link it to this repository. Only linked projects appear in the Story Map, Kanban, and Roadmap views, and changes persist on GitHub.
-                </p>
-                {(() => {
-                  const linkedSet = new Set(linkedProjectIds);
-                  const linkedCount = projects.filter((p) => linkedSet.has(p.id)).length;
-                  const filtered = projects.filter((p) =>
-                    p.title.toLowerCase().includes(whitelistSearch.toLowerCase()),
-                  );
-                  return (
-                    <>
-                      <div className="flex items-center justify-between mb-2 gap-2">
-                        <input
-                          type="text"
-                          value={whitelistSearch}
-                          onChange={(e) => setWhitelistSearch(e.target.value)}
-                          placeholder="Search user activities…"
-                          className="flex-1 border border-gray-300 rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-                        />
-                      </div>
-                      <div className="text-xs text-gray-400 mb-2">
-                        {linkedCount} of {projects.length} linked to {repo}
-                      </div>
-                      <ul className="border border-gray-200 rounded-lg divide-y divide-gray-100 max-h-72 overflow-y-auto bg-white">
-                        {projects.length === 0 ? (
-                          <li className="px-3 py-3 text-sm text-gray-400 italic">No user activities found for this organization.</li>
-                        ) : filtered.length === 0 ? (
-                          <li className="px-3 py-3 text-sm text-gray-400 italic">No matches.</li>
-                        ) : (
-                          filtered.map((p) => {
-                            const checked = linkedSet.has(p.id);
-                            return (
-                              <li key={p.id}>
-                                <label className="w-full flex items-center gap-2 px-3 py-2 text-sm cursor-pointer hover:bg-gray-50">
-                                  <input
-                                    type="checkbox"
-                                    checked={checked}
-                                    onChange={() => setProjectLinked(p.id, !checked)}
-                                    className="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
-                                  />
-                                  <span className="text-gray-400 tabular-nums shrink-0 text-xs font-mono">#{p.number}</span>
-                                  <span className="truncate text-gray-800">{p.title}</span>
-                                  {p.closed && (
-                                    <span className="ml-auto px-1.5 py-0.5 rounded text-xs bg-gray-100 text-gray-500 shrink-0">closed</span>
-                                  )}
-                                </label>
-                              </li>
-                            );
-                          })
-                        )}
-                      </ul>
-                    </>
-                  );
-                })()}
-              </div>
-
-              <div className="border-t border-gray-200 pt-6">
-                <h2 className="text-base font-semibold text-gray-900 mb-4">User Details</h2>
-                <div className="space-y-4">
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Address</label>
-                    <input
-                      type="text"
-                      value={address}
-                      onChange={(e) => setAddress(e.target.value)}
-                      placeholder="123 Main St, City, Country"
-                      className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Phone</label>
-                    <input
-                      type="tel"
-                      value={phone}
-                      onChange={(e) => setPhone(e.target.value)}
-                      placeholder="+1 555 000 0000"
-                      className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-                    />
-                  </div>
-                  <div className="flex gap-4">
-                    <div className="flex-1">
-                      <label className="block text-sm font-medium text-gray-700 mb-1">Signup Date</label>
-                      <input
-                        type="date"
-                        value={signupDate}
-                        onChange={(e) => setSignupDate(e.target.value)}
-                        className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-                      />
-                    </div>
-                  </div>
-                  <div className="flex gap-4">
-                    <div className="flex-1">
-                      <label className="block text-sm font-medium text-gray-700 mb-1">Date of Birth</label>
-                      <input
-                        type="date"
-                        value={dateOfBirth}
-                        onChange={(e) => setDateOfBirth(e.target.value)}
-                        className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-                      />
-                    </div>
-                    <div className="w-24">
-                      <label className="block text-sm font-medium text-gray-700 mb-1">Age</label>
-                      <div className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm bg-gray-50 text-gray-500 h-[38px] flex items-center">
-                        {calculatedAge !== null ? calculatedAge : '—'}
-                      </div>
-                    </div>
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Notes</label>
-                    <textarea
-                      value={notes}
-                      onChange={(e) => setNotes(e.target.value)}
-                      rows={3}
-                      placeholder="Any additional notes…"
-                      className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none"
-                    />
-                  </div>
-                </div>
-              </div>
-            </>
-          )}
-
           {/* Describing Tab */}
           {activeTab === 'describing' && (
             <>
