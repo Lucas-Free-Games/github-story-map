@@ -5,6 +5,7 @@ import type { GitHubIssue, GitHubMilestone, GitHubProject } from '../types';
 import IssueCard from './IssueCard';
 import CreateIssueModal from './CreateIssueModal';
 import ResizableHeader, { GRID_DEFAULT_WIDTH } from './ResizableHeader';
+import CreateWaveDialog from './CreateWaveDialog';
 
 function sortedProjects(projects: GitHubProject[], userActivityOrder: number[]): GitHubProject[] {
   const open = projects.filter((p) => !p.closed);
@@ -116,8 +117,6 @@ export default function StoryMap() {
   const [userActivitySaving, setUserActivitySaving] = useState(false);
 
   const [addingWave, setAddingWave] = useState(false);
-  const [newWaveTitle, setNewWaveTitle] = useState('');
-  const [waveSaving, setWaveSaving] = useState(false);
 
   /** Returns the stored (or default) width for a given column key. */
   const colW = (key: string) => columnWidths[key] ?? GRID_DEFAULT_WIDTH;
@@ -142,20 +141,6 @@ export default function StoryMap() {
     }
   }
 
-  async function handleCreateWave(e: React.FormEvent) {
-    e.preventDefault();
-    if (!newWaveTitle.trim()) return;
-    setWaveSaving(true);
-    try {
-      await createMilestone(newWaveTitle.trim(), '');
-      setNewWaveTitle('');
-      setAddingWave(false);
-    } catch (err) {
-      showError(err instanceof Error ? err.message : 'Failed to create wave');
-    } finally {
-      setWaveSaving(false);
-    }
-  }
 
   const cols = sortedProjects(projects, layout.userActivityOrder).filter((p) =>
     linkedProjectIds.includes(p.id),
@@ -421,29 +406,15 @@ export default function StoryMap() {
                   {showNoWaveRow && (
                   <tr key="no-wave">
                     <th className="sticky left-0 z-10 bg-gray-50 border border-gray-200 px-2 py-2 text-xs font-semibold text-gray-500 text-right align-top pt-3 w-[200px] min-w-[200px] max-w-[200px]">
-                      {addingWave ? (
-                        <form onSubmit={handleCreateWave} className="flex items-center gap-1">
-                          <input
-                            autoFocus
-                            value={newWaveTitle}
-                            onChange={(e) => setNewWaveTitle(e.target.value)}
-                            placeholder="Wave name\u2026"
-                            className="flex-1 min-w-0 border border-purple-300 rounded px-2 py-1 text-xs focus:outline-none focus:ring-1 focus:ring-purple-400"
-                          />
-                          <button type="submit" disabled={waveSaving || !newWaveTitle.trim()} className="text-purple-600 hover:text-purple-800 disabled:opacity-40 px-1 text-base leading-none">&#x2713;</button>
-                          <button type="button" onClick={() => { setAddingWave(false); setNewWaveTitle(''); }} className="text-gray-400 hover:text-gray-600 px-1 text-base leading-none">&#x2715;</button>
-                        </form>
-                      ) : (
-                        <div className="flex items-center justify-end gap-2">
-                          <span className="text-gray-400 font-normal italic">No Wave</span>
-                          <button
-                            onClick={() => setAddingWave(true)}
-                            className="text-xs text-purple-400 hover:text-purple-600 hover:bg-purple-100 rounded px-1.5 py-0.5 transition-colors not-italic font-semibold"
-                          >
-                            + New Wave
-                          </button>
-                        </div>
-                      )}
+                      <div className="flex items-center justify-end gap-2">
+                        <span className="text-gray-400 font-normal italic">No Wave</span>
+                        <button
+                          onClick={() => setAddingWave(true)}
+                          className="text-xs text-purple-400 hover:text-purple-600 hover:bg-purple-100 rounded px-1.5 py-0.5 transition-colors not-italic font-semibold"
+                        >
+                          + New Wave
+                        </button>
+                      </div>
                     </th>
 
                     {/* User activity column cells — width follows header */}
@@ -481,6 +452,13 @@ export default function StoryMap() {
           </table>
         </div>
       </DragDropContext>
+
+      {addingWave && (
+        <CreateWaveDialog
+          onCreate={(title, description) => createMilestone(title, description)}
+          onClose={() => setAddingWave(false)}
+        />
+      )}
 
       {createCell && (
         <CreateIssueModal

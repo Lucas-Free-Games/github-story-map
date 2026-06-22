@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useAppStore } from '../store/appStore';
 import type { GitHubMilestone } from '../types';
+import CreateWaveDialog from './CreateWaveDialog';
 
 interface Props {
   onClose: () => void;
@@ -122,31 +123,11 @@ export default function MilestonesManagerModal({ onClose }: Props) {
   const { milestones, fetchMilestones, createMilestone, updateMilestone, deleteMilestone } = useAppStore();
   const [loading, setLoading] = useState(false);
   const [showCreate, setShowCreate] = useState(false);
-  const [newTitle, setNewTitle] = useState('');
-  const [newDescription, setNewDescription] = useState('');
-  const [creating, setCreating] = useState(false);
-  const [createError, setCreateError] = useState('');
 
   useEffect(() => {
     setLoading(true);
     fetchMilestones().finally(() => setLoading(false));
   }, [fetchMilestones]);
-
-  async function handleCreate() {
-    if (!newTitle.trim()) return;
-    setCreating(true);
-    setCreateError('');
-    try {
-      await createMilestone(newTitle.trim(), newDescription);
-      setNewTitle('');
-      setNewDescription('');
-      setShowCreate(false);
-    } catch (err) {
-      setCreateError(err instanceof Error ? err.message : 'Failed to create milestone');
-    } finally {
-      setCreating(false);
-    }
-  }
 
   return (
     <div
@@ -179,51 +160,21 @@ export default function MilestonesManagerModal({ onClose }: Props) {
         </div>
 
         <div className="px-4 pb-4 pt-2 border-t border-gray-100 shrink-0">
-          {showCreate ? (
-            <div className="space-y-2">
-              <input
-                autoFocus
-                type="text"
-                value={newTitle}
-                onChange={(e) => { setNewTitle(e.target.value); setCreateError(''); }}
-                onKeyDown={(e) => e.key === 'Enter' && handleCreate()}
-                placeholder="Wave title"
-                className="w-full border border-gray-300 rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-              />
-              <input
-                type="text"
-                value={newDescription}
-                onChange={(e) => setNewDescription(e.target.value)}
-                placeholder="Description (optional)"
-                className="w-full border border-gray-300 rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-              />
-              {createError && <p className="text-red-500 text-xs">{createError}</p>}
-              <div className="flex gap-2 justify-end">
-                <button
-                  onClick={() => { setShowCreate(false); setNewTitle(''); setNewDescription(''); setCreateError(''); }}
-                  className="px-4 py-2 text-sm text-gray-600 hover:text-gray-900 rounded-lg hover:bg-gray-100 transition-colors"
-                >
-                  Cancel
-                </button>
-                <button
-                  onClick={handleCreate}
-                  disabled={creating || !newTitle.trim()}
-                  className="px-4 py-2 text-sm font-medium bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
-                >
-                  {creating ? 'Creating…' : 'Create'}
-                </button>
-              </div>
-            </div>
-          ) : (
-            <button
-              onClick={() => setShowCreate(true)}
-              className="w-full text-sm text-gray-600 hover:text-gray-900 px-3 py-2 rounded-lg hover:bg-gray-100 transition-colors text-left"
-            >
-              + New Wave
-            </button>
-          )}
+          <button
+            onClick={() => setShowCreate(true)}
+            className="w-full text-sm text-gray-600 hover:text-gray-900 px-3 py-2 rounded-lg hover:bg-gray-100 transition-colors text-left"
+          >
+            + New Wave
+          </button>
         </div>
       </div>
+
+      {showCreate && (
+        <CreateWaveDialog
+          onCreate={(title, description) => createMilestone(title, description)}
+          onClose={() => setShowCreate(false)}
+        />
+      )}
     </div>
   );
 }

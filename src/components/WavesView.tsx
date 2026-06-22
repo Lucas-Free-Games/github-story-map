@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { useAppStore } from '../store/appStore';
 import type { GitHubIssue, GitHubMilestone } from '../types';
 import IssueCard from './IssueCard';
+import CreateWaveDialog from './CreateWaveDialog';
 
 const MONTHS = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
 
@@ -110,10 +111,6 @@ export default function WavesView() {
     setSaveDetailError('');
   }
   const [showCreate, setShowCreate] = useState(false);
-  const [newTitle, setNewTitle] = useState('');
-  const [newDescription, setNewDescription] = useState('');
-  const [creating, setCreating] = useState(false);
-  const [createError, setCreateError] = useState('');
   const [deleting, setDeleting] = useState(false);
   const [deleteError, setDeleteError] = useState('');
   const [editingDetail, setEditingDetail] = useState(false);
@@ -175,21 +172,6 @@ export default function WavesView() {
     }
   }
 
-  async function handleCreate() {
-    if (!newTitle.trim()) return;
-    setCreating(true);
-    setCreateError('');
-    try {
-      await createMilestone(newTitle.trim(), newDescription);
-      setNewTitle('');
-      setNewDescription('');
-      setShowCreate(false);
-    } catch (err) {
-      setCreateError(err instanceof Error ? err.message : 'Failed to create wave');
-    } finally {
-      setCreating(false);
-    }
-  }
 
   return (
     <div className="flex-1 flex overflow-hidden">
@@ -220,49 +202,12 @@ export default function WavesView() {
         </div>
 
         <div className="border-t border-gray-100 p-2">
-          {showCreate ? (
-            <div className="space-y-1.5">
-              <input
-                autoFocus
-                type="text"
-                value={newTitle}
-                onChange={(e) => { setNewTitle(e.target.value); setCreateError(''); }}
-                onKeyDown={(e) => e.key === 'Enter' && handleCreate()}
-                placeholder="Wave title"
-                className="w-full border border-gray-300 rounded px-2 py-1 text-xs focus:outline-none focus:ring-2 focus:ring-blue-500"
-              />
-              <input
-                type="text"
-                value={newDescription}
-                onChange={(e) => setNewDescription(e.target.value)}
-                placeholder="Description (optional)"
-                className="w-full border border-gray-300 rounded px-2 py-1 text-xs focus:outline-none focus:ring-2 focus:ring-blue-500"
-              />
-              {createError && <p className="text-red-500 text-xs">{createError}</p>}
-              <div className="flex gap-1 justify-end">
-                <button
-                  onClick={() => { setShowCreate(false); setNewTitle(''); setNewDescription(''); setCreateError(''); }}
-                  className="px-2 py-0.5 text-xs text-gray-600 hover:text-gray-900 rounded hover:bg-gray-100 transition-colors"
-                >
-                  Cancel
-                </button>
-                <button
-                  onClick={handleCreate}
-                  disabled={creating || !newTitle.trim()}
-                  className="px-2 py-0.5 text-xs font-medium bg-blue-600 text-white rounded hover:bg-blue-700 disabled:opacity-40 transition-colors"
-                >
-                  {creating ? '…' : 'Create'}
-                </button>
-              </div>
-            </div>
-          ) : (
-            <button
-              onClick={() => setShowCreate(true)}
-              className="w-full text-left text-xs text-gray-500 hover:text-gray-900 px-2 py-1.5 rounded hover:bg-gray-100 transition-colors"
-            >
-              + New Wave
-            </button>
-          )}
+          <button
+            onClick={() => setShowCreate(true)}
+            className="w-full text-left text-xs text-gray-500 hover:text-gray-900 px-2 py-1.5 rounded hover:bg-gray-100 transition-colors"
+          >
+            + New Wave
+          </button>
         </div>
       </div>
 
@@ -380,6 +325,13 @@ export default function WavesView() {
           </div>
         )}
       </div>
+
+      {showCreate && (
+        <CreateWaveDialog
+          onCreate={(title, description) => createMilestone(title, description)}
+          onClose={() => setShowCreate(false)}
+        />
+      )}
     </div>
   );
 }
