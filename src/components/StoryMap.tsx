@@ -76,7 +76,11 @@ function CardCell({ droppableId, items, onAdd }: CardCellProps) {
                   ref={provided.innerRef}
                   {...provided.draggableProps}
                   {...provided.dragHandleProps}
-                  className={`transition-opacity ${snapshot.isDragging ? 'opacity-70 rotate-1' : ''}`}
+                  style={{
+                    ...provided.draggableProps.style,
+                    boxShadow: snapshot.isDragging ? 'var(--n-shadow-lg)' : undefined,
+                    borderRadius: snapshot.isDragging ? 6 : undefined,
+                  }}
                 >
                   <IssueCard issue={issue} hideLabels showStatus />
                 </div>
@@ -314,8 +318,10 @@ export default function StoryMap() {
                             columnKey={project.id}
                             width={colW(project.id)}
                             onResize={setColumnWidth}
-                            className="sticky top-0 z-20 px-4 py-3 text-sm font-medium text-center whitespace-nowrap cursor-grab select-none transition-colors"
+                            className="sticky top-0 z-20 px-4 py-3 text-sm font-medium text-center whitespace-nowrap cursor-grab select-none"
                             style={{
+                              // DnD transform/position MUST come first so our visual styles layer on top
+                              ...provided.draggableProps.style,
                               background: snapshot.isDragging ? 'var(--n-hover-strong)' : 'var(--n-sidebar)',
                               color: 'var(--n-text)',
                               borderRight: '1px solid var(--n-border)',
@@ -382,12 +388,17 @@ export default function StoryMap() {
                         <tr
                           ref={provided.innerRef}
                           {...provided.draggableProps}
-                          style={provided.draggableProps.style}
+                          style={{
+                            ...provided.draggableProps.style,
+                            // When lifted out of the table, cells lose their widths.
+                            // Force the row to display as a flex row so explicit cell widths hold.
+                            ...(snapshot.isDragging ? { display: 'flex', opacity: 0.92 } : {}),
+                          }}
                         >
                           {/* Row label — sticky left, not resizable */}
                           <th
                             {...provided.dragHandleProps}
-                            className="sticky left-0 z-10 px-3 py-2 text-xs font-medium text-right align-top pt-3 cursor-grab select-none transition-colors w-[200px] min-w-[200px] max-w-[200px]"
+                            className="px-3 py-2 text-xs font-medium text-right align-top pt-3 cursor-grab select-none w-[200px] min-w-[200px] max-w-[200px] shrink-0"
                             style={{
                               background: snapshot.isDragging ? 'var(--n-hover-strong)' : 'var(--n-sidebar)',
                               color: 'var(--n-text-2)',
@@ -403,7 +414,7 @@ export default function StoryMap() {
                           {cols.map((project) => (
                             <td
                               key={project.id}
-                              className="align-top p-2"
+                              className="align-top p-2 shrink-0"
                               style={{ background: 'var(--n-bg)', borderRight: '1px solid var(--n-border)', borderBottom: '1px solid var(--n-border)', width: colW(project.id), minWidth: colW(project.id) }}
                             >
                               <CardCell
@@ -416,7 +427,7 @@ export default function StoryMap() {
 
                           {/* No User Activity cell */}
                           <td
-                            className="align-top p-2"
+                            className="align-top p-2 shrink-0"
                             style={{ background: 'var(--n-sidebar)', borderRight: '1px solid var(--n-border)', borderBottom: '1px solid var(--n-border)', width: colW('__no_user_activity__'), minWidth: colW('__no_user_activity__') }}
                           >
                             <CardCell
