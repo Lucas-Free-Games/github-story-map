@@ -8,8 +8,8 @@ interface Repo {
   private: boolean;
 }
 
-export default function Setup() {
-  const { setCredentials, signOut, fetchIssues, fetchLabels, fetchProjects, fetchMilestones } = useAppStore();
+export default function ChangeRepoModal({ onClose }: { onClose: () => void }) {
+  const { setCredentials, fetchIssues, fetchLabels, fetchProjects, fetchMilestones } = useAppStore();
   const [repos, setRepos] = useState<Repo[]>([]);
   const [fetchingRepos, setFetchingRepos] = useState(false);
   const [repoError, setRepoError] = useState('');
@@ -29,7 +29,7 @@ export default function Setup() {
             `/github-api/user/repos?per_page=100&page=${page}&sort=updated`,
             { headers: { Authorization: `Bearer ${idToken}`, Accept: 'application/vnd.github.v3+json' } },
           );
-          if (!res.ok) throw new Error('GitHub returned ' + res.status + ' — your session may have expired. Sign out and back in.');
+          if (!res.ok) throw new Error('GitHub returned ' + res.status + ' — your session may have expired.');
           const data: Repo[] = await res.json();
           all.push(...data);
           if (data.length < 100) break;
@@ -50,6 +50,7 @@ export default function Setup() {
     setConnecting(true);
     await Promise.all([fetchIssues(), fetchLabels(), fetchProjects(), fetchMilestones()]);
     setConnecting(false);
+    onClose();
   }
 
   const filtered = repos.filter((r) =>
@@ -57,37 +58,35 @@ export default function Setup() {
   );
 
   return (
-    <div className="min-h-screen flex items-center justify-center p-4" style={{ background: 'var(--n-sidebar)' }}>
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center"
+      style={{ background: 'rgba(0,0,0,0.4)' }}
+      onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}
+    >
       <div
-        className="w-full max-w-md p-8 rounded-xl"
+        className="w-full max-w-md p-8 rounded-xl mx-4"
         style={{ background: 'var(--n-bg)', border: '1px solid var(--n-border)', boxShadow: 'var(--n-shadow-lg)' }}
       >
         <div className="flex items-start justify-between mb-1">
-          <div className="flex items-center gap-3 mb-1">
-            <div
-              className="w-8 h-8 rounded-lg flex items-center justify-center text-white font-bold text-sm"
-              style={{ background: 'var(--n-blue)' }}
-            >
-              G
-            </div>
-            <h1 className="text-base font-semibold" style={{ color: 'var(--n-text)' }}>
-              Select a repository
-            </h1>
-          </div>
+          <h2 className="text-base font-semibold" style={{ color: 'var(--n-text)' }}>
+            Change repository
+          </h2>
           <button
             type="button"
-            onClick={() => { void signOut(); }}
-            className="text-xs underline"
+            onClick={onClose}
+            className="p-1 rounded-md transition-colors"
             style={{ color: 'var(--n-text-3)' }}
-            onMouseEnter={(e) => { e.currentTarget.style.color = 'var(--n-text-2)'; }}
-            onMouseLeave={(e) => { e.currentTarget.style.color = 'var(--n-text-3)'; }}
+            onMouseEnter={(e) => { e.currentTarget.style.background = 'var(--n-hover)'; e.currentTarget.style.color = 'var(--n-text-2)'; }}
+            onMouseLeave={(e) => { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.color = 'var(--n-text-3)'; }}
           >
-            Sign out
+            <svg xmlns="http://www.w3.org/2000/svg" className="w-4 h-4" viewBox="0 0 20 20" fill="currentColor">
+              <path fillRule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clipRule="evenodd" />
+            </svg>
           </button>
         </div>
 
         <p className="text-sm mb-6" style={{ color: 'var(--n-text-2)' }}>
-          Pick the repository whose issues you want to visualize.
+          Pick a repository to switch to.
         </p>
 
         <div className="space-y-3">
@@ -106,6 +105,7 @@ export default function Setup() {
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
                 placeholder="Filter repositories…"
+                autoFocus
                 className="w-full px-3 py-2 text-sm rounded-md mb-2 outline-none transition-all"
                 style={{
                   border: '1px solid var(--n-border)',
@@ -147,7 +147,7 @@ export default function Setup() {
                     </button>
                   </li>
                 ))}
-                {filtered.length === 0 && (
+                {filtered.length === 0 && !fetchingRepos && (
                   <li className="px-3 py-3 text-sm" style={{ color: 'var(--n-text-3)' }}>
                     No repositories match.
                   </li>
@@ -160,10 +160,6 @@ export default function Setup() {
             <p className="text-sm text-center" style={{ color: 'var(--n-text-3)' }}>Connecting…</p>
           )}
         </div>
-
-        <p className="text-xs mt-6" style={{ color: 'var(--n-text-3)' }}>
-          GitHub Projects become User Activity columns. Milestones become rows. Drag issues between cells to organise your story map.
-        </p>
       </div>
     </div>
   );

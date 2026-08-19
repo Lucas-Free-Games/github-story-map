@@ -59,19 +59,15 @@ interface CardCellProps {
   addColor?: 'blue' | 'gray';
 }
 
-function CardCell({ droppableId, items, onAdd, addColor = 'blue' }: CardCellProps) {
-  const hoverCls = addColor === 'gray'
-    ? 'hover:text-gray-600 hover:bg-gray-100 hover:border-gray-300'
-    : 'hover:text-blue-500 hover:bg-blue-50 hover:border-blue-300';
+function CardCell({ droppableId, items, onAdd }: CardCellProps) {
   return (
     <Droppable droppableId={droppableId} type="CARD">
       {(provided, snapshot) => (
         <div
           ref={provided.innerRef}
           {...provided.droppableProps}
-          className={`flex flex-col gap-2 min-h-16 rounded transition-colors ${
-            snapshot.isDraggingOver ? 'bg-blue-50/60' : ''
-          }`}
+          className="flex flex-col gap-1.5 min-h-16 rounded-md transition-colors"
+          style={{ background: snapshot.isDraggingOver ? 'rgba(35,131,226,0.05)' : 'transparent' }}
         >
           {items.map((issue, idx) => (
             <Draggable key={issue.number} draggableId={`i:${issue.number}`} index={idx}>
@@ -80,7 +76,7 @@ function CardCell({ droppableId, items, onAdd, addColor = 'blue' }: CardCellProp
                   ref={provided.innerRef}
                   {...provided.draggableProps}
                   {...provided.dragHandleProps}
-                  className={`transition-opacity ${snapshot.isDragging ? 'opacity-75 rotate-1 shadow-lg' : ''}`}
+                  className={`transition-opacity ${snapshot.isDragging ? 'opacity-70 rotate-1' : ''}`}
                 >
                   <IssueCard issue={issue} hideLabels showStatus />
                 </div>
@@ -90,7 +86,10 @@ function CardCell({ droppableId, items, onAdd, addColor = 'blue' }: CardCellProp
           {provided.placeholder}
           <button
             onClick={onAdd}
-            className={`mt-auto w-full text-xs text-gray-400 ${hoverCls} rounded-lg py-1.5 border border-dashed border-gray-200 transition-colors flex items-center justify-center gap-1`}
+            className="mt-auto w-full text-xs py-1.5 rounded-md transition-colors flex items-center justify-center gap-1"
+            style={{ color: 'var(--n-text-3)', border: '1px dashed var(--n-border)' }}
+            onMouseEnter={(e) => { e.currentTarget.style.color = 'var(--n-text-2)'; e.currentTarget.style.background = 'var(--n-hover)'; e.currentTarget.style.borderColor = 'rgba(55,53,47,0.2)'; }}
+            onMouseLeave={(e) => { e.currentTarget.style.color = 'var(--n-text-3)'; e.currentTarget.style.background = 'transparent'; e.currentTarget.style.borderColor = 'var(--n-border)'; }}
           >
             <span className="text-sm font-medium leading-none">+</span>
             New Issue
@@ -215,44 +214,55 @@ export default function StoryMap() {
 
   if (cols.length === 0) {
     return (
-      <div className="flex-1 flex flex-col items-center justify-center bg-gray-50 p-8">
+      <div className="flex-1 flex flex-col items-center justify-center p-8" style={{ background: 'var(--n-bg)' }}>
         <div className="flex flex-col items-center max-w-sm text-center">
-          <div className="w-16 h-16 rounded-2xl bg-blue-50 flex items-center justify-center text-blue-500 mb-4 animate-bounce">
-            <svg xmlns="http://www.w3.org/2000/svg" className="w-8 h-8" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
+          <div
+            className="w-14 h-14 rounded-xl flex items-center justify-center mb-4"
+            style={{ background: 'var(--n-hover-strong)' }}
+          >
+            <svg xmlns="http://www.w3.org/2000/svg" className="w-7 h-7" fill="none" viewBox="0 0 24 24" stroke="currentColor" style={{ color: 'var(--n-text-2)' }}>
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
             </svg>
           </div>
-          <h3 className="text-lg font-semibold text-gray-900 mb-1.5">No active User Activities</h3>
-          <p className="text-gray-500 text-sm mb-6">
+          <h3 className="text-base font-semibold mb-1.5" style={{ color: 'var(--n-text)' }}>No active User Activities</h3>
+          <p className="text-sm mb-6" style={{ color: 'var(--n-text-2)' }}>
             Cherry-pick which User Activities (GitHub Projects) are included in this repo's Story Map, or create a brand new one to get started.
           </p>
           <div className="flex flex-col gap-2 w-full">
             <button
               onClick={() => setView('user-activities')}
-              className="w-full px-4 py-2 text-sm font-medium bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors shadow-sm"
+              className="w-full px-4 py-2 text-sm font-medium rounded-md transition-colors"
+              style={{ background: 'var(--n-blue)', color: '#fff' }}
+              onMouseEnter={(e) => { e.currentTarget.style.opacity = '0.88'; }}
+              onMouseLeave={(e) => { e.currentTarget.style.opacity = '1'; }}
             >
               Cherry-Pick User Activities
             </button>
             {addingUserActivity ? (
-              <form onSubmit={handleCreateUserActivity} className="flex items-center gap-2 mt-2 w-full">
+              <form onSubmit={handleCreateUserActivity} className="flex items-center gap-2 mt-1 w-full">
                 <input
                   autoFocus
                   value={newUserActivityTitle}
                   onChange={(e) => setNewUserActivityTitle(e.target.value)}
                   placeholder="User activity name…"
-                  className="flex-1 min-w-0 border border-blue-300 rounded-lg px-3 py-1.5 text-xs focus:outline-none focus:ring-2 focus:ring-blue-400 bg-white"
+                  className="flex-1 min-w-0 px-3 py-1.5 text-xs rounded-md outline-none"
+                  style={{ border: '1px solid var(--n-border)', background: 'var(--n-sidebar)', color: 'var(--n-text)' }}
                 />
                 <button
                   type="submit"
                   disabled={userActivitySaving || !newUserActivityTitle.trim()}
-                  className="px-3 py-1.5 text-xs font-medium bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-40 transition-colors shrink-0"
+                  className="px-3 py-1.5 text-xs font-medium rounded-md disabled:opacity-40 transition-colors shrink-0"
+                  style={{ background: 'var(--n-blue)', color: '#fff' }}
                 >
                   {userActivitySaving ? '…' : 'Create'}
                 </button>
                 <button
                   type="button"
                   onClick={() => { setAddingUserActivity(false); setNewUserActivityTitle(''); }}
-                  className="px-3 py-1.5 text-xs text-gray-500 hover:text-gray-700 rounded-lg hover:bg-gray-100 transition-colors shrink-0"
+                  className="px-3 py-1.5 text-xs rounded-md transition-colors shrink-0"
+                  style={{ color: 'var(--n-text-2)' }}
+                  onMouseEnter={(e) => { e.currentTarget.style.background = 'var(--n-hover)'; }}
+                  onMouseLeave={(e) => { e.currentTarget.style.background = 'transparent'; }}
                 >
                   Cancel
                 </button>
@@ -260,14 +270,17 @@ export default function StoryMap() {
             ) : (
               <button
                 onClick={() => setAddingUserActivity(true)}
-                className="w-full px-4 py-2 text-sm font-medium bg-white text-gray-700 border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors"
+                className="w-full px-4 py-2 text-sm font-medium rounded-md transition-colors"
+                style={{ border: '1px solid var(--n-border)', color: 'var(--n-text-2)', background: 'transparent' }}
+                onMouseEnter={(e) => { e.currentTarget.style.background = 'var(--n-hover)'; e.currentTarget.style.color = 'var(--n-text)'; }}
+                onMouseLeave={(e) => { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.color = 'var(--n-text-2)'; }}
               >
                 + Create New Activity
               </button>
             )}
           </div>
           {moveError && (
-            <p className="text-red-500 text-xs mt-4">{moveError}</p>
+            <p className="text-xs mt-4" style={{ color: '#E03E3E' }}>{moveError}</p>
           )}
         </div>
       </div>
@@ -285,7 +298,10 @@ export default function StoryMap() {
                 {(provided) => (
                   <tr ref={provided.innerRef} {...provided.droppableProps}>
                     {/* Sticky corner — row-label placeholder, not resizable */}
-                    <th className="sticky left-0 top-0 z-30 bg-white border border-gray-200 w-[200px] min-w-[200px] max-w-[200px]" />
+                    <th
+                      className="sticky left-0 top-0 z-30 w-[200px] min-w-[200px] max-w-[200px]"
+                      style={{ background: 'var(--n-sidebar)', borderRight: '1px solid var(--n-border)', borderBottom: '1px solid var(--n-border)' }}
+                    />
 
                     {/* Draggable + resizable user activity column headers */}
                     {cols.map((project, index) => (
@@ -298,11 +314,16 @@ export default function StoryMap() {
                             columnKey={project.id}
                             width={colW(project.id)}
                             onResize={setColumnWidth}
-                            className={`sticky top-0 z-20 border border-gray-200 px-4 py-3 text-sm font-semibold text-blue-900 text-center whitespace-nowrap cursor-grab select-none transition-colors ${
-                              snapshot.isDragging ? 'bg-blue-100 shadow-lg z-50' : 'bg-blue-50'
-                            }`}
+                            className="sticky top-0 z-20 px-4 py-3 text-sm font-medium text-center whitespace-nowrap cursor-grab select-none transition-colors"
+                            style={{
+                              background: snapshot.isDragging ? 'var(--n-hover-strong)' : 'var(--n-sidebar)',
+                              color: 'var(--n-text)',
+                              borderRight: '1px solid var(--n-border)',
+                              borderBottom: '1px solid var(--n-border)',
+                              boxShadow: snapshot.isDragging ? 'var(--n-shadow)' : 'none',
+                            }}
                           >
-                            <span className="text-blue-300 mr-1.5 text-xs">&#x2803;</span>
+                            <span className="mr-1.5 text-xs" style={{ color: 'var(--n-text-3)' }}>&#x2803;</span>
                             {project.title}
                           </ResizableHeader>
                         )}
@@ -315,7 +336,8 @@ export default function StoryMap() {
                       columnKey="__no_user_activity__"
                       width={colW('__no_user_activity__')}
                       onResize={setColumnWidth}
-                      className="sticky top-0 z-20 bg-gray-50 border border-gray-200 px-2 py-2 text-sm font-semibold text-gray-500 text-center"
+                      className="sticky top-0 z-20 px-2 py-2 text-sm font-medium text-center"
+                      style={{ background: 'var(--n-sidebar)', color: 'var(--n-text-3)', borderRight: '1px solid var(--n-border)', borderBottom: '1px solid var(--n-border)' }}
                     >
                       {addingUserActivity ? (
                         <form onSubmit={handleCreateUserActivity} className="flex items-center gap-1">
@@ -324,17 +346,21 @@ export default function StoryMap() {
                             value={newUserActivityTitle}
                             onChange={(e) => setNewUserActivityTitle(e.target.value)}
                             placeholder="User activity name\u2026"
-                            className="flex-1 min-w-0 border border-blue-300 rounded px-2 py-1 text-xs focus:outline-none focus:ring-1 focus:ring-blue-400"
+                            className="flex-1 min-w-0 px-2 py-1 text-xs rounded outline-none"
+                            style={{ border: '1px solid var(--n-blue)', background: 'var(--n-bg)', color: 'var(--n-text)' }}
                           />
-                          <button type="submit" disabled={userActivitySaving || !newUserActivityTitle.trim()} className="text-blue-600 hover:text-blue-800 disabled:opacity-40 px-1 text-base leading-none">&#x2713;</button>
-                          <button type="button" onClick={() => { setAddingUserActivity(false); setNewUserActivityTitle(''); }} className="text-gray-400 hover:text-gray-600 px-1 text-base leading-none">&#x2715;</button>
+                          <button type="submit" disabled={userActivitySaving || !newUserActivityTitle.trim()} className="disabled:opacity-40 px-1 text-base leading-none" style={{ color: 'var(--n-blue)' }}>&#x2713;</button>
+                          <button type="button" onClick={() => { setAddingUserActivity(false); setNewUserActivityTitle(''); }} className="px-1 text-base leading-none" style={{ color: 'var(--n-text-3)' }}>&#x2715;</button>
                         </form>
                       ) : (
                         <div className="flex items-center justify-between px-2">
-                          <span className="text-gray-500">No User Activity</span>
+                          <span style={{ color: 'var(--n-text-3)' }}>No User Activity</span>
                           <button
                             onClick={() => setAddingUserActivity(true)}
-                            className="text-xs text-blue-400 hover:text-blue-600 hover:bg-blue-100 rounded px-1.5 py-0.5 transition-colors"
+                            className="text-xs px-1.5 py-0.5 rounded transition-colors"
+                            style={{ color: 'var(--n-text-2)' }}
+                            onMouseEnter={(e) => { e.currentTarget.style.background = 'var(--n-hover-strong)'; e.currentTarget.style.color = 'var(--n-text)'; }}
+                            onMouseLeave={(e) => { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.color = 'var(--n-text-2)'; }}
                           >
                             + New User Activity
                           </button>
@@ -361,11 +387,15 @@ export default function StoryMap() {
                           {/* Row label — sticky left, not resizable */}
                           <th
                             {...provided.dragHandleProps}
-                            className={`sticky left-0 z-10 border border-gray-200 px-3 py-2 text-xs font-semibold text-purple-900 text-right align-top pt-3 cursor-grab select-none transition-colors w-[200px] min-w-[200px] max-w-[200px] ${
-                              snapshot.isDragging ? 'bg-purple-100' : 'bg-purple-50'
-                            }`}
+                            className="sticky left-0 z-10 px-3 py-2 text-xs font-medium text-right align-top pt-3 cursor-grab select-none transition-colors w-[200px] min-w-[200px] max-w-[200px]"
+                            style={{
+                              background: snapshot.isDragging ? 'var(--n-hover-strong)' : 'var(--n-sidebar)',
+                              color: 'var(--n-text-2)',
+                              borderRight: '1px solid var(--n-border)',
+                              borderBottom: '1px solid var(--n-border)',
+                            }}
                           >
-                            <span className="text-purple-300 mr-1 text-xs">&#x2803;</span>
+                            <span className="mr-1 text-xs" style={{ color: 'var(--n-text-3)' }}>&#x2803;</span>
                             <span className="truncate block">{milestone.title}</span>
                           </th>
 
@@ -373,8 +403,8 @@ export default function StoryMap() {
                           {cols.map((project) => (
                             <td
                               key={project.id}
-                              className="border border-gray-200 align-top p-2 bg-white"
-                              style={{ width: colW(project.id), minWidth: colW(project.id) }}
+                              className="align-top p-2"
+                              style={{ background: 'var(--n-bg)', borderRight: '1px solid var(--n-border)', borderBottom: '1px solid var(--n-border)', width: colW(project.id), minWidth: colW(project.id) }}
                             >
                               <CardCell
                                 droppableId={cellId(project.id, milestone.number)}
@@ -386,14 +416,13 @@ export default function StoryMap() {
 
                           {/* No User Activity cell */}
                           <td
-                            className="border border-gray-200 align-top p-2 bg-gray-50/50"
-                            style={{ width: colW('__no_user_activity__'), minWidth: colW('__no_user_activity__') }}
+                            className="align-top p-2"
+                            style={{ background: 'var(--n-sidebar)', borderRight: '1px solid var(--n-border)', borderBottom: '1px solid var(--n-border)', width: colW('__no_user_activity__'), minWidth: colW('__no_user_activity__') }}
                           >
                             <CardCell
                               droppableId={cellId('', milestone.number)}
                               items={noProjectCellIssues(milestone.number)}
                               onAdd={() => setCreateCell({ projectId: '', milestoneNumber: milestone.number })}
-                              addColor="gray"
                             />
                           </td>
                         </tr>
@@ -405,12 +434,18 @@ export default function StoryMap() {
                   {/* "No Wave" row — always last, not draggable */}
                   {showNoWaveRow && (
                   <tr key="no-wave">
-                    <th className="sticky left-0 z-10 bg-gray-50 border border-gray-200 px-2 py-2 text-xs font-semibold text-gray-500 text-right align-top pt-3 w-[200px] min-w-[200px] max-w-[200px]">
+                    <th
+                      className="sticky left-0 z-10 px-2 py-2 text-xs font-medium text-right align-top pt-3 w-[200px] min-w-[200px] max-w-[200px]"
+                      style={{ background: 'var(--n-sidebar)', color: 'var(--n-text-3)', borderRight: '1px solid var(--n-border)', borderBottom: '1px solid var(--n-border)' }}
+                    >
                       <div className="flex items-center justify-end gap-2">
-                        <span className="text-gray-400 font-normal italic">No Wave</span>
+                        <span className="italic" style={{ color: 'var(--n-text-3)' }}>No Wave</span>
                         <button
                           onClick={() => setAddingWave(true)}
-                          className="text-xs text-purple-400 hover:text-purple-600 hover:bg-purple-100 rounded px-1.5 py-0.5 transition-colors not-italic font-semibold"
+                          className="text-xs not-italic font-medium px-1.5 py-0.5 rounded transition-colors"
+                          style={{ color: 'var(--n-text-2)' }}
+                          onMouseEnter={(e) => { e.currentTarget.style.background = 'var(--n-hover-strong)'; e.currentTarget.style.color = 'var(--n-text)'; }}
+                          onMouseLeave={(e) => { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.color = 'var(--n-text-2)'; }}
                         >
                           + New Wave
                         </button>
@@ -421,8 +456,8 @@ export default function StoryMap() {
                     {cols.map((project) => (
                       <td
                         key={project.id}
-                        className="border border-gray-200 align-top p-2 bg-white"
-                        style={{ width: colW(project.id), minWidth: colW(project.id) }}
+                        className="align-top p-2"
+                        style={{ background: 'var(--n-bg)', borderRight: '1px solid var(--n-border)', borderBottom: '1px solid var(--n-border)', width: colW(project.id), minWidth: colW(project.id) }}
                       >
                         <CardCell
                           droppableId={cellId(project.id, null)}
@@ -434,14 +469,13 @@ export default function StoryMap() {
 
                     {/* No User Activity / No Wave corner */}
                     <td
-                      className="border border-gray-200 align-top p-2 bg-gray-50/50"
-                      style={{ width: colW('__no_user_activity__'), minWidth: colW('__no_user_activity__') }}
+                      className="align-top p-2"
+                      style={{ background: 'var(--n-sidebar)', borderRight: '1px solid var(--n-border)', borderBottom: '1px solid var(--n-border)', width: colW('__no_user_activity__'), minWidth: colW('__no_user_activity__') }}
                     >
                       <CardCell
                         droppableId={cellId('', null)}
                         items={noProjectCellIssues(null)}
                         onAdd={() => setCreateCell({ projectId: '', milestoneNumber: null })}
-                        addColor="gray"
                       />
                     </td>
                   </tr>
@@ -469,7 +503,10 @@ export default function StoryMap() {
       )}
 
       {moveError && (
-        <div className="fixed bottom-4 left-1/2 -translate-x-1/2 bg-red-600 text-white text-sm px-4 py-2.5 rounded-lg shadow-lg z-50">
+        <div
+          className="fixed bottom-4 left-1/2 -translate-x-1/2 text-sm px-4 py-2.5 rounded-lg z-50"
+          style={{ background: '#E03E3E', color: '#fff', boxShadow: 'var(--n-shadow-lg)' }}
+        >
           {moveError}
         </div>
       )}
