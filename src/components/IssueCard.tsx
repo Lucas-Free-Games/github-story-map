@@ -13,13 +13,12 @@ interface Props {
 }
 
 export default function IssueCard({ issue }: Props) {
-  const { closeIssue, deleteIssue, reopenIssue, kanbanIssueStatuses, kanbanStatusColors } = useAppStore();
+  const { kanbanIssueStatuses, kanbanStatusColors } = useAppStore();
 
   const [showReadModal, setShowReadModal] = useState(
     () => window.location.pathname === `/issue/${issue.number}`,
   );
   const [showEdit, setShowEdit] = useState(false);
-  const [busy, setBusy] = useState(false);
   const [hovered, setHovered] = useState(false);
   const [showBadgeTip, setShowBadgeTip] = useState(false);
   const [calloutStyle, setCalloutStyle] = useState<React.CSSProperties | null>(null);
@@ -58,33 +57,6 @@ export default function IssueCard({ issue }: Props) {
     setCalloutStyle(null);
   }
 
-  async function handleClose(e: React.MouseEvent) {
-    e.stopPropagation();
-    if (!confirm(`Close issue #${issue.number}?`)) return;
-    setBusy(true);
-    try { await closeIssue(issue.number); } catch { setBusy(false); }
-  }
-
-  async function handleReopen(e: React.MouseEvent) {
-    e.stopPropagation();
-    if (!confirm(`Reopen issue #${issue.number}?`)) return;
-    setBusy(true);
-    try { await reopenIssue(issue.number); } catch { setBusy(false); }
-    setBusy(false);
-  }
-
-  async function handleDelete(e: React.MouseEvent) {
-    e.stopPropagation();
-    if (!confirm(`Permanently delete issue #${issue.number}? This cannot be undone.`)) return;
-    setBusy(true);
-    try {
-      await deleteIssue(issue.number, issue.node_id);
-    } catch (err) {
-      alert(err instanceof Error ? err.message : 'Failed to delete');
-      setBusy(false);
-    }
-  }
-
   return (
     <>
       <div
@@ -93,7 +65,6 @@ export default function IssueCard({ issue }: Props) {
         onMouseLeave={onCardLeave}
         onClick={() => setShowReadModal(true)}
         className={`relative select-none cursor-pointer text-sm ${hovered ? 'z-20' : ''} ${
-          busy ? 'opacity-40 pointer-events-none' :
           issue.state === 'closed' ? 'opacity-50' : ''
         }`}
       >
@@ -162,64 +133,6 @@ export default function IssueCard({ issue }: Props) {
             )}
           </div>
 
-          {/* Hover action buttons */}
-          <div
-            className={`absolute right-1 inset-y-0 flex items-center gap-0.5 transition-opacity ${hovered ? 'opacity-100' : 'opacity-0 pointer-events-none'}`}
-          >
-            <button
-              onClick={e => { e.stopPropagation(); setShowEdit(true); }}
-              title="Edit issue"
-              className="p-1 rounded transition-colors"
-              style={{ color: 'var(--n-text-2)' }}
-              onMouseEnter={(e) => { e.currentTarget.style.background = 'var(--n-hover-strong)'; e.currentTarget.style.color = 'var(--n-text)'; }}
-              onMouseLeave={(e) => { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.color = 'var(--n-text-2)'; }}
-            >
-              <svg xmlns="http://www.w3.org/2000/svg" className="w-3 h-3" viewBox="0 0 20 20" fill="currentColor">
-                <path d="M13.586 3.586a2 2 0 112.828 2.828l-.793.793-2.828-2.828.793-.793zM11.379 5.793L3 14.172V17h2.828l8.38-8.379-2.83-2.828z" />
-              </svg>
-            </button>
-
-            {issue.state === 'open' ? (
-              <button
-                onClick={handleClose}
-                title="Close issue"
-                className="p-1 rounded transition-colors"
-                style={{ color: 'var(--n-text-2)' }}
-                onMouseEnter={(e) => { e.currentTarget.style.background = 'var(--n-hover-strong)'; e.currentTarget.style.color = 'var(--n-text)'; }}
-                onMouseLeave={(e) => { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.color = 'var(--n-text-2)'; }}
-              >
-                <svg xmlns="http://www.w3.org/2000/svg" className="w-3 h-3" viewBox="0 0 20 20" fill="currentColor">
-                  <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
-                </svg>
-              </button>
-            ) : (
-              <button
-                onClick={handleReopen}
-                title="Reopen issue"
-                className="p-1 rounded transition-colors"
-                style={{ color: 'var(--n-text-2)' }}
-                onMouseEnter={(e) => { e.currentTarget.style.background = 'var(--n-hover-strong)'; }}
-                onMouseLeave={(e) => { e.currentTarget.style.background = 'transparent'; }}
-              >
-                <svg xmlns="http://www.w3.org/2000/svg" className="w-3 h-3" viewBox="0 0 20 20" fill="currentColor">
-                  <path fillRule="evenodd" d="M4 2a1 1 0 011 1v2.101a7.002 7.002 0 0111.601 2.566 1 1 0 11-1.885.666A5.002 5.002 0 005.999 7H9a1 1 0 010 2H4a1 1 0 01-1-1V3a1 1 0 011-1zm.008 9.057a1 1 0 011.276.61A5.002 5.002 0 0014.001 13H11a1 1 0 110-2h5a1 1 0 011 1v5a1 1 0 11-2 0v-2.101a7.002 7.002 0 01-11.601-2.566 1 1 0 01.61-1.276z" clipRule="evenodd" />
-                </svg>
-              </button>
-            )}
-
-            <button
-              onClick={handleDelete}
-              title="Delete issue permanently"
-              className="p-1 rounded transition-colors"
-              style={{ color: 'var(--n-text-3)' }}
-              onMouseEnter={(e) => { e.currentTarget.style.background = '#FFF2F2'; e.currentTarget.style.color = '#E03E3E'; }}
-              onMouseLeave={(e) => { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.color = 'var(--n-text-3)'; }}
-            >
-              <svg xmlns="http://www.w3.org/2000/svg" className="w-3 h-3" viewBox="0 0 20 20" fill="currentColor">
-                <path fillRule="evenodd" d="M9 2a1 1 0 00-.894.553L7.382 4H4a1 1 0 000 2v10a2 2 0 002 2h8a2 2 0 002-2V6a1 1 0 100-2h-3.382l-.724-1.447A1 1 0 0011 2H9zM7 8a1 1 0 012 0v6a1 1 0 11-2 0V8zm5-1a1 1 0 00-1 1v6a1 1 0 102 0V8a1 1 0 00-1-1z" clipRule="evenodd" />
-              </svg>
-            </button>
-          </div>
         </div>
       </div>
 
