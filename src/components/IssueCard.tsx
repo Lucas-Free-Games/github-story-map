@@ -6,11 +6,6 @@ import EditIssueModal from './EditIssueModal';
 import IssueReadModal from './IssueReadModal';
 import { ghStyle } from '../lib/githubColors';
 
-function truncateMiddle(text: string, max: number): string {
-  if (text.length <= max) return text;
-  return text.slice(0, max - 6) + '...' + text.slice(-3);
-}
-
 interface Props {
   issue: GitHubIssue;
   hideLabels?: boolean;
@@ -18,26 +13,18 @@ interface Props {
 }
 
 export default function IssueCard({ issue }: Props) {
-  const { closeIssue, deleteIssue, reopenIssue, kanbanIssueStatuses, kanbanStatusColors } = useAppStore();
+  const { kanbanIssueStatuses, kanbanStatusColors } = useAppStore();
 
-  // Read-only view — opens when the card body is clicked or when the URL
-  // already points to this issue (deep-link / page-refresh support).
   const [showReadModal, setShowReadModal] = useState(
     () => window.location.pathname === `/issue/${issue.number}`,
   );
-
-  // Direct-edit path — opened via the hover-action Edit button (fast path)
-  // so power-users can skip the read modal entirely.
   const [showEdit, setShowEdit] = useState(false);
-
-  const [busy, setBusy] = useState(false);
   const [hovered, setHovered] = useState(false);
   const [showBadgeTip, setShowBadgeTip] = useState(false);
   const [calloutStyle, setCalloutStyle] = useState<React.CSSProperties | null>(null);
   const cardRef = useRef<HTMLDivElement>(null);
   const calloutTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  // Keep the browser URL in sync with the read modal.
   useEffect(() => {
     if (showReadModal) {
       history.pushState({}, '', `/issue/${issue.number}`);
@@ -70,33 +57,6 @@ export default function IssueCard({ issue }: Props) {
     setCalloutStyle(null);
   }
 
-  async function handleClose(e: React.MouseEvent) {
-    e.stopPropagation();
-    if (!confirm(`Close issue #${issue.number}?`)) return;
-    setBusy(true);
-    try { await closeIssue(issue.number); } catch { setBusy(false); }
-  }
-
-  async function handleReopen(e: React.MouseEvent) {
-    e.stopPropagation();
-    if (!confirm(`Reopen issue #${issue.number}?`)) return;
-    setBusy(true);
-    try { await reopenIssue(issue.number); } catch { setBusy(false); }
-    setBusy(false);
-  }
-
-  async function handleDelete(e: React.MouseEvent) {
-    e.stopPropagation();
-    if (!confirm(`Permanently delete issue #${issue.number}? This cannot be undone.`)) return;
-    setBusy(true);
-    try {
-      await deleteIssue(issue.number, issue.node_id);
-    } catch (err) {
-      alert(err instanceof Error ? err.message : 'Failed to delete');
-      setBusy(false);
-    }
-  }
-
   return (
     <>
       <div
@@ -105,18 +65,20 @@ export default function IssueCard({ issue }: Props) {
         onMouseLeave={onCardLeave}
         onClick={() => setShowReadModal(true)}
         className={`relative select-none cursor-pointer text-sm ${hovered ? 'z-20' : ''} ${
-          busy ? 'opacity-40 pointer-events-none' :
-          issue.state === 'closed' ? 'opacity-60' : ''
+          issue.state === 'closed' ? 'opacity-50' : ''
         }`}
       >
-        <div className={`relative bg-white rounded-lg border px-2 py-1.5 shadow-sm transition-all ${
-          hovered ? 'border-gray-300 shadow-md' : 'border-gray-200'
-        }`}>
-
+        <div
+          className="relative px-2 py-1.5 rounded-md transition-all"
+          style={{
+            background: 'var(--n-bg)',
+            border: `1px solid ${hovered ? 'rgba(55,53,47,0.2)' : 'var(--n-border)'}`,
+            boxShadow: hovered ? '0 1px 4px rgba(0,0,0,0.07)' : 'none',
+          }}
+        >
           {/* Title row */}
           <div className="flex items-start gap-1.5 min-w-0">
-
-            {/* ID badge — background reflects open/closed state; tooltip on hover */}
+            {/* ID badge */}
             <div
               className="relative shrink-0"
               onMouseEnter={() => setShowBadgeTip(true)}
@@ -127,21 +89,25 @@ export default function IssueCard({ issue }: Props) {
                 target="_blank"
                 rel="noopener noreferrer"
                 onClick={e => e.stopPropagation()}
-                className="block px-1.5 py-0.5 rounded-full text-xs font-medium tabular-nums leading-none transition-colors"
+                className="block px-1.5 py-0.5 rounded text-xs font-medium tabular-nums leading-none transition-opacity hover:opacity-80"
                 style={badgeStyle}
               >
                 #{issue.number}
               </a>
 
               {showBadgeTip && (
-                <div className="absolute bottom-full left-0 mb-1.5 z-30 bg-gray-900 text-white text-xs rounded-md px-2.5 py-2 shadow-lg whitespace-nowrap min-w-max">
+                <div
+                  className="absolute bottom-full left-0 mb-1.5 z-30 text-xs rounded-md px-2.5 py-2 shadow-lg whitespace-nowrap min-w-max"
+                  style={{ background: 'var(--n-text)', color: '#fff' }}
+                >
                   {nativeStatus && <div className="font-semibold mb-1">{nativeStatus}</div>}
                   <a
                     href={issue.html_url}
                     target="_blank"
                     rel="noopener noreferrer"
                     onClick={e => e.stopPropagation()}
-                    className="text-blue-300 hover:text-blue-200 transition-colors"
+                    className="hover:underline"
+                    style={{ color: '#8BBFE8' }}
                   >
                     View on GitHub →
                   </a>
@@ -149,12 +115,15 @@ export default function IssueCard({ issue }: Props) {
               )}
             </div>
 
-            {/* Title — up to 2 lines */}
-            <span className="flex-1 min-w-0 text-gray-900 font-medium leading-snug line-clamp-2">
+            {/* Title */}
+            <span
+              className="flex-1 min-w-0 font-medium leading-snug line-clamp-2"
+              style={{ color: 'var(--n-text)', fontSize: '0.8125rem' }}
+            >
               {issue.title}
             </span>
 
-            {/* Assignees — inline so they never add height */}
+            {/* Assignees */}
             {issue.assignees.length > 0 && (
               <div className="flex shrink-0 -space-x-1">
                 {issue.assignees.map((user) => (
@@ -164,80 +133,38 @@ export default function IssueCard({ issue }: Props) {
             )}
           </div>
 
-          {/* Action buttons — absolute overlay on the right, visible on hover */}
-          <div className={`absolute right-1.5 inset-y-0 flex items-center gap-1 transition-opacity ${hovered ? 'opacity-100' : 'opacity-0 pointer-events-none'}`}>
-            {/* Edit — fast path: bypasses the read modal and opens the edit form directly */}
-            <button
-              onClick={e => { e.stopPropagation(); setShowEdit(true); }}
-              title="Edit issue"
-              className="text-blue-500 p-1 rounded-md border border-blue-200 bg-blue-50 hover:bg-blue-100 transition-colors"
-            >
-              <svg xmlns="http://www.w3.org/2000/svg" className="w-3.5 h-3.5" viewBox="0 0 20 20" fill="currentColor">
-                <path d="M13.586 3.586a2 2 0 112.828 2.828l-.793.793-2.828-2.828.793-.793zM11.379 5.793L3 14.172V17h2.828l8.38-8.379-2.83-2.828z" />
-              </svg>
-            </button>
-
-            {/* Close (open issues) / Reopen (closed issues) */}
-            {issue.state === 'open' ? (
-              <button
-                onClick={handleClose}
-                title="Close issue"
-                className="text-green-600 p-1 rounded-md border border-green-200 bg-green-50 hover:bg-green-100 transition-colors"
-              >
-                <svg xmlns="http://www.w3.org/2000/svg" className="w-3.5 h-3.5" viewBox="0 0 20 20" fill="currentColor">
-                  <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
-                </svg>
-              </button>
-            ) : (
-              <button
-                onClick={handleReopen}
-                title="Reopen issue"
-                className="text-purple-600 p-1 rounded-md border border-purple-200 bg-purple-50 hover:bg-purple-100 transition-colors"
-              >
-                <svg xmlns="http://www.w3.org/2000/svg" className="w-3.5 h-3.5" viewBox="0 0 20 20" fill="currentColor">
-                  <path fillRule="evenodd" d="M4 2a1 1 0 011 1v2.101a7.002 7.002 0 0111.601 2.566 1 1 0 11-1.885.666A5.002 5.002 0 005.999 7H9a1 1 0 010 2H4a1 1 0 01-1-1V3a1 1 0 011-1zm.008 9.057a1 1 0 011.276.61A5.002 5.002 0 0014.001 13H11a1 1 0 110-2h5a1 1 0 011 1v5a1 1 0 11-2 0v-2.101a7.002 7.002 0 01-11.601-2.566 1 1 0 01.61-1.276z" clipRule="evenodd" />
-                </svg>
-              </button>
-            )}
-
-            <button
-              onClick={handleDelete}
-              title="Delete issue permanently"
-              className="text-red-500 p-1 rounded-md border border-red-200 bg-red-50 hover:bg-red-100 transition-colors"
-            >
-              <svg xmlns="http://www.w3.org/2000/svg" className="w-3.5 h-3.5" viewBox="0 0 20 20" fill="currentColor">
-                <path fillRule="evenodd" d="M9 2a1 1 0 00-.894.553L7.382 4H4a1 1 0 000 2v10a2 2 0 002 2h8a2 2 0 002-2V6a1 1 0 100-2h-3.382l-.724-1.447A1 1 0 0011 2H9zM7 8a1 1 0 012 0v6a1 1 0 11-2 0V8zm5-1a1 1 0 00-1 1v6a1 1 0 102 0V8a1 1 0 00-1-1z" clipRule="evenodd" />
-              </svg>
-            </button>
-          </div>
-
         </div>
       </div>
 
-      {/* Description callout — rendered into body to escape any stacking context */}
+      {/* Description callout on hover */}
       {calloutStyle && createPortal(
         <div
-          style={calloutStyle}
-          className="pointer-events-none bg-white border border-gray-200 rounded-lg shadow-xl p-3"
+          style={{
+            ...calloutStyle,
+            background: 'var(--n-bg)',
+            border: '1px solid var(--n-border)',
+            borderRadius: 8,
+            boxShadow: 'var(--n-shadow-lg)',
+            padding: '12px 14px',
+          }}
+          className="pointer-events-none"
         >
-          <div className="font-semibold text-gray-900 text-xs mb-1.5">{issue.title}</div>
+          <div className="font-semibold text-xs mb-1.5" style={{ color: 'var(--n-text)' }}>{issue.title}</div>
           {issue.body ? (
-            <div className="text-gray-500 text-xs leading-relaxed line-clamp-6 whitespace-pre-wrap break-words">
+            <div className="text-xs leading-relaxed line-clamp-6 whitespace-pre-wrap break-words" style={{ color: 'var(--n-text-2)' }}>
               {issue.body}
             </div>
           ) : (
-            <div className="text-gray-400 text-xs italic">No description.</div>
+            <div className="text-xs italic" style={{ color: 'var(--n-text-3)' }}>No description.</div>
           )}
         </div>,
         document.body
       )}
 
-      {/* Read-only view — opened by clicking the card body */}
       {showReadModal && (
         <IssueReadModal issue={issue} onClose={() => setShowReadModal(false)} />
       )}
 
-      {/* Direct-edit fast path — opened via the hover Edit button */}
       {showEdit && (
         <EditIssueModal issue={issue} onClose={() => setShowEdit(false)} />
       )}

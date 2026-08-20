@@ -32,9 +32,6 @@ export default function App() {
       try {
         const status = await getUserKeyStatus();
         if (!status.github) {
-          // Firebase says signed in, but no GitHub token in Firestore —
-          // user needs to re-auth to refresh it (e.g., after this rollout
-          // or after a manual delete).
           setAuthSignedOut();
           return;
         }
@@ -59,8 +56,8 @@ export default function App() {
 
   if (authStatus === 'loading') {
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-        <div className="text-gray-400 text-sm">Loading…</div>
+      <div className="min-h-screen flex items-center justify-center" style={{ background: 'var(--n-sidebar)' }}>
+        <div className="text-sm" style={{ color: 'var(--n-text-3)' }}>Loading…</div>
       </div>
     );
   }
@@ -70,36 +67,40 @@ export default function App() {
   if (!isConfigured) return <Setup />;
 
   return (
-    <div className="h-screen flex flex-col bg-gray-50 overflow-hidden">
+    <div className="h-screen flex overflow-hidden" style={{ background: 'var(--n-bg)' }}>
+      {/* Left sidebar navigation */}
       <Header />
 
-      {loading && (
-        <div className="flex-1 flex items-center justify-center">
-          <div className="text-gray-400 text-sm">Loading issues…</div>
-        </div>
-      )}
-
-      {!loading && error && (
-        <div className="flex-1 flex items-center justify-center p-8">
-          <div className="bg-red-50 border border-red-200 rounded-xl px-6 py-4 text-red-700 text-sm max-w-md text-center">
-            <p className="font-medium mb-1">Failed to load issues</p>
-            <p className="text-red-500">{error}</p>
+      {/* Main content area */}
+      <main className="flex-1 flex flex-col overflow-hidden">
+        {loading && (
+          <div className="flex-1 flex items-center justify-center">
+            <div className="text-sm" style={{ color: 'var(--n-text-3)' }}>Loading issues…</div>
           </div>
-        </div>
-      )}
+        )}
 
-      {!loading && !error && (
-        <div className="flex-1 overflow-hidden flex">
-          {view === 'grid' && <StoryMap />}
-          {view === 'kanban' && <KanbanView />}
-          {view === 'table' && <TableView />}
-          {view === 'waves' && <WavesView />}
-          {view === 'user-activities' && <UserActivitiesView />}
-          {view === 'roadmap' && <RoadmapView />}
-          {view === 'timeline' && <TimelineView />}
-          {view === 'settings' && <SettingsView />}
-        </div>
-      )}
+        {!loading && error && (
+          <div className="flex-1 flex items-center justify-center p-8">
+            <div className="rounded-lg px-5 py-4 text-sm max-w-md text-center" style={{ background: '#FFF2F2', border: '1px solid #FFD5D5', color: '#E03E3E' }}>
+              <p className="font-medium mb-1">Failed to load issues</p>
+              <p style={{ color: '#D44C47' }}>{error}</p>
+            </div>
+          </div>
+        )}
+
+        {!loading && !error && (
+          <div className="flex-1 overflow-hidden flex">
+            {view === 'grid' && <StoryMap />}
+            {view === 'kanban' && <KanbanView />}
+            {view === 'table' && <TableView />}
+            {view === 'waves' && <WavesView />}
+            {view === 'user-activities' && <UserActivitiesView />}
+            {view === 'roadmap' && <RoadmapView />}
+            {view === 'timeline' && <TimelineView />}
+            {view === 'settings' && <SettingsView />}
+          </div>
+        )}
+      </main>
     </div>
   );
 }

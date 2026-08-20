@@ -1,3 +1,98 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:ital,wght@0,400;0,500;0,600;1,400&display=swap');
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
+
+:root {
+  --n-bg: #ffffff;
+  --n-sidebar: #f7f6f3;
+  --n-text: rgb(55, 53, 47);
+  --n-text-2: rgba(55, 53, 47, 0.65);
+  --n-text-3: rgba(55, 53, 47, 0.4);
+  --n-border: rgba(55, 53, 47, 0.09);
+  --n-hover: rgba(55, 53, 47, 0.06);
+  --n-hover-strong: rgba(55, 53, 47, 0.1);
+  --n-blue: #2383E2;
+  --n-blue-bg: rgba(35, 131, 226, 0.1);
+  --n-shadow: 0 1px 3px rgba(0,0,0,0.08), 0 1px 2px rgba(0,0,0,0.06);
+  --n-shadow-lg: 0 4px 16px rgba(0,0,0,0.12), 0 1px 4px rgba(0,0,0,0.08);
+}
+
+html, body {
+  font-family: 'Inter', ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  background: var(--n-bg);
+  color: var(--n-text);
+  -webkit-font-smoothing: antialiased;
+}
+
+/* Notion-style scrollbar */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: rgba(55, 53, 47, 0.15);
+  border-radius: 3px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(55, 53, 47, 0.3);
+}
+
+/* Prose styles for issue body markdown */
+.issue-body {
+  font-size: 0.875rem;
+  line-height: 1.6;
+  color: var(--n-text);
+}
+.issue-body h1, .issue-body h2, .issue-body h3 {
+  font-weight: 600;
+  margin: 1em 0 0.4em;
+  color: var(--n-text);
+}
+.issue-body h1 { font-size: 1.25rem; }
+.issue-body h2 { font-size: 1.1rem; }
+.issue-body h3 { font-size: 1rem; }
+.issue-body p { margin: 0.5em 0; }
+.issue-body ul, .issue-body ol { padding-left: 1.5em; margin: 0.5em 0; }
+.issue-body li { margin: 0.2em 0; }
+.issue-body code {
+  font-family: 'SFMono-Regular', Menlo, Monaco, Consolas, monospace;
+  font-size: 0.8em;
+  background: rgba(55, 53, 47, 0.08);
+  padding: 0.15em 0.35em;
+  border-radius: 3px;
+}
+.issue-body pre {
+  background: rgba(55, 53, 47, 0.06);
+  border: 1px solid var(--n-border);
+  border-radius: 6px;
+  padding: 0.75em 1em;
+  overflow-x: auto;
+  margin: 0.75em 0;
+}
+.issue-body pre code {
+  background: none;
+  padding: 0;
+  font-size: 0.85em;
+}
+.issue-body a {
+  color: var(--n-blue);
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+.issue-body blockquote {
+  border-left: 3px solid var(--n-border);
+  padding-left: 0.75em;
+  color: var(--n-text-2);
+  margin: 0.5em 0;
+}
+.issue-body img { max-width: 100%; border-radius: 4px; }
+.issue-body hr {
+  border: none;
+  border-top: 1px solid var(--n-border);
+  margin: 1em 0;
+}
