@@ -329,41 +329,44 @@ export default function StoryMap() {
                 type="COLUMN"
                 renderClone={(provided, _snapshot, rubric) => {
                   const project = cols[rubric.source.index];
-                  if (!project) return <th ref={provided.innerRef} {...provided.draggableProps} {...provided.dragHandleProps} />;
+                  if (!project) return <div ref={provided.innerRef} {...provided.draggableProps} {...provided.dragHandleProps} />;
                   const w = colW(project.id);
+                  // The library sets height = measured header height in draggableProps.style,
+                  // which clips the clone to header-only. Strip it so the full column shows.
+                  const { height: _h, ...dndStyle } = (provided.draggableProps.style ?? {}) as React.CSSProperties;
                   return (
-                    <th
+                    <div
                       ref={provided.innerRef}
                       {...provided.draggableProps}
                       {...provided.dragHandleProps}
                       style={{
-                        ...provided.draggableProps.style,
+                        ...dndStyle,
                         width: w,
                         minWidth: w,
-                        padding: 0,
-                        verticalAlign: 'top',
+                        maxHeight: '80vh',
+                        overflowY: 'auto',
                         borderRadius: 6,
-                        overflow: 'hidden',
-                        boxShadow: '0 8px 32px rgba(0,0,0,0.16)',
+                        boxShadow: '0 8px 32px rgba(0,0,0,0.18)',
                         border: '1px solid var(--n-border)',
+                        background: 'var(--n-bg)',
                       }}
                     >
                       {/* Header */}
-                      <div style={{ padding: '10px 16px', background: 'var(--n-sidebar)', borderBottom: '1px solid var(--n-border)', fontWeight: 500, fontSize: '0.875rem', color: 'var(--n-text)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                      <div style={{ padding: '10px 16px', background: 'var(--n-sidebar)', borderBottom: '1px solid var(--n-border)', fontWeight: 500, fontSize: '0.875rem', color: 'var(--n-text)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', position: 'sticky', top: 0, zIndex: 1 }}>
                         {project.title}
                       </div>
-                      {/* Row cells preview */}
-                      {[...orderedMilestones.map(m => ({ label: m.title, items: cellIssues(project.id, m.number) })), { label: null, items: cellIssues(project.id, null) }].map(({ label, items }, i) => (
-                        <div key={i} style={{ padding: '6px 8px', minHeight: 48, background: 'var(--n-bg)', borderBottom: '1px solid var(--n-border)' }}>
+                      {/* Row cells */}
+                      {[...orderedMilestones.map(m => ({ label: m.title, items: cellIssues(project.id, m.number) })), { label: null, items: cellIssues(project.id, null) }].map(({ items }, i) => (
+                        <div key={i} style={{ padding: '6px 8px', minHeight: 48, borderBottom: '1px solid var(--n-border)' }}>
                           {items.slice(0, 4).map(issue => (
-                            <div key={issue.number} style={{ padding: '3px 6px', marginBottom: 3, borderRadius: 4, border: '1px solid var(--n-border)', fontSize: '0.75rem', color: 'var(--n-text)', background: 'var(--n-bg)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                            <div key={issue.number} style={{ padding: '3px 6px', marginBottom: 3, borderRadius: 4, border: '1px solid var(--n-border)', fontSize: '0.75rem', color: 'var(--n-text)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
                               {issue.title}
                             </div>
                           ))}
                           {items.length > 4 && <div style={{ fontSize: '0.7rem', color: 'var(--n-text-3)', paddingLeft: 4 }}>+{items.length - 4} more</div>}
                         </div>
                       ))}
-                    </th>
+                    </div>
                   );
                 }}
               >
