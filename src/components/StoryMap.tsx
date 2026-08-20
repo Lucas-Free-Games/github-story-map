@@ -5,7 +5,7 @@ import type { GitHubIssue, GitHubMilestone, GitHubProject } from '../types';
 import IssueCard from './IssueCard';
 import CreateIssueModal from './CreateIssueModal';
 import ResizableHeader, { GRID_DEFAULT_WIDTH } from './ResizableHeader';
-import CreateWaveDialog from './CreateWaveDialog';
+
 
 function sortedProjects(projects: GitHubProject[], userActivityOrder: number[]): GitHubProject[] {
   const open = projects.filter((p) => !p.closed);
@@ -120,6 +120,8 @@ export default function StoryMap() {
   const [userActivitySaving, setUserActivitySaving] = useState(false);
 
   const [addingWave, setAddingWave] = useState(false);
+  const [newWaveTitle, setNewWaveTitle] = useState('');
+  const [waveSaving, setWaveSaving] = useState(false);
 
   /** Returns the stored (or default) width for a given column key. */
   const colW = (key: string) => columnWidths[key] ?? GRID_DEFAULT_WIDTH;
@@ -141,6 +143,21 @@ export default function StoryMap() {
       showError(err instanceof Error ? err.message : 'Failed to create user activity');
     } finally {
       setUserActivitySaving(false);
+    }
+  }
+
+  async function handleCreateWave(e: React.FormEvent) {
+    e.preventDefault();
+    if (!newWaveTitle.trim()) return;
+    setWaveSaving(true);
+    try {
+      await createMilestone(newWaveTitle.trim(), '');
+      setNewWaveTitle('');
+      setAddingWave(false);
+    } catch (err) {
+      showError(err instanceof Error ? err.message : 'Failed to create wave');
+    } finally {
+      setWaveSaving(false);
     }
   }
 
@@ -446,21 +463,36 @@ export default function StoryMap() {
                   {showNoWaveRow && (
                   <tr key="no-wave">
                     <th
-                      className="sticky left-0 z-10 px-2 py-2 text-xs font-medium text-right align-top pt-3 w-[200px] min-w-[200px] max-w-[200px]"
+                      className="sticky left-0 z-10 px-2 py-2 text-xs font-medium align-top pt-2 w-[200px] min-w-[200px] max-w-[200px]"
                       style={{ background: 'var(--n-sidebar)', color: 'var(--n-text-3)', borderRight: '1px solid var(--n-border)', borderBottom: '1px solid var(--n-border)' }}
                     >
-                      <div className="flex items-center justify-end gap-2">
-                        <span className="italic" style={{ color: 'var(--n-text-3)' }}>No Wave</span>
-                        <button
-                          onClick={() => setAddingWave(true)}
-                          className="text-xs not-italic font-medium px-1.5 py-0.5 rounded transition-colors"
-                          style={{ color: 'var(--n-text-2)' }}
-                          onMouseEnter={(e) => { e.currentTarget.style.background = 'var(--n-hover-strong)'; e.currentTarget.style.color = 'var(--n-text)'; }}
-                          onMouseLeave={(e) => { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.color = 'var(--n-text-2)'; }}
-                        >
-                          + New Wave
-                        </button>
-                      </div>
+                      {addingWave ? (
+                        <form onSubmit={handleCreateWave} className="flex items-center gap-1">
+                          <input
+                            autoFocus
+                            value={newWaveTitle}
+                            onChange={(e) => setNewWaveTitle(e.target.value)}
+                            placeholder="Wave name…"
+                            className="flex-1 min-w-0 px-2 py-1 text-xs rounded outline-none"
+                            style={{ border: '1px solid var(--n-blue)', background: 'var(--n-bg)', color: 'var(--n-text)' }}
+                          />
+                          <button type="submit" disabled={waveSaving || !newWaveTitle.trim()} className="disabled:opacity-40 px-1 text-base leading-none" style={{ color: 'var(--n-blue)' }}>&#x2713;</button>
+                          <button type="button" onClick={() => { setAddingWave(false); setNewWaveTitle(''); }} className="px-1 text-base leading-none" style={{ color: 'var(--n-text-3)' }}>&#x2715;</button>
+                        </form>
+                      ) : (
+                        <div className="flex items-center justify-between px-1">
+                          <span className="italic" style={{ color: 'var(--n-text-3)' }}>No Wave</span>
+                          <button
+                            onClick={() => setAddingWave(true)}
+                            className="text-xs not-italic px-1.5 py-0.5 rounded transition-colors"
+                            style={{ color: 'var(--n-text-2)' }}
+                            onMouseEnter={(e) => { e.currentTarget.style.background = 'var(--n-hover-strong)'; e.currentTarget.style.color = 'var(--n-text)'; }}
+                            onMouseLeave={(e) => { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.color = 'var(--n-text-2)'; }}
+                          >
+                            + New Wave
+                          </button>
+                        </div>
+                      )}
                     </th>
 
                     {/* User activity column cells — width follows header */}
@@ -497,13 +529,6 @@ export default function StoryMap() {
           </table>
         </div>
       </DragDropContext>
-
-      {addingWave && (
-        <CreateWaveDialog
-          onCreate={(title, description) => createMilestone(title, description)}
-          onClose={() => setAddingWave(false)}
-        />
-      )}
 
       {createCell && (
         <CreateIssueModal
