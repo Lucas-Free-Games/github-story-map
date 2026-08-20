@@ -217,7 +217,7 @@ type SortDir = 'asc' | 'desc';
 export default function TableView() {
   const {
     issues,
-    showClosedIssues,
+    kanbanShowClosedIssues,
     projects,
     projectIssues,
     kanbanIssueStatuses,
@@ -238,7 +238,7 @@ export default function TableView() {
   }
 
   const visibleIssues = issues
-    .filter((i) => showClosedIssues || i.state === 'open')
+    .filter((i) => kanbanShowClosedIssues || i.state === 'open')
     .filter((i) => {
       if (!filterText.trim()) return true;
       const q = filterText.toLowerCase();
