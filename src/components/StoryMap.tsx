@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { DragDropContext, Droppable, Draggable, type DropResult } from '@hello-pangea/dnd';
+import { DragDropContext, Droppable, Draggable, type DropResult, type DragStart } from '@hello-pangea/dnd';
 import { useAppStore } from '../store/appStore';
 import type { GitHubIssue, GitHubMilestone, GitHubProject } from '../types';
 import IssueCard from './IssueCard';
@@ -122,6 +122,7 @@ export default function StoryMap() {
   const [addingWave, setAddingWave] = useState(false);
   const [newWaveTitle, setNewWaveTitle] = useState('');
   const [waveSaving, setWaveSaving] = useState(false);
+  const [draggingColumnId, setDraggingColumnId] = useState<string | null>(null);
 
   /** Returns the stored (or default) width for a given column key. */
   const colW = (key: string) => columnWidths[key] ?? GRID_DEFAULT_WIDTH;
@@ -192,7 +193,14 @@ export default function StoryMap() {
     });
   }
 
+  function handleOnDragStart(start: DragStart) {
+    if (start.source.droppableId === 'columns') {
+      setDraggingColumnId(cols[start.source.index]?.id ?? null);
+    }
+  }
+
   function handleDragEnd(result: DropResult) {
+    setDraggingColumnId(null);
     if (!result.destination) return;
     const { draggableId, source, destination } = result;
 
@@ -310,12 +318,55 @@ export default function StoryMap() {
 
   return (
     <>
-      <DragDropContext onDragEnd={handleDragEnd}>
+      <DragDropContext onDragStart={handleOnDragStart} onDragEnd={handleDragEnd}>
         <div className="flex-1 overflow-auto h-full">
           <table className="border-collapse">
             {/* Column headers — draggable horizontally */}
             <thead>
-              <Droppable droppableId="columns" direction="horizontal" type="COLUMN">
+              <Droppable
+                droppableId="columns"
+                direction="horizontal"
+                type="COLUMN"
+                renderClone={(provided, _snapshot, rubric) => {
+                  const project = cols[rubric.source.index];
+                  if (!project) return <th ref={provided.innerRef} {...provided.draggableProps} {...provided.dragHandleProps} />;
+                  const w = colW(project.id);
+                  return (
+                    <th
+                      ref={provided.innerRef}
+                      {...provided.draggableProps}
+                      {...provided.dragHandleProps}
+                      style={{
+                        ...provided.draggableProps.style,
+                        width: w,
+                        minWidth: w,
+                        padding: 0,
+                        verticalAlign: 'top',
+                        borderRadius: 6,
+                        overflow: 'hidden',
+                        boxShadow: '0 8px 32px rgba(0,0,0,0.16)',
+                        border: '1px solid var(--n-border)',
+                      }}
+                    >
+                      {/* Header */}
+                      <div style={{ padding: '10px 16px', background: 'var(--n-sidebar)', borderBottom: '1px solid var(--n-border)', fontWeight: 500, fontSize: '0.875rem', color: 'var(--n-text)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                        {project.title}
+                      </div>
+                      {/* Row cells preview */}
+                      {[...orderedMilestones.map(m => ({ label: m.title, items: cellIssues(project.id, m.number) })), { label: null, items: cellIssues(project.id, null) }].map(({ label, items }, i) => (
+                        <div key={i} style={{ padding: '6px 8px', minHeight: 48, background: 'var(--n-bg)', borderBottom: '1px solid var(--n-border)' }}>
+                          {items.slice(0, 4).map(issue => (
+                            <div key={issue.number} style={{ padding: '3px 6px', marginBottom: 3, borderRadius: 4, border: '1px solid var(--n-border)', fontSize: '0.75rem', color: 'var(--n-text)', background: 'var(--n-bg)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                              {issue.title}
+                            </div>
+                          ))}
+                          {items.length > 4 && <div style={{ fontSize: '0.7rem', color: 'var(--n-text-3)', paddingLeft: 4 }}>+{items.length - 4} more</div>}
+                        </div>
+                      ))}
+                    </th>
+                  );
+                }}
+              >
                 {(provided) => (
                   <tr ref={provided.innerRef} {...provided.droppableProps}>
                     {/* Sticky corner — row-label placeholder, not resizable */}
@@ -337,13 +388,13 @@ export default function StoryMap() {
                             onResize={setColumnWidth}
                             className="sticky top-0 z-20 px-4 py-3 text-sm font-medium text-center whitespace-nowrap cursor-grab select-none"
                             style={{
-                              // DnD transform/position MUST come first so our visual styles layer on top
                               ...provided.draggableProps.style,
-                              background: snapshot.isDragging ? 'var(--n-hover-strong)' : 'var(--n-sidebar)',
+                              // renderClone handles the drag visual; hide the original in place
+                              visibility: snapshot.isDragging ? 'hidden' : undefined,
+                              background: 'var(--n-sidebar)',
                               color: 'var(--n-text)',
                               borderRight: '1px solid var(--n-border)',
                               borderBottom: '1px solid var(--n-border)',
-                              boxShadow: snapshot.isDragging ? 'var(--n-shadow)' : 'none',
                             }}
                           >
                             <span className="mr-1.5 text-xs" style={{ color: 'var(--n-text-3)' }}>&#x2803;</span>
@@ -432,7 +483,7 @@ export default function StoryMap() {
                             <td
                               key={project.id}
                               className="align-top p-2 shrink-0"
-                              style={{ background: 'var(--n-bg)', borderRight: '1px solid var(--n-border)', borderBottom: '1px solid var(--n-border)', width: colW(project.id), minWidth: colW(project.id) }}
+                              style={{ background: 'var(--n-bg)', borderRight: '1px solid var(--n-border)', borderBottom: '1px solid var(--n-border)', width: colW(project.id), minWidth: colW(project.id), visibility: draggingColumnId === project.id ? 'hidden' : undefined }}
                             >
                               <CardCell
                                 droppableId={cellId(project.id, milestone.number)}
@@ -500,7 +551,7 @@ export default function StoryMap() {
                       <td
                         key={project.id}
                         className="align-top p-2"
-                        style={{ background: 'var(--n-bg)', borderRight: '1px solid var(--n-border)', borderBottom: '1px solid var(--n-border)', width: colW(project.id), minWidth: colW(project.id) }}
+                        style={{ background: 'var(--n-bg)', borderRight: '1px solid var(--n-border)', borderBottom: '1px solid var(--n-border)', width: colW(project.id), minWidth: colW(project.id), visibility: draggingColumnId === project.id ? 'hidden' : undefined }}
                       >
                         <CardCell
                           droppableId={cellId(project.id, null)}
