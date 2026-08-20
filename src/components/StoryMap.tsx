@@ -430,8 +430,7 @@ export default function StoryMap() {
                           <button type="button" onClick={() => { setAddingUserActivity(false); setNewUserActivityTitle(''); }} className="px-1 text-base leading-none" style={{ color: 'var(--n-text-3)' }}>&#x2715;</button>
                         </form>
                       ) : (
-                        <div className="flex items-center justify-between px-2">
-                          <span style={{ color: 'var(--n-text-3)' }}>No User Activity</span>
+                        <div className="flex items-center justify-end px-2">
                           <button
                             onClick={() => setAddingUserActivity(true)}
                             className="text-xs px-1.5 py-0.5 rounded transition-colors"
@@ -534,8 +533,7 @@ export default function StoryMap() {
                           <button type="button" onClick={() => { setAddingWave(false); setNewWaveTitle(''); }} className="px-1 text-base leading-none" style={{ color: 'var(--n-text-3)' }}>&#x2715;</button>
                         </form>
                       ) : (
-                        <div className="flex items-center justify-between px-1">
-                          <span className="italic" style={{ color: 'var(--n-text-3)' }}>No Wave</span>
+                        <div className="flex items-center justify-end px-1">
                           <button
                             onClick={() => setAddingWave(true)}
                             className="text-xs not-italic px-1.5 py-0.5 rounded transition-colors"

@@ -487,7 +487,7 @@ export default function TimelineView() {
               className="sticky left-0 z-10 bg-gray-50 border-r border-gray-200 shrink-0 flex items-center px-3 text-sm italic text-gray-400"
               style={{ width: LABEL_WIDTH }}
             >
-              No Wave
+
             </div>
             <div className="relative shrink-0" style={{ width: totalWidth }}>
               {ticks.map((_, i) => (

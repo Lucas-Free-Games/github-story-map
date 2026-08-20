@@ -147,9 +147,7 @@ export default function KanbanView() {
                       colSpan={cols.length}
                       className="sticky left-0 bg-purple-50 border border-gray-200 px-4 py-2 text-xs font-semibold text-purple-900 uppercase tracking-wide"
                     >
-                      {project
-                        ? project.title
-                        : <span className="text-purple-400 font-normal italic normal-case tracking-normal">No User Activity</span>}
+                      {project ? project.title : null}
                     </td>
                   </tr>
 

@@ -262,7 +262,6 @@ export default function RoadmapView() {
               </th>
             ))}
             <th className="sticky top-0 z-20 bg-purple-50 border border-gray-200 px-3 py-2 text-xs font-normal italic text-purple-400 text-center whitespace-nowrap">
-              No Wave
             </th>
           </tr>
         </thead>
@@ -294,7 +293,6 @@ export default function RoadmapView() {
           ))}
           <tr>
             <td className="sticky left-0 z-10 bg-white border border-gray-200 px-4 py-2 text-xs font-normal italic text-gray-400 whitespace-nowrap">
-              No User Activity
             </td>
             {cols.map((m) => (
               <td key={m.number} className="border border-gray-200 bg-white p-0">
