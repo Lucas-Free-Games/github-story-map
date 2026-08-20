@@ -374,7 +374,7 @@ export default function StoryMap() {
                   <tr ref={provided.innerRef} {...provided.droppableProps}>
                     {/* Sticky corner — row-label placeholder, not resizable */}
                     <th
-                      className="sticky left-0 top-0 z-30 w-[200px] min-w-[200px] max-w-[200px]"
+                      className="sticky left-0 top-0 z-30 whitespace-nowrap"
                       style={{ background: 'var(--n-sidebar)', borderRight: '1px solid var(--n-border)', borderBottom: '1px solid var(--n-border)' }}
                     />
 
@@ -468,7 +468,7 @@ export default function StoryMap() {
                           {/* Row label — sticky left, not resizable */}
                           <th
                             {...provided.dragHandleProps}
-                            className="sticky left-0 z-10 px-3 py-2 text-xs font-medium text-right align-top pt-3 cursor-grab select-none w-[200px] min-w-[200px] max-w-[200px] shrink-0"
+                            className="sticky left-0 z-10 px-3 py-2 text-xs font-medium text-right align-top pt-3 cursor-grab select-none whitespace-nowrap shrink-0"
                             style={{
                               background: snapshot.isDragging ? 'var(--n-hover-strong)' : 'var(--n-sidebar)',
                               color: 'var(--n-text-2)',
@@ -477,7 +477,7 @@ export default function StoryMap() {
                             }}
                           >
                             <span className="mr-1 text-xs" style={{ color: 'var(--n-text-3)' }}>&#x2803;</span>
-                            <span className="truncate block">{milestone.title}</span>
+                            <span>{milestone.title}</span>
                           </th>
 
                           {/* User activity column cells — width follows header */}
@@ -516,7 +516,7 @@ export default function StoryMap() {
                   {showNoWaveRow && (
                   <tr key="no-wave">
                     <th
-                      className="sticky left-0 z-10 px-2 py-2 text-xs font-medium align-top pt-2 w-[200px] min-w-[200px] max-w-[200px]"
+                      className="sticky left-0 z-10 px-2 py-2 text-xs font-medium align-top pt-2 whitespace-nowrap"
                       style={{ background: 'var(--n-sidebar)', color: 'var(--n-text-3)', borderRight: '1px solid var(--n-border)', borderBottom: '1px solid var(--n-border)' }}
                     >
                       {addingWave ? (
