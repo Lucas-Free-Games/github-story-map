@@ -469,7 +469,7 @@ export default function StoryMap() {
                           {/* Row label — sticky left, not resizable */}
                           <th
                             {...provided.dragHandleProps}
-                            className="px-3 py-2 text-xs font-medium text-right align-top pt-3 cursor-grab select-none w-[200px] min-w-[200px] max-w-[200px] shrink-0"
+                            className="sticky left-0 z-10 px-3 py-2 text-xs font-medium text-right align-top pt-3 cursor-grab select-none w-[200px] min-w-[200px] max-w-[200px] shrink-0"
                             style={{
                               background: snapshot.isDragging ? 'var(--n-hover-strong)' : 'var(--n-sidebar)',
                               color: 'var(--n-text-2)',
