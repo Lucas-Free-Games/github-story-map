@@ -169,7 +169,7 @@ export default function StoryMap() {
   const orderedMilestones = sortedMilestones(milestones, layout.milestoneOrder).filter(
     (m) => showClosedIssues || visibleIssues.some((i) => i.milestone?.number === m.number),
   );
-  const showNoWaveRow = showClosedIssues || visibleIssues.some((i) => i.milestone === null);
+  const showNoWaveRow = true;
 
   function cellIssues(projectId: string, milestoneNumber: number | null): GitHubIssue[] {
     const inProject = new Set(projectIssues[projectId] ?? []);
