@@ -5,6 +5,7 @@ import { getUserKeyStatus } from './lib/userKeys';
 import Login from './components/Login';
 import Setup from './components/Setup';
 import Header from './components/Header';
+import Spinner from './components/Spinner';
 import StoryMap from './components/StoryMap';
 import KanbanView from './components/KanbanView';
 import TableView from './components/TableView';
@@ -57,7 +58,7 @@ export default function App() {
   if (authStatus === 'loading') {
     return (
       <div className="min-h-screen flex items-center justify-center" style={{ background: 'var(--n-sidebar)' }}>
-        <div className="text-sm" style={{ color: 'var(--n-text-3)' }}>Loading…</div>
+        <Spinner className="w-5 h-5" />
       </div>
     );
   }
@@ -73,9 +74,21 @@ export default function App() {
 
       {/* Main content area */}
       <main className="flex-1 flex flex-col overflow-hidden">
-        {loading && (
-          <div className="flex-1 flex items-center justify-center">
-            <div className="text-sm" style={{ color: 'var(--n-text-3)' }}>Loading issues…</div>
+        {/* Slim progress bar for syncs when content is already loaded */}
+        {loading && issues.length > 0 && (
+          <div className="shrink-0 h-0.5 w-full overflow-hidden" style={{ background: 'var(--n-border)' }}>
+            <div
+              className="h-full"
+              style={{ background: 'var(--n-blue)', animation: 'loading-bar 1.4s ease-in-out infinite' }}
+            />
+          </div>
+        )}
+
+        {/* Initial load — full-area spinner */}
+        {loading && issues.length === 0 && (
+          <div className="flex-1 flex flex-col items-center justify-center gap-3">
+            <Spinner className="w-6 h-6 text-gray-400" />
+            <span className="text-sm" style={{ color: 'var(--n-text-3)' }}>Loading…</span>
           </div>
         )}
 
@@ -88,7 +101,7 @@ export default function App() {
           </div>
         )}
 
-        {!loading && !error && (
+        {(!loading || issues.length > 0) && !error && (
           <div className="flex-1 overflow-hidden flex">
             {view === 'grid' && <StoryMap />}
             {view === 'kanban' && <KanbanView />}

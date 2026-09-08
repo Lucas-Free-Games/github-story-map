@@ -44,7 +44,7 @@ function kanbanColKey(status: string): string {
 
 export default function KanbanView() {
   const {
-    issues, layout, kanbanShowClosedIssues, linkedProjectIds,
+    issues, layout, kanbanShowClosedIssues, kanbanShowClosedWaves, linkedProjectIds,
     moveIssueInKanbanByProject, columnWidths, setColumnWidth,
     projects, projectIssues, kanbanMilestoneNumber, setKanbanMilestone,
     kanbanStatusColumns, kanbanIssueStatuses, milestones, loading,
@@ -61,7 +61,9 @@ export default function KanbanView() {
   // null sentinel = "No User Activity" row — always last
   const groups: (GitHubProject | null)[] = [...sortedProjects(openProjects, layout.userActivityOrder), null];
 
-  const allProjectIssueNumbers = new Set(Object.values(projectIssues).flat());
+  // Only claim issues from projects that are actually shown as rows.
+  // Issues in closed/unlinked projects must not be swallowed; they fall into the "No User Activity" row.
+  const allProjectIssueNumbers = new Set(openProjects.flatMap((p) => projectIssues[p.id] ?? []));
 
   const allVisible = kanbanShowClosedIssues ? issues : issues.filter((i) => i.state === 'open');
   const visibleIssues = kanbanMilestoneNumber !== null
@@ -110,12 +112,12 @@ export default function KanbanView() {
             <option value="">All Waves</option>
             {milestones
               .filter((m) =>
-                kanbanShowClosedIssues ||
-                m.number === kanbanMilestoneNumber ||
-                issues.some((i) => i.state === 'open' && i.milestone?.number === m.number),
+                kanbanShowClosedWaves ||
+                m.state === 'open' ||
+                m.number === kanbanMilestoneNumber,
               )
               .map((m) => (
-                <option key={m.number} value={m.number}>{m.title}</option>
+                <option key={m.number} value={m.number}>{m.title}{m.state === 'closed' ? ' (closed)' : ''}</option>
               ))}
           </select>
         </div>
