@@ -44,6 +44,7 @@ interface AppState {
   timelineMilestoneOrder: number[];
   showClosedIssues: boolean;
   kanbanShowClosedIssues: boolean;
+  kanbanShowClosedWaves: boolean;
   projects: GitHubProject[];
   projectIssues: Record<string, number[]>; // project node_id → issue numbers
   /** Column resize widths in pixels, keyed by column identifier (project ID or status string). */
@@ -74,11 +75,14 @@ interface AppState {
   fetchIssues: () => Promise<void>;
   toggleShowClosedIssues: () => void;
   toggleKanbanShowClosedIssues: () => void;
+  toggleKanbanShowClosedWaves: () => void;
   fetchLabels: () => Promise<void>;
   fetchMilestones: () => Promise<void>;
   createMilestone: (title: string, description: string) => Promise<void>;
   updateMilestone: (number: number, title: string, description: string) => Promise<void>;
   deleteMilestone: (number: number) => Promise<void>;
+  closeMilestone: (number: number) => Promise<void>;
+  reopenMilestone: (number: number) => Promise<void>;
   addStatusLabel: (name: string) => Promise<void>;
   setView: (view: 'grid' | 'kanban' | 'table' | 'waves' | 'user-activities' | 'roadmap' | 'timeline' | 'settings') => void;
   setTimelineGranularity: (g: 'day' | 'week' | 'quarter' | 'year') => void;
@@ -195,6 +199,7 @@ export const useAppStore = create<AppState>((set, get) => ({
   timelineMilestoneOrder: [],
   showClosedIssues: false,
   kanbanShowClosedIssues: true,
+  kanbanShowClosedWaves: false,
   projects: [],
   projectIssues: {},
   columnWidths: JSON.parse(localStorage.getItem('gh_column_widths') ?? '{}') as Record<string, number>,
@@ -316,6 +321,7 @@ export const useAppStore = create<AppState>((set, get) => ({
 
   toggleShowClosedIssues: () => set((state) => ({ showClosedIssues: !state.showClosedIssues })),
   toggleKanbanShowClosedIssues: () => set((state) => ({ kanbanShowClosedIssues: !state.kanbanShowClosedIssues })),
+  toggleKanbanShowClosedWaves: () => set((state) => ({ kanbanShowClosedWaves: !state.kanbanShowClosedWaves })),
 
   fetchLabels: async () => {
     const {owner, repo } = get();
@@ -337,7 +343,7 @@ export const useAppStore = create<AppState>((set, get) => ({
     const {owner, repo, layout } = get();
     if (!owner || !repo) return;
     const octokit = makeOctokit();
-    const { data } = await octokit.rest.issues.listMilestones({ owner, repo, state: 'open', per_page: 100 });
+    const { data } = await octokit.rest.issues.listMilestones({ owner, repo, state: 'all', per_page: 100 });
     const milestones: GitHubMilestone[] = data.map((m) => ({
       number: m.number,
       title: m.title,
@@ -396,6 +402,20 @@ export const useAppStore = create<AppState>((set, get) => ({
     const octokit = makeOctokit();
     await octokit.rest.issues.deleteMilestone({ owner, repo, milestone_number: number });
     set({ milestones: milestones.filter((m) => m.number !== number) });
+  },
+
+  closeMilestone: async (number) => {
+    const { owner, repo, milestones } = get();
+    const octokit = makeOctokit();
+    await octokit.rest.issues.updateMilestone({ owner, repo, milestone_number: number, state: 'closed' });
+    set({ milestones: milestones.map((m) => m.number === number ? { ...m, state: 'closed' } : m) });
+  },
+
+  reopenMilestone: async (number) => {
+    const { owner, repo, milestones } = get();
+    const octokit = makeOctokit();
+    await octokit.rest.issues.updateMilestone({ owner, repo, milestone_number: number, state: 'open' });
+    set({ milestones: milestones.map((m) => m.number === number ? { ...m, state: 'open' } : m) });
   },
 
   addStatusLabel: async (name) => {

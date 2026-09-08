@@ -64,9 +64,12 @@ function SidebarItem({
       className={`flex flex-col border-b border-gray-100 px-3 py-2.5 cursor-pointer ${selected ? 'bg-purple-50 border-r-2 border-r-purple-500' : 'hover:bg-gray-50'}`}
     >
       <div className="flex items-center gap-1.5">
-        <span className={`text-sm truncate ${selected ? 'font-medium text-purple-800' : 'text-gray-700'}`}>
+        <span className={`text-sm truncate ${selected ? 'font-medium text-purple-800' : 'text-gray-700'} ${milestone.state === 'closed' ? 'line-through opacity-60' : ''}`}>
           {milestone.title}
         </span>
+        {milestone.state === 'closed' && (
+          <span className="shrink-0 text-xs px-1.5 py-0.5 rounded-full bg-gray-100 text-gray-400 font-medium">closed</span>
+        )}
       </div>
       {waveDates && (
         <span className="text-xs text-purple-500 mt-0.5">
@@ -100,7 +103,7 @@ function SidebarItem({
 }
 
 export default function WavesView() {
-  const { milestones, issues, owner, repo, layout, createMilestone, updateMilestone, deleteMilestone } = useAppStore();
+  const { milestones, issues, owner, repo, layout, createMilestone, updateMilestone, deleteMilestone, closeMilestone, reopenMilestone, kanbanShowClosedWaves } = useAppStore();
   const [selectedNumber, setSelectedNumber] = useState<number | null>(
     milestones.length > 0 ? milestones[0].number : null,
   );
@@ -113,6 +116,8 @@ export default function WavesView() {
   const [showCreate, setShowCreate] = useState(false);
   const [deleting, setDeleting] = useState(false);
   const [deleteError, setDeleteError] = useState('');
+  const [togglingState, setTogglingState] = useState(false);
+  const [toggleStateError, setToggleStateError] = useState('');
   const [editingDetail, setEditingDetail] = useState(false);
   const [detailTitle, setDetailTitle] = useState('');
   const [detailDescription, setDetailDescription] = useState('');
@@ -158,6 +163,23 @@ export default function WavesView() {
     }
   }
 
+  async function handleToggleState() {
+    if (!selected) return;
+    setTogglingState(true);
+    setToggleStateError('');
+    try {
+      if (selected.state === 'open') {
+        await closeMilestone(selected.number);
+      } else {
+        await reopenMilestone(selected.number);
+      }
+    } catch (err) {
+      setToggleStateError(err instanceof Error ? err.message : 'Failed to update wave');
+    } finally {
+      setTogglingState(false);
+    }
+  }
+
   async function handleDelete() {
     if (!selected) return;
     setDeleting(true);
@@ -185,7 +207,7 @@ export default function WavesView() {
           {milestones.length === 0 ? (
             <p className="px-3 py-3 text-xs text-gray-400 italic">No waves yet</p>
           ) : (
-            milestones.map((m) => (
+            milestones.filter((m) => kanbanShowClosedWaves || m.state === 'open' || m.number === selectedNumber).map((m) => (
               <SidebarItem
                 key={m.number}
                 milestone={m}
@@ -267,6 +289,18 @@ export default function WavesView() {
                         </svg>
                       </button>
                       <button
+                        onClick={handleToggleState}
+                        disabled={togglingState}
+                        title={selected.state === 'open' ? 'Close wave' : 'Reopen wave'}
+                        className={`text-xs font-medium px-2 py-1 rounded-md border disabled:opacity-40 transition-colors ${
+                          selected.state === 'open'
+                            ? 'text-amber-700 border-amber-200 bg-amber-50 hover:bg-amber-100'
+                            : 'text-green-700 border-green-200 bg-green-50 hover:bg-green-100'
+                        }`}
+                      >
+                        {togglingState ? '…' : selected.state === 'open' ? 'Close wave' : 'Reopen wave'}
+                      </button>
+                      <button
                         onClick={handleDelete}
                         disabled={deleting}
                         title="Delete wave permanently"
@@ -279,6 +313,7 @@ export default function WavesView() {
                     </div>
                   </div>
                   {deleteError && <p className="text-xs text-red-600 mb-2">{deleteError}</p>}
+                  {toggleStateError && <p className="text-xs text-red-600 mb-2">{toggleStateError}</p>}
                   {selected.description && (
                     <p className="text-sm text-gray-500 mb-2">{selected.description}</p>
                   )}

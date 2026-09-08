@@ -26,6 +26,12 @@ html, body {
   -webkit-font-smoothing: antialiased;
 }
 
+@keyframes loading-bar {
+  0%   { transform: translateX(-100%); width: 60%; }
+  50%  { width: 80%; }
+  100% { transform: translateX(200%); width: 60%; }
+}
+
 /* Notion-style scrollbar */
 ::-webkit-scrollbar {
   width: 6px;
