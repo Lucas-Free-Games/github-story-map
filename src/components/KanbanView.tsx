@@ -107,7 +107,7 @@ export default function KanbanView() {
             value={kanbanMilestoneNumber ?? ''}
             onChange={(e) => setKanbanMilestone(e.target.value ? Number(e.target.value) : null)}
             disabled={loading}
-            className="text-sm border border-gray-200 rounded-md px-2 py-1 bg-white text-gray-700 focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:opacity-40"
+            className="text-sm border border-gray-200 rounded-md px-2 py-1 bg-white text-gray-700 focus:outline-none focus:ring-2 focus:ring-[#2383E2] disabled:opacity-40"
           >
             <option value="">All Waves</option>
             {milestones
@@ -134,9 +134,9 @@ export default function KanbanView() {
                     width={colK(status)}
                     onResize={setColumnWidth}
                     handleVariant="green"
-                    className="sticky top-0 z-20 bg-green-50 border border-gray-200 px-4 py-3 text-sm font-semibold text-green-900 text-center whitespace-nowrap"
+                    className="sticky top-0 z-20 bg-[#F1F1EF] border border-gray-200 px-4 py-3 text-sm font-semibold text-[#37352F] text-center whitespace-nowrap"
                   >
-                    {status || <span className="text-green-400 font-normal italic">No Status</span>}
+                    {status || <span className="text-[#37352F]/40 font-normal italic">No Status</span>}
                   </ResizableHeader>
                 ))}
               </tr>
@@ -147,7 +147,7 @@ export default function KanbanView() {
                   <tr key={`${project?.id ?? 'no-user-activity'}-header`}>
                     <td
                       colSpan={cols.length}
-                      className="sticky left-0 bg-purple-50 border border-gray-200 px-4 py-2 text-xs font-semibold text-purple-900 uppercase tracking-wide"
+                      className="sticky left-0 bg-[var(--n-sidebar)] border border-gray-200 px-4 py-2 text-xs font-semibold text-[var(--n-text-2)] uppercase tracking-wide"
                     >
                       {project ? project.title : null}
                     </td>
@@ -169,7 +169,7 @@ export default function KanbanView() {
                                 ref={provided.innerRef}
                                 {...provided.droppableProps}
                                 className={`grid gap-2 min-h-12 rounded transition-colors items-start ${
-                                  snapshot.isDraggingOver ? 'bg-green-50/60' : ''
+                                  snapshot.isDraggingOver ? 'bg-[#F1F1EF]/60' : ''
                                 }`}
                                 style={{ gridTemplateColumns: 'repeat(auto-fill, minmax(160px, 1fr))' }}
                               >
@@ -194,7 +194,7 @@ export default function KanbanView() {
                           {status !== '' && (
                             <button
                               onClick={() => setCreateCell({ projectId, statusLabel: status })}
-                              className="mt-2 w-full text-xs text-gray-400 hover:text-green-600 hover:bg-green-50 rounded-lg py-1.5 border border-dashed border-gray-200 hover:border-green-300 transition-colors flex items-center justify-center gap-1"
+                              className="mt-2 w-full text-xs text-gray-400 hover:text-[#2383E2] hover:bg-[#E7F3F8] rounded-lg py-1.5 border border-dashed border-gray-200 hover:border-[#2383E2]/30 transition-colors flex items-center justify-center gap-1"
                             >
                               <span className="text-sm font-medium leading-none">+</span>
                               New Issue
@@ -221,7 +221,7 @@ export default function KanbanView() {
       )}
 
       {moveError && (
-        <div className="fixed bottom-4 left-1/2 -translate-x-1/2 bg-red-600 text-white text-sm px-4 py-2.5 rounded-lg shadow-lg z-50">
+        <div className="fixed bottom-4 left-1/2 -translate-x-1/2 bg-[#E03E3E] text-white text-sm px-4 py-2.5 rounded-lg shadow-lg z-50">
           {moveError}
         </div>
       )}

@@ -49,23 +49,23 @@ function ProjectRow({
 
   if (editing) {
     return (
-      <div className="p-3 rounded-lg border border-blue-200 bg-blue-50 space-y-2">
+      <div className="p-3 rounded-lg border border-[rgba(55,53,47,0.15)] bg-[#F1F1EF] space-y-2">
         <input
           autoFocus
           type="text"
           value={title}
           onChange={(e) => setTitle(e.target.value)}
           placeholder="Project title"
-          className="w-full border border-gray-300 rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+          className="w-full border border-gray-300 rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#2383E2]"
         />
         <input
           type="text"
           value={description}
           onChange={(e) => setDescription(e.target.value)}
           placeholder="Short description (optional)"
-          className="w-full border border-gray-300 rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+          className="w-full border border-gray-300 rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#2383E2]"
         />
-        {error && <p className="text-red-500 text-xs">{error}</p>}
+        {error && <p className="text-[#E03E3E] text-xs">{error}</p>}
         <div className="flex gap-2 justify-end">
           <button
             onClick={() => { setEditing(false); setTitle(project.title); setDescription(project.shortDescription ?? ''); }}
@@ -76,7 +76,7 @@ function ProjectRow({
           <button
             onClick={handleSave}
             disabled={saving || !title.trim()}
-            className="px-4 py-2 text-sm font-medium bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+            className="px-4 py-2 text-sm font-medium bg-[#2383E2] text-white rounded-lg hover:bg-[#1a73ce] disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
           >
             {saving ? 'Saving…' : 'Save'}
           </button>
@@ -93,7 +93,7 @@ function ProjectRow({
             href={project.url}
             target="_blank"
             rel="noopener noreferrer"
-            className="text-sm font-medium text-gray-900 hover:text-blue-600 hover:underline truncate"
+            className="text-sm font-medium text-gray-900 hover:text-[#2383E2] hover:underline truncate"
           >
             {project.title}
           </a>
@@ -104,7 +104,7 @@ function ProjectRow({
         {project.shortDescription && (
           <p className="text-xs text-gray-500 mt-0.5 truncate">{project.shortDescription}</p>
         )}
-        {error && <p className="text-red-500 text-xs mt-1">{error}</p>}
+        {error && <p className="text-[#E03E3E] text-xs mt-1">{error}</p>}
       </div>
       <div className="flex items-center gap-1 shrink-0 opacity-0 group-hover:opacity-100 transition-opacity">
         <button
@@ -117,7 +117,7 @@ function ProjectRow({
         <button
           onClick={handleDelete}
           disabled={deleting}
-          className="p-1.5 text-gray-400 hover:text-red-600 rounded hover:bg-red-50 disabled:opacity-40 transition-colors text-xs"
+          className="p-1.5 text-gray-400 hover:text-[#E03E3E] rounded hover:bg-[#FDEBEC] disabled:opacity-40 transition-colors text-xs"
           title="Delete"
         >
           {deleting ? '…' : 'Delete'}
@@ -182,8 +182,8 @@ export default function ProjectsManagerModal({ onClose }: Props) {
             <p className="text-sm text-gray-400 text-center py-6">Loading…</p>
           ) : fetchError ? (
             <div className="py-6 px-2 space-y-1">
-              <p className="text-sm font-medium text-red-600">Failed to load user activities</p>
-              <p className="text-xs text-red-500 font-mono break-all">{fetchError}</p>
+              <p className="text-sm font-medium text-[#E03E3E]">Failed to load user activities</p>
+              <p className="text-xs text-[#E03E3E] font-mono break-all">{fetchError}</p>
             </div>
           ) : projects.length === 0 ? (
             <p className="text-sm text-gray-400 text-center py-6 italic">No user activities linked to this repository yet</p>
@@ -211,16 +211,16 @@ export default function ProjectsManagerModal({ onClose }: Props) {
                 onChange={(e) => { setNewTitle(e.target.value); setCreateError(''); }}
                 onKeyDown={(e) => e.key === 'Enter' && handleCreate()}
                 placeholder="User activity title"
-                className="w-full border border-gray-300 rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                className="w-full border border-gray-300 rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#2383E2]"
               />
               <input
                 type="text"
                 value={newDescription}
                 onChange={(e) => setNewDescription(e.target.value)}
                 placeholder="Short description (optional)"
-                className="w-full border border-gray-300 rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                className="w-full border border-gray-300 rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#2383E2]"
               />
-              {createError && <p className="text-red-500 text-xs">{createError}</p>}
+              {createError && <p className="text-[#E03E3E] text-xs">{createError}</p>}
               <div className="flex gap-2 justify-end">
                 <button
                   onClick={() => { setShowCreate(false); setNewTitle(''); setNewDescription(''); setCreateError(''); }}
@@ -231,7 +231,7 @@ export default function ProjectsManagerModal({ onClose }: Props) {
                 <button
                   onClick={handleCreate}
                   disabled={creating || !newTitle.trim()}
-                  className="px-4 py-2 text-sm font-medium bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+                  className="px-4 py-2 text-sm font-medium bg-[#2383E2] text-white rounded-lg hover:bg-[#1a73ce] disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
                 >
                   {creating ? 'Creating…' : 'Create'}
                 </button>

@@ -377,7 +377,7 @@ export default function TimelineView() {
           return (
             <div
               key={m.number}
-              className={`flex border-b border-gray-100 ${isDropTarget ? 'border-t-2 border-purple-400' : ''}`}
+              className={`flex border-b border-gray-100 ${isDropTarget ? 'border-t-2 border-[#2383E2]' : ''}`}
               style={{ height: ROW_HEIGHT }}
               onDragOver={(e) => { e.preventDefault(); setDropRowIdx(rowIdx); }}
               onDrop={(e) => {
@@ -391,7 +391,7 @@ export default function TimelineView() {
               onDragEnd={() => { setDraggingRowIdx(null); setDropRowIdx(null); }}
             >
               <div
-                className="sticky left-0 z-10 bg-white border-r border-gray-200 shrink-0 flex items-start pt-2 px-3 gap-1.5 text-sm font-medium text-purple-900"
+                className="sticky left-0 z-10 bg-white border-r border-gray-200 shrink-0 flex items-start pt-2 px-3 gap-1.5 text-sm font-medium text-[#37352F]"
                 style={{ width: LABEL_WIDTH }}
                 draggable
                 onDragStart={(e) => { e.dataTransfer.effectAllowed = 'move'; setDraggingRowIdx(rowIdx); }}
@@ -421,17 +421,17 @@ export default function TimelineView() {
                 {/* Wave bar */}
                 {barWidth > 0 && (
                   <div
-                    className="absolute rounded-md bg-purple-200 select-none"
+                    className="absolute rounded-md bg-[#DDECEA] select-none"
                     style={{ left: startX, width: barWidth, top: 6, height: 24 }}
                   >
                     {/* Left resize handle */}
                     <div
-                      className="absolute left-0 top-0 w-3 h-full cursor-w-resize rounded-l-md hover:bg-purple-400/30 z-10"
+                      className="absolute left-0 top-0 w-3 h-full cursor-w-resize rounded-l-md hover:bg-[#0F7B6C]/30 z-10"
                       onMouseDown={(e) => startEdgeDrag(e, m, 'start')}
                     />
                     {/* Label / move handle */}
                     <div
-                      className="absolute inset-0 flex items-center justify-start text-xs text-purple-700 font-medium overflow-hidden px-3 cursor-grab active:cursor-grabbing"
+                      className="absolute inset-0 flex items-center justify-start text-xs text-[#0F7B6C] font-medium overflow-hidden px-3 cursor-grab active:cursor-grabbing"
                       onMouseDown={(e) => startEdgeDrag(e, m, 'move')}
                     >
                       {m.title}
@@ -439,7 +439,7 @@ export default function TimelineView() {
                     {/* Saving spinner */}
                     {savingWaves.has(m.number) && (
                       <div className="absolute right-4 top-1/2 -translate-y-1/2 pointer-events-none">
-                        <svg className="animate-spin w-3 h-3 text-purple-500" viewBox="0 0 24 24" fill="none">
+                        <svg className="animate-spin w-3 h-3 text-[#0F7B6C]" viewBox="0 0 24 24" fill="none">
                           <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
                           <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
                         </svg>
@@ -447,7 +447,7 @@ export default function TimelineView() {
                     )}
                     {/* Right resize handle */}
                     <div
-                      className="absolute right-0 top-0 w-3 h-full cursor-e-resize rounded-r-md hover:bg-purple-400/30 z-10"
+                      className="absolute right-0 top-0 w-3 h-full cursor-e-resize rounded-r-md hover:bg-[#0F7B6C]/30 z-10"
                       onMouseDown={(e) => startEdgeDrag(e, m, 'end')}
                     />
                   </div>
