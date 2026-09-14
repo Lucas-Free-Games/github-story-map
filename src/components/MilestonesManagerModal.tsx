@@ -50,23 +50,23 @@ function MilestoneRow({
 
   if (editing) {
     return (
-      <div className="p-3 rounded-lg border border-purple-200 bg-purple-50 space-y-2">
+      <div className="p-3 rounded-lg border border-[rgba(55,53,47,0.15)] bg-[#F1F1EF] space-y-2">
         <input
           autoFocus
           type="text"
           value={title}
           onChange={(e) => setTitle(e.target.value)}
           placeholder="Wave title"
-          className="w-full border border-gray-300 rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+          className="w-full border border-gray-300 rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#2383E2]"
         />
         <input
           type="text"
           value={description}
           onChange={(e) => setDescription(e.target.value)}
           placeholder="Description (optional)"
-          className="w-full border border-gray-300 rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+          className="w-full border border-gray-300 rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#2383E2]"
         />
-        {error && <p className="text-red-500 text-xs">{error}</p>}
+        {error && <p className="text-[#E03E3E] text-xs">{error}</p>}
         <div className="flex gap-2 justify-end">
           <button
             onClick={() => { setEditing(false); setTitle(milestone.title); setDescription(milestone.description ?? ''); }}
@@ -77,7 +77,7 @@ function MilestoneRow({
           <button
             onClick={handleSave}
             disabled={saving || !title.trim()}
-            className="px-4 py-2 text-sm font-medium bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+            className="px-4 py-2 text-sm font-medium bg-[#2383E2] text-white rounded-lg hover:bg-[#1a73ce] disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
           >
             {saving ? 'Saving…' : 'Save'}
           </button>
@@ -98,7 +98,7 @@ function MilestoneRow({
             Due {new Date(milestone.due_on).toLocaleDateString()}
           </p>
         )}
-        {error && <p className="text-red-500 text-xs mt-1">{error}</p>}
+        {error && <p className="text-[#E03E3E] text-xs mt-1">{error}</p>}
       </div>
       <div className="flex items-center gap-1 shrink-0 opacity-0 group-hover:opacity-100 transition-opacity">
         <button

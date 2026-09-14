@@ -15,9 +15,9 @@ const TABS: { key: Tab; label: string }[] = [
 function Led({ state, onClick }: { state: LedState; onClick: () => void }) {
   const colors: Record<LedState, string> = {
     idle: 'bg-gray-300',
-    testing: 'bg-green-400 animate-pulse',
-    success: 'bg-green-500',
-    error: 'bg-red-500',
+    testing: 'bg-[#0F7B6C] animate-pulse',
+    success: 'bg-[#0F7B6C]',
+    error: 'bg-[#E03E3E]',
   };
   return (
     <button
@@ -228,13 +228,13 @@ export default function SettingsView() {
                     value={geminiKeyInput}
                     onChange={(e) => { setGeminiKeyInput(e.target.value); setGeminiKeyError(null); }}
                     placeholder={geminiKeyStored ? '••••••••  (key saved server-side)' : 'AIza…'}
-                    className="flex-1 border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    className="flex-1 border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#2383E2]"
                   />
                   <button
                     type="button"
                     onClick={handleSaveGeminiKey}
                     disabled={geminiKeyBusy || !geminiKeyInput.trim()}
-                    className="px-3 py-2 text-sm font-medium bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-40"
+                    className="px-3 py-2 text-sm font-medium bg-[#2383E2] text-white rounded-lg hover:bg-[#1a73ce] disabled:opacity-40"
                   >
                     {geminiKeyStored ? 'Replace' : 'Save'}
                   </button>
@@ -243,13 +243,13 @@ export default function SettingsView() {
                       type="button"
                       onClick={handleDeleteGeminiKey}
                       disabled={geminiKeyBusy}
-                      className="px-3 py-2 text-sm text-red-600 border border-red-200 rounded-lg hover:bg-red-50 disabled:opacity-40"
+                      className="px-3 py-2 text-sm text-[#E03E3E] border border-[#FDEBEC] rounded-lg hover:bg-[#FDEBEC] disabled:opacity-40"
                     >
                       Remove
                     </button>
                   )}
                 </div>
-                {geminiKeyError && <p className="text-xs text-red-600 mt-1 break-words">{geminiKeyError}</p>}
+                {geminiKeyError && <p className="text-xs text-[#E03E3E] mt-1 break-words">{geminiKeyError}</p>}
                 <p className="text-xs text-gray-400 mt-1">
                   Stored encrypted-at-rest in Firestore under your user ID. The browser never re-downloads it; AI requests are proxied server-side using your key.
                 </p>
@@ -263,7 +263,7 @@ export default function SettingsView() {
                     setModel(e.target.value);
                     setLedState('idle');
                   }}
-                  className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white font-mono"
+                  className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#2383E2] bg-white font-mono"
                 >
                   {GEMINI_MODELS.map((m) => (
                     <option key={m} value={m}>{m}</option>
@@ -288,10 +288,10 @@ export default function SettingsView() {
                       return (
                         <span
                           key={num}
-                          className="flex items-center gap-1 px-2 py-1 bg-blue-50 text-blue-700 text-xs rounded-full border border-blue-200"
+                          className="flex items-center gap-1 px-2 py-1 bg-[#F1F1EF] text-[#37352F] text-xs rounded-full border border-[rgba(55,53,47,0.15)]"
                         >
                           {isClosed && (
-                            <svg className="w-3 h-3 text-purple-600 shrink-0" viewBox="0 0 16 16" fill="currentColor" aria-label="Closed">
+                            <svg className="w-3 h-3 text-[#37352F]/60 shrink-0" viewBox="0 0 16 16" fill="currentColor" aria-label="Closed">
                               <path d="M11.28 6.78a.75.75 0 0 0-1.06-1.06L7.25 8.69 5.78 7.22a.75.75 0 0 0-1.06 1.06l2 2a.75.75 0 0 0 1.06 0l3.5-3.5Z"/>
                               <path d="M16 8A8 8 0 1 1 0 8a8 8 0 0 1 16 0Zm-1.5 0a6.5 6.5 0 1 0-13 0 6.5 6.5 0 0 0 13 0Z"/>
                             </svg>
@@ -300,7 +300,7 @@ export default function SettingsView() {
                           {issue ? ` · ${issue.title.slice(0, 28)}…` : ''}
                           <button
                             onClick={() => toggleExample(num)}
-                            className="hover:text-red-500 leading-none ml-0.5"
+                            className="hover:text-[#E03E3E] leading-none ml-0.5"
                           >
                             ×
                           </button>
@@ -315,7 +315,7 @@ export default function SettingsView() {
                   value={search}
                   onChange={(e) => setSearch(e.target.value)}
                   placeholder="Search issues…"
-                  className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 mb-1"
+                  className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#2383E2] mb-1"
                 />
 
                 <ul className="border border-gray-200 rounded-lg divide-y divide-gray-100 max-h-44 overflow-y-auto bg-white">
@@ -330,14 +330,14 @@ export default function SettingsView() {
                           disabled={disabled}
                           className={`w-full text-left px-3 py-2 text-sm flex items-center gap-2 transition-colors ${
                             selected
-                              ? 'bg-blue-50 text-blue-700'
+                              ? 'bg-[#F1F1EF] text-[#37352F]'
                               : disabled
                               ? 'opacity-40 cursor-not-allowed text-gray-700'
                               : 'hover:bg-gray-50 text-gray-700'
                           }`}
                         >
                           {isClosed ? (
-                            <svg className="w-3.5 h-3.5 text-purple-600 shrink-0" viewBox="0 0 16 16" fill="currentColor" aria-label="Closed">
+                            <svg className="w-3.5 h-3.5 text-[#37352F]/60 shrink-0" viewBox="0 0 16 16" fill="currentColor" aria-label="Closed">
                               <path d="M11.28 6.78a.75.75 0 0 0-1.06-1.06L7.25 8.69 5.78 7.22a.75.75 0 0 0-1.06 1.06l2 2a.75.75 0 0 0 1.06 0l3.5-3.5Z"/>
                               <path d="M16 8A8 8 0 1 1 0 8a8 8 0 0 1 16 0Zm-1.5 0a6.5 6.5 0 1 0-13 0 6.5 6.5 0 0 0 13 0Z"/>
                             </svg>
@@ -352,7 +352,7 @@ export default function SettingsView() {
                           </span>
                           <span className="truncate">{issue.title}</span>
                           {selected && (
-                            <span className="ml-auto text-blue-500 shrink-0 text-xs">✓</span>
+                            <span className="ml-auto text-[#2383E2] shrink-0 text-xs">✓</span>
                           )}
                         </button>
                       </li>
@@ -373,7 +373,7 @@ export default function SettingsView() {
                   onChange={(e) => setExtraInstructions(e.target.value)}
                   rows={3}
                   placeholder="e.g. Always write in Portuguese. Keep acceptance criteria concise."
-                  className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none"
+                  className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#2383E2] resize-none"
                 />
               </div>
             </>
@@ -405,13 +405,13 @@ export default function SettingsView() {
                       value={anthropicKeyInput}
                       onChange={(e) => { setAnthropicKeyInput(e.target.value); setAnthropicKeyError(null); }}
                       placeholder={anthropicKeyStored ? '••••••••  (key saved server-side)' : 'sk-ant-…'}
-                      className="flex-1 border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 font-mono"
+                      className="flex-1 border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#2383E2] font-mono"
                     />
                     <button
                       type="button"
                       onClick={handleSaveAnthropicKey}
                       disabled={anthropicKeyBusy || !anthropicKeyInput.trim()}
-                      className="px-3 py-2 text-sm font-medium bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-40"
+                      className="px-3 py-2 text-sm font-medium bg-[#2383E2] text-white rounded-lg hover:bg-[#1a73ce] disabled:opacity-40"
                     >
                       {anthropicKeyStored ? 'Replace' : 'Save'}
                     </button>
@@ -420,18 +420,18 @@ export default function SettingsView() {
                         type="button"
                         onClick={handleDeleteAnthropicKey}
                         disabled={anthropicKeyBusy}
-                        className="px-3 py-2 text-sm text-red-600 border border-red-200 rounded-lg hover:bg-red-50 disabled:opacity-40"
+                        className="px-3 py-2 text-sm text-[#E03E3E] border border-[#FDEBEC] rounded-lg hover:bg-[#FDEBEC] disabled:opacity-40"
                       >
                         Remove
                       </button>
                     )}
                   </div>
-                  {anthropicKeyError && <p className="text-xs text-red-600 mt-1 break-words">{anthropicKeyError}</p>}
+                  {anthropicKeyError && <p className="text-xs text-[#E03E3E] mt-1 break-words">{anthropicKeyError}</p>}
                   <p className="text-xs text-gray-400 mt-1">
                     Stored encrypted-at-rest in Firestore under your user ID. The browser never re-downloads it; agent calls are proxied server-side using your key.
                   </p>
                   {anthropicError && (
-                    <p className="text-xs text-red-600 mt-1 break-words">{anthropicError}</p>
+                    <p className="text-xs text-[#E03E3E] mt-1 break-words">{anthropicError}</p>
                   )}
                 </div>
                 <div>
@@ -441,7 +441,7 @@ export default function SettingsView() {
                     value={agentId}
                     onChange={(e) => setAgentId(e.target.value)}
                     placeholder="agent_…"
-                    className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 font-mono"
+                    className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#2383E2] font-mono"
                   />
                 </div>
                 <div>
@@ -453,7 +453,7 @@ export default function SettingsView() {
                     value={envId}
                     onChange={(e) => setEnvId(e.target.value)}
                     placeholder="env_…"
-                    className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 font-mono"
+                    className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#2383E2] font-mono"
                   />
                 </div>
                 <div>
@@ -463,7 +463,7 @@ export default function SettingsView() {
                     value={vaultId}
                     onChange={(e) => setVaultId(e.target.value)}
                     placeholder="vlt_…"
-                    className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 font-mono"
+                    className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#2383E2] font-mono"
                   />
                   <p className="text-xs text-gray-400 mt-1">
                     The vault holds your GitHub OAuth token — the agent uses it automatically via
@@ -478,7 +478,7 @@ export default function SettingsView() {
             <button
               onClick={handleSave}
               className={`px-4 py-2 text-sm font-medium rounded-lg transition-colors ${
-                saved_ ? 'bg-green-600 text-white' : 'bg-blue-600 text-white hover:bg-blue-700'
+                saved_ ? 'bg-[#0F7B6C] text-white' : 'bg-[#2383E2] text-white hover:bg-[#1a73ce]'
               }`}
             >
               {saved_ ? 'Saved!' : 'Save'}

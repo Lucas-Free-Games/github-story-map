@@ -79,7 +79,7 @@ function AiImplementationPanel({
         <span className="text-xs text-gray-500 shrink-0">Branch</span>
         {branchName ? (
           <a href={links.branch} target="_blank" rel="noreferrer"
-            className="text-xs text-blue-600 hover:text-blue-800 hover:underline truncate min-w-0">
+            className="text-xs text-[#2383E2] hover:text-[#1a73ce] hover:underline truncate min-w-0">
             {branchName}
           </a>
         ) : placeholder}
@@ -89,7 +89,7 @@ function AiImplementationPanel({
         <span className="text-xs text-gray-500 shrink-0">Pull Request</span>
         {prNum ? (
           <a href={links.pr} target="_blank" rel="noreferrer"
-            className="text-xs text-purple-600 hover:text-purple-800 hover:underline">
+            className="text-xs text-[#37352F]/60 hover:text-[#37352F] hover:underline">
             #{prNum}
           </a>
         ) : placeholder}
@@ -119,12 +119,12 @@ function AiImplementationPanel({
                 <span className="flex items-center gap-1 text-xs text-gray-400"><Spinner />Starting…</span>
               )}
               {codingState === 'running' && (
-                <span className="flex items-center gap-1.5 text-xs text-green-600">
-                  <span className="w-1.5 h-1.5 rounded-full bg-green-500 animate-pulse" />Running…
+                <span className="flex items-center gap-1.5 text-xs text-[#0F7B6C]">
+                  <span className="w-1.5 h-1.5 rounded-full bg-[#0F7B6C] animate-pulse" />Running…
                 </span>
               )}
-              {codingState === 'done' && <span className="text-xs text-green-600 font-medium">✓ Complete</span>}
-              {codingState === 'error' && <span className="text-xs text-red-500 font-medium">✗ Error</span>}
+              {codingState === 'done' && <span className="text-xs text-[#0F7B6C] font-medium">✓ Complete</span>}
+              {codingState === 'error' && <span className="text-xs text-[#E03E3E] font-medium">✗ Error</span>}
               {logs.length > 0 && (
                 <button
                   type="button"
@@ -453,7 +453,7 @@ export default function EditIssueModal({ issue, onClose, initialTab = 'descripti
               type="text"
               value={title}
               onChange={(e) => setTitle(e.target.value)}
-              className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+              className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#2383E2]"
               required
             />
           </div>
@@ -467,7 +467,7 @@ export default function EditIssueModal({ issue, onClose, initialTab = 'descripti
                 onClick={() => setDescTab('description')}
                 className={`px-3 py-1.5 text-sm font-medium rounded-t-lg transition-colors ${
                   descTab === 'description'
-                    ? 'text-blue-600 border-b-2 border-blue-500 -mb-px bg-white'
+                    ? 'text-[#2383E2] border-b-2 border-[#2383E2] -mb-px bg-white'
                     : 'text-gray-500 hover:text-gray-700'
                 }`}
               >
@@ -510,7 +510,7 @@ export default function EditIssueModal({ issue, onClose, initialTab = 'descripti
                       <select
                         value={geminiModel}
                         onChange={(e) => setGeminiModel(e.target.value)}
-                        className="text-xs border border-purple-200 rounded-lg px-2 py-1 text-purple-700 bg-purple-50 focus:outline-none focus:ring-2 focus:ring-purple-400 cursor-pointer"
+                        className="text-xs border border-[rgba(55,53,47,0.15)] rounded-lg px-2 py-1 text-[#37352F] bg-[#F1F1EF] focus:outline-none focus:ring-2 focus:ring-[#2383E2] cursor-pointer"
                         title="Select Gemini model"
                       >
                         {GEMINI_MODELS.map((m) => (
@@ -521,7 +521,7 @@ export default function EditIssueModal({ issue, onClose, initialTab = 'descripti
                         type="button"
                         onClick={handleGenerate}
                         disabled={generating || !title.trim()}
-                        className="flex items-center justify-center gap-1.5 w-36 px-2.5 py-1 text-xs font-medium text-purple-700 bg-purple-50 border border-purple-200 rounded-lg hover:bg-purple-100 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+                        className="flex items-center justify-center gap-1.5 w-36 px-2.5 py-1 text-xs font-medium text-[#37352F] bg-[#F1F1EF] border border-[rgba(55,53,47,0.15)] rounded-lg hover:bg-[#E8E8E5] disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
                       >
                         {generating ? <><Spinner />Generating…</> : <>✦ Generate with AI</>}
                       </button>
@@ -531,7 +531,7 @@ export default function EditIssueModal({ issue, onClose, initialTab = 'descripti
                 <textarea
                   value={body}
                   onChange={(e) => setBody(e.target.value)}
-                  className="w-full flex-1 min-h-[6rem] border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none"
+                  className="w-full flex-1 min-h-[6rem] border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#2383E2] resize-none"
                 />
                 <div className="shrink-0 mt-2">
                   <ImageAttacher
@@ -549,7 +549,7 @@ export default function EditIssueModal({ issue, onClose, initialTab = 'descripti
                     <select
                       value={projectId}
                       onChange={(e) => setProjectId(e.target.value)}
-                      className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white"
+                      className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#2383E2] bg-white"
                     >
                       <option value="">— none —</option>
                       {openProjects.map((p) => (
@@ -562,7 +562,7 @@ export default function EditIssueModal({ issue, onClose, initialTab = 'descripti
                     <select
                       value={milestoneNumber}
                       onChange={(e) => setMilestoneNumber(e.target.value)}
-                      className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white"
+                      className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#2383E2] bg-white"
                     >
                       <option value="">— none —</option>
                       {milestones.map((m) => (
@@ -605,7 +605,7 @@ export default function EditIssueModal({ issue, onClose, initialTab = 'descripti
             </div>{/* end fixed-height tab panel */}
           </div>
 
-          {error && <p className="text-red-500 text-xs shrink-0">{error}</p>}
+          {error && <p className="text-[#E03E3E] text-xs shrink-0">{error}</p>}
 
           {/* Footer */}
           <div className="flex justify-end gap-2 pt-1 shrink-0">
@@ -620,7 +620,7 @@ export default function EditIssueModal({ issue, onClose, initialTab = 'descripti
             <button
               type="submit"
               disabled={saving || !title.trim()}
-              className="px-4 py-2 text-sm font-medium bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+              className="px-4 py-2 text-sm font-medium bg-[#2383E2] text-white rounded-lg hover:bg-[#1a73ce] disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
             >
               {saving ? 'Saving…' : 'Save changes'}
             </button>

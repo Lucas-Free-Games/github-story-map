@@ -256,12 +256,12 @@ export default function RoadmapView() {
             {cols.map((m) => (
               <th
                 key={m.number}
-                className="sticky top-0 z-20 bg-purple-50 border border-gray-200 px-3 py-2 text-xs font-semibold text-purple-900 text-center whitespace-nowrap"
+                className="sticky top-0 z-20 bg-[#F1F1EF] border border-gray-200 px-3 py-2 text-xs font-semibold text-[#37352F] text-center whitespace-nowrap"
               >
                 {m.title}
               </th>
             ))}
-            <th className="sticky top-0 z-20 bg-purple-50 border border-gray-200 px-3 py-2 text-xs font-normal italic text-purple-400 text-center whitespace-nowrap">
+            <th className="sticky top-0 z-20 bg-[#F1F1EF] border border-gray-200 px-3 py-2 text-xs font-normal italic text-[#37352F]/40 text-center whitespace-nowrap">
             </th>
           </tr>
         </thead>

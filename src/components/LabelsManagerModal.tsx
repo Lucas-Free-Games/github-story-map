@@ -74,17 +74,17 @@ function LabelSection({
           onChange={(e) => { setInput(e.target.value); setError(''); }}
           onKeyDown={(e) => e.key === 'Enter' && handleAdd()}
           placeholder={`New ${title.toLowerCase()}…`}
-          className="flex-1 border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+          className="flex-1 border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#2383E2]"
         />
         <button
           onClick={handleAdd}
           disabled={adding || !input.trim()}
-          className="px-4 py-2 text-sm font-medium bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+          className="px-4 py-2 text-sm font-medium bg-[#2383E2] text-white rounded-lg hover:bg-[#1a73ce] disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
         >
           {adding ? '…' : 'Add'}
         </button>
       </div>
-      {error && <p className="text-red-500 text-xs mt-1">{error}</p>}
+      {error && <p className="text-[#E03E3E] text-xs mt-1">{error}</p>}
       {input.trim() && !error && (
         <p className="text-xs text-gray-400 mt-1">
           Will create label <span className="font-mono">{prefix}{input.trim()}</span> on GitHub

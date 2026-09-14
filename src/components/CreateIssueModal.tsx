@@ -101,7 +101,7 @@ export default function CreateIssueModal({ defaultProjectId, defaultMilestoneNum
               value={title}
               onChange={(e) => setTitle(e.target.value)}
               placeholder="Issue title"
-              className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+              className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#2383E2]"
               required
             />
           </div>
@@ -116,7 +116,7 @@ export default function CreateIssueModal({ defaultProjectId, defaultMilestoneNum
                   <select
                     value={geminiModel}
                     onChange={(e) => setGeminiModel(e.target.value)}
-                    className="text-xs border border-purple-200 rounded-lg px-2 py-1 text-purple-700 bg-purple-50 focus:outline-none focus:ring-2 focus:ring-purple-400 cursor-pointer"
+                    className="text-xs border border-[rgba(55,53,47,0.15)] rounded-lg px-2 py-1 text-[#37352F] bg-[#F1F1EF] focus:outline-none focus:ring-2 focus:ring-[#2383E2] cursor-pointer"
                     title="Select Gemini model"
                   >
                     {GEMINI_MODELS.map((m) => (
@@ -127,7 +127,7 @@ export default function CreateIssueModal({ defaultProjectId, defaultMilestoneNum
                     type="button"
                     onClick={handleGenerate}
                     disabled={generating || !title.trim()}
-                    className="flex items-center gap-1.5 px-2.5 py-1 text-xs font-medium text-purple-700 bg-purple-50 border border-purple-200 rounded-lg hover:bg-purple-100 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+                    className="flex items-center gap-1.5 px-2.5 py-1 text-xs font-medium text-[#37352F] bg-[#F1F1EF] border border-[rgba(55,53,47,0.15)] rounded-lg hover:bg-[#E8E8E5] disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
                   >
                     {generating ? (
                       <><Spinner />Generating…</>
@@ -143,7 +143,7 @@ export default function CreateIssueModal({ defaultProjectId, defaultMilestoneNum
               onChange={(e) => setBody(e.target.value)}
               placeholder="Add details…"
               rows={5}
-              className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none"
+              className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#2383E2] resize-none"
             />
             <ImageAttacher
               owner={owner}
@@ -160,7 +160,7 @@ export default function CreateIssueModal({ defaultProjectId, defaultMilestoneNum
               <select
                 value={projectId}
                 onChange={(e) => setProjectId(e.target.value)}
-                className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white"
+                className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#2383E2] bg-white"
               >
                 <option value="">— none —</option>
                 {openProjects.map((p) => (
@@ -174,7 +174,7 @@ export default function CreateIssueModal({ defaultProjectId, defaultMilestoneNum
               <select
                 value={milestoneNumber}
                 onChange={(e) => setMilestoneNumber(e.target.value)}
-                className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white"
+                className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#2383E2] bg-white"
               >
                 <option value="">— none —</option>
                 {milestones.map((m) => (
@@ -190,7 +190,7 @@ export default function CreateIssueModal({ defaultProjectId, defaultMilestoneNum
               <select
                 value={statusLabel}
                 onChange={(e) => setStatusLabel(e.target.value)}
-                className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white"
+                className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#2383E2] bg-white"
               >
                 <option value="">— none —</option>
                 {statusLabels.map((l) => (
@@ -200,7 +200,7 @@ export default function CreateIssueModal({ defaultProjectId, defaultMilestoneNum
             </div>
           )}
 
-          {error && <p className="text-red-500 text-xs">{error}</p>}
+          {error && <p className="text-[#E03E3E] text-xs">{error}</p>}
 
           <div className="flex justify-end gap-2 pt-1">
             <button
@@ -213,7 +213,7 @@ export default function CreateIssueModal({ defaultProjectId, defaultMilestoneNum
             <button
               type="submit"
               disabled={submitting || !title.trim()}
-              className="px-4 py-2 text-sm font-medium bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+              className="px-4 py-2 text-sm font-medium bg-[#2383E2] text-white rounded-lg hover:bg-[#1a73ce] disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
             >
               {submitting ? 'Creating…' : 'Create issue'}
             </button>

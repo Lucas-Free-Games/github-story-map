@@ -63,7 +63,7 @@ function TableRow({ issue, userActivity, nativeStatus, statusColor, onOpen }: Ro
         } ${
           issue.state === 'closed' ? 'opacity-60' : ''
         } ${
-          hovered ? 'bg-blue-50/50' : 'bg-white hover:bg-gray-50'
+          hovered ? 'bg-[#E7F3F8]/50' : 'bg-white hover:bg-gray-50'
         }`}
       >
         {/* # */}
@@ -101,7 +101,7 @@ function TableRow({ issue, userActivity, nativeStatus, statusColor, onOpen }: Ro
         {/* User Activity */}
         <td className="px-3 py-2 whitespace-nowrap">
           {userActivity ? (
-            <span className="text-xs text-blue-700 bg-blue-50 px-2 py-0.5 rounded-full border border-blue-200">
+            <span className="text-xs text-[#37352F] bg-[#F1F1EF] px-2 py-0.5 rounded-full border border-[rgba(55,53,47,0.15)]">
               {userActivity}
             </span>
           ) : (
@@ -112,7 +112,7 @@ function TableRow({ issue, userActivity, nativeStatus, statusColor, onOpen }: Ro
         {/* Wave / Milestone */}
         <td className="px-3 py-2 whitespace-nowrap">
           {issue.milestone ? (
-            <span className="text-xs text-purple-700 bg-purple-50 px-2 py-0.5 rounded-full border border-purple-200">
+            <span className="text-xs text-[#37352F] bg-[#F1F1EF] px-2 py-0.5 rounded-full border border-[rgba(55,53,47,0.15)]">
               🌊 {issue.milestone.title}
             </span>
           ) : (
@@ -160,7 +160,7 @@ function TableRow({ issue, userActivity, nativeStatus, statusColor, onOpen }: Ro
             <button
               onClick={(e) => { e.stopPropagation(); setShowEdit(true); }}
               title="Edit issue"
-              className="p-1 rounded-md border border-blue-200 bg-blue-50 text-blue-500 hover:bg-blue-100 transition-colors"
+              className="p-1 rounded-md border border-[#2383E2]/30 bg-[#E7F3F8] text-[#2383E2] hover:bg-[#d8ecf8] transition-colors"
             >
               <svg xmlns="http://www.w3.org/2000/svg" className="w-3.5 h-3.5" viewBox="0 0 20 20" fill="currentColor">
                 <path d="M13.586 3.586a2 2 0 112.828 2.828l-.793.793-2.828-2.828.793-.793zM11.379 5.793L3 14.172V17h2.828l8.38-8.379-2.83-2.828z" />
@@ -172,7 +172,7 @@ function TableRow({ issue, userActivity, nativeStatus, statusColor, onOpen }: Ro
               <button
                 onClick={handleClose}
                 title="Close issue"
-                className="p-1 rounded-md border border-green-200 bg-green-50 text-green-600 hover:bg-green-100 transition-colors"
+                className="p-1 rounded-md border border-[#DDECEA] bg-[#DDECEA] text-[#0F7B6C] hover:bg-[#c8deda] transition-colors"
               >
                 <svg xmlns="http://www.w3.org/2000/svg" className="w-3.5 h-3.5" viewBox="0 0 20 20" fill="currentColor">
                   <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
@@ -182,7 +182,7 @@ function TableRow({ issue, userActivity, nativeStatus, statusColor, onOpen }: Ro
               <button
                 onClick={handleReopen}
                 title="Reopen issue"
-                className="p-1 rounded-md border border-purple-200 bg-purple-50 text-purple-600 hover:bg-purple-100 transition-colors"
+                className="p-1 rounded-md border border-[#DDECEA] bg-[#DDECEA] text-[#0F7B6C] hover:bg-[#c8deda] transition-colors"
               >
                 <svg xmlns="http://www.w3.org/2000/svg" className="w-3.5 h-3.5" viewBox="0 0 20 20" fill="currentColor">
                   <path fillRule="evenodd" d="M4 2a1 1 0 011 1v2.101a7.002 7.002 0 0111.601 2.566 1 1 0 11-1.885.666A5.002 5.002 0 005.999 7H9a1 1 0 010 2H4a1 1 0 01-1-1V3a1 1 0 011-1zm.008 9.057a1 1 0 011.276.61A5.002 5.002 0 0014.001 13H11a1 1 0 110-2h5a1 1 0 011 1v5a1 1 0 11-2 0v-2.101a7.002 7.002 0 01-11.601-2.566 1 1 0 01.61-1.276z" clipRule="evenodd" />
@@ -194,7 +194,7 @@ function TableRow({ issue, userActivity, nativeStatus, statusColor, onOpen }: Ro
             <button
               onClick={handleDelete}
               title="Delete issue permanently"
-              className="p-1 rounded-md border border-red-200 bg-red-50 text-red-500 hover:bg-red-100 transition-colors"
+              className="p-1 rounded-md border border-[#FDEBEC] bg-[#FDEBEC] text-[#E03E3E] hover:bg-[#fad5d7] transition-colors"
             >
               <svg xmlns="http://www.w3.org/2000/svg" className="w-3.5 h-3.5" viewBox="0 0 20 20" fill="currentColor">
                 <path fillRule="evenodd" d="M9 2a1 1 0 00-.894.553L7.382 4H4a1 1 0 000 2v10a2 2 0 002 2h8a2 2 0 002-2V6a1 1 0 100-2h-3.382l-.724-1.447A1 1 0 0011 2H9zM7 8a1 1 0 012 0v6a1 1 0 11-2 0V8zm5-1a1 1 0 00-1 1v6a1 1 0 102 0V8a1 1 0 00-1-1z" clipRule="evenodd" />
@@ -294,11 +294,11 @@ export default function TableView() {
       );
     }
     return sortDir === 'asc' ? (
-      <svg className="w-3 h-3 text-blue-500 ml-1 inline" viewBox="0 0 20 20" fill="currentColor">
+      <svg className="w-3 h-3 text-[#2383E2] ml-1 inline" viewBox="0 0 20 20" fill="currentColor">
         <path d="M5 12l5-5 5 5H5z" />
       </svg>
     ) : (
-      <svg className="w-3 h-3 text-blue-500 ml-1 inline" viewBox="0 0 20 20" fill="currentColor">
+      <svg className="w-3 h-3 text-[#2383E2] ml-1 inline" viewBox="0 0 20 20" fill="currentColor">
         <path d="M15 8l-5 5-5-5h10z" />
       </svg>
     );
@@ -319,7 +319,7 @@ export default function TableView() {
             placeholder="Filter issues…"
             value={filterText}
             onChange={(e) => setFilterText(e.target.value)}
-            className="pl-8 pr-3 py-1.5 text-sm border border-gray-200 rounded-md bg-white focus:outline-none focus:ring-2 focus:ring-blue-400 w-60"
+            className="pl-8 pr-3 py-1.5 text-sm border border-gray-200 rounded-md bg-white focus:outline-none focus:ring-2 focus:ring-[#2383E2] w-60"
           />
         </div>
         <span className="text-xs text-gray-400">

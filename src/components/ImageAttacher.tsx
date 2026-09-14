@@ -111,7 +111,7 @@ export default function ImageAttacher({
         <>
           <div
             className={`border-2 border-dashed rounded-lg px-3 py-2 transition-colors ${
-              dragOver ? 'border-blue-400 bg-blue-50' : 'border-gray-200 hover:border-gray-300'
+              dragOver ? 'border-[#2383E2] bg-[#E7F3F8]' : 'border-gray-200 hover:border-gray-300'
             }`}
             onDragOver={(e) => { e.preventDefault(); setDragOver(true); }}
             onDragLeave={() => setDragOver(false)}
@@ -126,7 +126,7 @@ export default function ImageAttacher({
                   <button
                     type="button"
                     onClick={() => fileInputRef.current?.click()}
-                    className="text-blue-500 hover:text-blue-700 underline"
+                    className="text-[#2383E2] hover:text-[#1a73ce] underline"
                   >
                     pick file
                   </button>
@@ -134,7 +134,7 @@ export default function ImageAttacher({
                   <button
                     type="button"
                     onClick={() => setShowUrlInput(v => !v)}
-                    className="text-blue-500 hover:text-blue-700 underline"
+                    className="text-[#2383E2] hover:text-[#1a73ce] underline"
                   >
                     URL
                   </button>
@@ -164,13 +164,13 @@ export default function ImageAttacher({
                   if (e.key === 'Escape') setShowUrlInput(false);
                 }}
                 placeholder="https://example.com/image.png"
-                className="flex-1 border border-gray-300 rounded-lg px-3 py-1.5 text-xs focus:outline-none focus:ring-2 focus:ring-blue-500"
+                className="flex-1 border border-gray-300 rounded-lg px-3 py-1.5 text-xs focus:outline-none focus:ring-2 focus:ring-[#2383E2]"
               />
               <button
                 type="button"
                 onClick={handleUrlAdd}
                 disabled={!urlInput.trim()}
-                className="px-3 py-1.5 text-xs bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-40"
+                className="px-3 py-1.5 text-xs bg-[#2383E2] text-white rounded-lg hover:bg-[#1a73ce] disabled:opacity-40"
               >
                 Add
               </button>
@@ -184,7 +184,7 @@ export default function ImageAttacher({
             </div>
           )}
 
-          {uploadError && <p className="text-red-500 text-xs">{uploadError}</p>}
+          {uploadError && <p className="text-[#E03E3E] text-xs">{uploadError}</p>}
         </>
       )}
 
@@ -223,7 +223,7 @@ export default function ImageAttacher({
                       src={img.url}
                       alt={img.name}
                       className={`w-16 h-16 object-cover rounded-lg border bg-gray-50 transition-all duration-150 ${
-                        hoveredIdx === idx ? 'border-blue-400 ring-2 ring-blue-200' : 'border-gray-200'
+                        hoveredIdx === idx ? 'border-[#2383E2] ring-2 ring-[#2383E2]/20' : 'border-gray-200'
                       }`}
                       onError={(e) => {
                         (e.currentTarget as HTMLImageElement).style.display = 'none';

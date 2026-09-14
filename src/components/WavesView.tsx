@@ -61,10 +61,10 @@ function SidebarItem({
   return (
     <div
       onClick={onSelect}
-      className={`flex flex-col border-b border-gray-100 px-3 py-2.5 cursor-pointer ${selected ? 'bg-purple-50 border-r-2 border-r-purple-500' : 'hover:bg-gray-50'}`}
+      className={`flex flex-col border-b border-gray-100 px-3 py-2.5 cursor-pointer ${selected ? 'bg-[#F1F1EF] border-r-2 border-r-[#2383E2]' : 'hover:bg-gray-50'}`}
     >
       <div className="flex items-center gap-1.5">
-        <span className={`text-sm truncate ${selected ? 'font-medium text-purple-800' : 'text-gray-700'} ${milestone.state === 'closed' ? 'line-through opacity-60' : ''}`}>
+        <span className={`text-sm truncate ${selected ? 'font-medium text-[#2383E2]' : 'text-gray-700'} ${milestone.state === 'closed' ? 'line-through opacity-60' : ''}`}>
           {milestone.title}
         </span>
         {milestone.state === 'closed' && (
@@ -72,13 +72,13 @@ function SidebarItem({
         )}
       </div>
       {waveDates && (
-        <span className="text-xs text-purple-500 mt-0.5">
+        <span className="text-xs text-[#37352F]/60 mt-0.5">
           <span className="text-gray-400 mr-1">Timeline</span>
           {fmtDate(waveDates.start)} – {fmtDate(waveDates.end)}
         </span>
       )}
       <div className="flex items-center gap-1.5 mt-0.5">
-        <span className="text-xs text-green-600">{openCount} open</span>
+        <span className="text-xs text-[#0F7B6C]">{openCount} open</span>
         <span className="text-xs text-gray-300">·</span>
         <span className="text-xs text-gray-400">{closedCount} closed</span>
         <a
@@ -248,21 +248,21 @@ export default function WavesView() {
                     value={detailTitle}
                     onChange={(e) => setDetailTitle(e.target.value)}
                     placeholder="Wave title"
-                    className="w-full border border-gray-300 rounded-lg px-3 py-2 text-xl font-bold text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    className="w-full border border-gray-300 rounded-lg px-3 py-2 text-xl font-bold text-gray-900 focus:outline-none focus:ring-2 focus:ring-[#2383E2]"
                   />
                   <textarea
                     value={detailDescription}
                     onChange={(e) => setDetailDescription(e.target.value)}
                     placeholder="Description (optional)"
                     rows={3}
-                    className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm text-gray-700 focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none"
+                    className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm text-gray-700 focus:outline-none focus:ring-2 focus:ring-[#2383E2] resize-none"
                   />
-                  {saveDetailError && <p className="text-xs text-red-600">{saveDetailError}</p>}
+                  {saveDetailError && <p className="text-xs text-[#E03E3E]">{saveDetailError}</p>}
                   <div className="flex gap-2">
                     <button
                       onClick={handleSaveDetail}
                       disabled={savingDetail || !detailTitle.trim()}
-                      className="px-4 py-1.5 text-sm font-medium bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-40 transition-colors"
+                      className="px-4 py-1.5 text-sm font-medium bg-[#2383E2] text-white rounded-lg hover:bg-[#1a73ce] disabled:opacity-40 transition-colors"
                     >
                       {savingDetail ? 'Saving…' : 'Save'}
                     </button>
@@ -282,7 +282,7 @@ export default function WavesView() {
                       <button
                         onClick={startDetailEdit}
                         title="Edit wave"
-                        className="text-blue-500 p-1 rounded-md border border-blue-200 bg-blue-50 hover:bg-blue-100 transition-colors"
+                        className="text-[#2383E2] p-1 rounded-md border border-[#2383E2]/30 bg-[#E7F3F8] hover:bg-[#d8ecf8] transition-colors"
                       >
                         <svg xmlns="http://www.w3.org/2000/svg" className="w-3.5 h-3.5" viewBox="0 0 20 20" fill="currentColor">
                           <path d="M13.586 3.586a2 2 0 112.828 2.828l-.793.793-2.828-2.828.793-.793zM11.379 5.793L3 14.172V17h2.828l8.38-8.379-2.83-2.828z" />
@@ -294,8 +294,8 @@ export default function WavesView() {
                         title={selected.state === 'open' ? 'Close wave' : 'Reopen wave'}
                         className={`text-xs font-medium px-2 py-1 rounded-md border disabled:opacity-40 transition-colors ${
                           selected.state === 'open'
-                            ? 'text-amber-700 border-amber-200 bg-amber-50 hover:bg-amber-100'
-                            : 'text-green-700 border-green-200 bg-green-50 hover:bg-green-100'
+                            ? 'text-[#D9730D] border-[#FBECDD] bg-[#FBECDD] hover:bg-[#f5dcc8]'
+                            : 'text-[#0F7B6C] border-[#DDECEA] bg-[#DDECEA] hover:bg-[#c8deda]'
                         }`}
                       >
                         {togglingState ? '…' : selected.state === 'open' ? 'Close wave' : 'Reopen wave'}
@@ -304,7 +304,7 @@ export default function WavesView() {
                         onClick={handleDelete}
                         disabled={deleting}
                         title="Delete wave permanently"
-                        className="text-red-500 p-1 rounded-md border border-red-200 bg-red-50 hover:bg-red-100 disabled:opacity-40 transition-colors"
+                        className="text-[#E03E3E] p-1 rounded-md border border-[#FDEBEC] bg-[#FDEBEC] hover:bg-[#fad5d7] disabled:opacity-40 transition-colors"
                       >
                         <svg xmlns="http://www.w3.org/2000/svg" className="w-3.5 h-3.5" viewBox="0 0 20 20" fill="currentColor">
                           <path fillRule="evenodd" d="M9 2a1 1 0 00-.894.553L7.382 4H4a1 1 0 000 2v10a2 2 0 002 2h8a2 2 0 002-2V6a1 1 0 100-2h-3.382l-.724-1.447A1 1 0 0011 2H9zM7 8a1 1 0 012 0v6a1 1 0 11-2 0V8zm5-1a1 1 0 00-1 1v6a1 1 0 102 0V8a1 1 0 00-1-1z" clipRule="evenodd" />
@@ -312,15 +312,15 @@ export default function WavesView() {
                       </button>
                     </div>
                   </div>
-                  {deleteError && <p className="text-xs text-red-600 mb-2">{deleteError}</p>}
-                  {toggleStateError && <p className="text-xs text-red-600 mb-2">{toggleStateError}</p>}
+                  {deleteError && <p className="text-xs text-[#E03E3E] mb-2">{deleteError}</p>}
+                  {toggleStateError && <p className="text-xs text-[#E03E3E] mb-2">{toggleStateError}</p>}
                   {selected.description && (
                     <p className="text-sm text-gray-500 mb-2">{selected.description}</p>
                   )}
                   {(() => {
                     const dates = resolveDates(selected, milestoneIssues, layout.waveDates?.[selected.number]);
                     return dates ? (
-                      <p className="text-xs text-purple-500 mb-1">
+                      <p className="text-xs text-[#37352F]/60 mb-1">
                         <span className="text-gray-400 mr-1">Timeline</span>
                         {fmtDate(dates.start)} – {fmtDate(dates.end)}
                       </p>
@@ -336,7 +336,7 @@ export default function WavesView() {
                     href={`https://github.com/${owner}/${repo}/milestone/${selected.number}`}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="inline-flex items-center gap-1 text-sm text-blue-600 hover:text-blue-800 hover:underline"
+                    className="inline-flex items-center gap-1 text-sm text-[#2383E2] hover:text-[#1a73ce] hover:underline"
                   >
                     View on GitHub
                     <svg xmlns="http://www.w3.org/2000/svg" className="w-3.5 h-3.5" viewBox="0 0 20 20" fill="currentColor">

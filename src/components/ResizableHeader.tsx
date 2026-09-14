@@ -77,8 +77,8 @@ const ResizableHeader = forwardRef<HTMLTableCellElement, ResizableHeaderProps>(
 
     const indicatorCls =
       handleVariant === 'green'
-        ? 'group-hover/colresize:bg-green-400'
-        : 'group-hover/colresize:bg-blue-400';
+        ? 'group-hover/colresize:bg-[#0F7B6C]'
+        : 'group-hover/colresize:bg-[#2383E2]';
 
     return (
       <th
